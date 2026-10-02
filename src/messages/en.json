@@ -31,5 +31,11 @@
     "exhausted": "You've seen all questions for this selection.", "restart": "Start over", "changeSetup": "Change setup",
     "badConfig": "This drill link is invalid.", "empty": "No questions match this selection yet. Try other topics or Mixed level.",
     "correct": "Correct!", "wrong": "Not quite.", "notSaved": "Progress isn't saved in this browser (private mode?)."
+  },
+  "survival": {
+    "streak": "Streak: {n}", "level": "Level {n}", "over": "Game over", "cleared": "Level {n} cleared!",
+    "clearedHint": "You've answered every level {n} question.", "nextLevel": "Go to level {n}",
+    "best": "Personal best: {n}", "newBest": "New personal best!", "missed": "The question that got you:",
+    "again": "Play again"
   }
 }
