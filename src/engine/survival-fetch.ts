@@ -10,6 +10,7 @@ export async function fetchSurvivalQuestion(
     const [q] = await getQuestions({ topics, level: l as Level, exclude: seenIds, limit: 1 });
     if (q) return q;
   }
+  if (seenIds.length <= RECYCLE_WINDOW) return null; // recycling would repeat the L5 query above
   const [q] = await getQuestions({ topics, level: 5, exclude: seenIds.slice(-RECYCLE_WINDOW), limit: 1 });
   return q ?? null;
 }

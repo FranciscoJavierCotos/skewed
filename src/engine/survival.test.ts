@@ -34,3 +34,27 @@ it("ignores stale results", () => {
   const s = r(s0, { type: "QUESTION_LOADED", question: makeQuestion("q0") });
   expect(r(s, { type: "ANSWER_RESULT", result: makeResult("other", false) })).toBe(s);
 });
+
+it("POOL_EXHAUSTED only applies while loading", () => {
+  expect(r(s0, { type: "POOL_EXHAUSTED" }).status).toBe("exhausted");
+  const answering = r(s0, { type: "QUESTION_LOADED", question: makeQuestion("q0") });
+  expect(r(answering, { type: "POOL_EXHAUSTED" })).toBe(answering);
+});
+
+it("NEXT clears the level-up flag on the following question and tracks seen ids", () => {
+  let s = s0;
+  for (let i = 0; i < 5; i++) s = answerCorrect(s, `q${i}`);
+  expect(s).toMatchObject({ status: "loading", current: null, leveledUp: true });
+  s = r(s, { type: "QUESTION_LOADED", question: makeQuestion("q5") });
+  expect(s.leveledUp).toBe(false);
+  expect(s.seenIds).toEqual(["q0", "q1", "q2", "q3", "q4", "q5"]);
+  expect(r(s, { type: "NEXT" })).toBe(s); // ignored outside feedback
+});
+
+it("ignores events once the run is over", () => {
+  let s = r(s0, { type: "QUESTION_LOADED", question: makeQuestion("q0") });
+  s = r(s, { type: "ANSWER_RESULT", result: makeResult("q0", false) });
+  expect(r(s, { type: "ANSWER_RESULT", result: makeResult("q0", true) })).toBe(s);
+  expect(r(s, { type: "QUESTION_LOADED", question: makeQuestion("q1") })).toBe(s);
+  expect(r(s, { type: "NEXT" })).toBe(s);
+});

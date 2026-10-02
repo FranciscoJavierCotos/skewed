@@ -23,3 +23,9 @@ it("at level 5 recycles excluding only the most recent ids", async () => {
 it("returns null when nothing exists at all", async () => {
   expect(await fetchSurvivalQuestion(vi.fn().mockResolvedValue([]), ["git"], 5, [])).toBeNull();
 });
+
+it("skips the recycle query when it would repeat the level-5 query", async () => {
+  const get = vi.fn().mockResolvedValue([]);
+  expect(await fetchSurvivalQuestion(get, ["sql"], 5, ["a", "b"])).toBeNull();
+  expect(get).toHaveBeenCalledTimes(1);
+});
