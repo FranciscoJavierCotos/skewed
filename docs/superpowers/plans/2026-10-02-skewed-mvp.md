@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- Topics: exactly `spark` (PySpark only), `sql` (ANSI; `dialect` ∈ `postgres|snowflake|bigquery|spark-sql` only when engine-specific), `git`.
+- Topics: exactly `spark` (PySpark only), `sql` (PostgreSQL 17 only; `dialect` is always `null` in content), `git`.
 - Levels are integers 1–5. "Mixed" means `level = null` in RPC calls.
 - Every question has **exactly 4 code options, exactly 1 correct**, and an explanation on every option.
 - Question ids match `^(spark|sql|git)-l[1-5]-\d{4}$`, equal the filename, and live at `content/{topic}/level-{n}/{id}.yaml`.
@@ -3105,16 +3105,16 @@ Expected: 4 passed.
 
 - [ ] **Step 1: Write `docs/content-guide.md`.** It must contain:
   1. The level rubric table, copied verbatim from spec §2.2.
-  2. The YAML format, copied from spec §2.3, with one fully worked example per topic: a Spark L3 window-function question, a SQL L4 `QUALIFY` question with `dialect: snowflake`, and a Git L4 reflog-recovery question.
+  2. The YAML format, copied from spec §2.3, with one fully worked example per topic: a Spark L3 window-function question, a SQL L4 `DISTINCT ON` dedup question, and a Git L4 reflog-recovery question.
   3. **The review checklist** (each item a checkbox, copied into every content PR):
-     - The correct answer actually runs and produces the stated result. Run Spark/SQL snippets locally (DuckDB or `pyspark` shell; a git sandbox repo for Git).
+     - The correct answer actually runs and produces the stated result. Run Spark/SQL snippets locally (`pyspark` shell; PostgreSQL 17 via `psql` for SQL; a git sandbox repo for Git).
      - Each wrong option is wrong for **one specific, teachable reason**, and the explanation names that reason.
      - Wrong options are plausible: no syntax-error strawmen at L3+.
      - The correct option isn't identifiable by length or style. Option lengths are within ~30% of each other, and the correct option isn't always the most "complete-looking".
      - The prompt is a business or technical scenario, not a trivia question.
      - The level matches the rubric.
      - It isn't a near-duplicate of an existing question (`grep` the tags and title).
-     - `docs_url` points to official documentation (Spark, Postgres, Snowflake, BigQuery or git-scm).
+     - `docs_url` points to official documentation (Spark, postgresql.org or git-scm).
   4. **Batch workflow:** branch `content/<topic>-l<n>-batch-<k>` → Claude drafts 20 using `docs/content-prompt.md` → `pnpm content:validate` → PR with the checklist → owner reviews, edits and flips `draft` to `approved` → merge.
   5. **Id allocation:** take the next free 4-digit number per topic and level. Never reuse a retired id.
 
@@ -3122,7 +3122,7 @@ Expected: 4 passed.
   - output YAML files in the exact format;
   - set `status: draft`;
   - write business-scenario prompts;
-  - write PySpark-only Spark code / ANSI SQL, setting `dialect` only when the SQL is engine-specific;
+  - write PySpark-only Spark code / PostgreSQL-only SQL, with `dialect: null`;
   - make each wrong option wrong for one specific reason;
   - keep option lengths balanced;
   - include `docs_url`;
@@ -3150,9 +3150,9 @@ Expected: 4 passed.
 **Files:** `content/sql/level-{1..5}/sql-l{n}-00{01..20}.yaml`
 
 - [ ] For each level n = 1…5, as a separate PR per level:
-  - [ ] Draft 20 questions (topic `sql`). At most 30% of questions per level may set `dialect`.
+  - [ ] Draft 20 questions (topic `sql`). All SQL is PostgreSQL 17; `dialect` stays `null`.
   - [ ] Run `pnpm content:validate` → 0 errors.
-  - [ ] Execute each ANSI snippet in DuckDB (`duckdb -c`) or Postgres against a tiny dataset from `context`. Check dialect-specific snippets against that engine's docs, or run them on a free tier.
+  - [ ] Execute every option in PostgreSQL 17 (`psql` against a scratch database) with a tiny dataset from `context`.
   - [ ] Go through the review checklist, approve and merge.
 - [ ] Done when: ≥ 100 approved `sql` questions, ≥ 20 per level.
 

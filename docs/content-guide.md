@@ -10,7 +10,7 @@ This guide covers how to write, review and ship questions for the Skewed questio
 | Topic | Convention |
 |---|---|
 | `spark` | **PySpark only** (DataFrame API; `spark.sql` allowed when idiomatic). |
-| `sql` | **ANSI SQL**; when a feature is engine-specific (e.g. `QUALIFY`, `MERGE` variants) the question sets `dialect` (`postgres`, `snowflake`, `bigquery`, `spark-sql`) and the UI shows a badge. |
+| `sql` | **PostgreSQL only** (version 17, the engine Supabase runs). Postgres-specific features such as `DISTINCT ON`, `FILTER` and `MERGE` are fair game; other engines' syntax (`QUALIFY`, `TOP`, BigQuery/Snowflake functions) is not. `dialect` is always `null`. |
 | `git` | Options are git command sequences (shell). |
 
 Every question has **exactly 4 code options and exactly 1 correct**.
@@ -22,8 +22,8 @@ Every question has **exactly 4 code options and exactly 1 correct**.
 | 1 | Fundamentals | select, filter, withColumn, read/write | SELECT/WHERE/basic JOIN | init, add, commit, branch, checkout/switch |
 | 2 | Practitioner | groupBy/agg, joins, null handling basics | GROUP BY/HAVING, CTEs, outer joins | merge, rebase basics, remotes, stash |
 | 3 | Intermediate | window functions, null semantics, explode/structs | window functions, anti/semi joins, CASE logic | interactive rebase, reset vs revert, conflict resolution |
-| 4 | Advanced | partitioning, skew, broadcast, caching, UDF pitfalls | gaps & islands, SCD2 MERGE, QUALIFY, dedup patterns | reflog recovery, cherry-pick conflicts, rewriting shared history |
-| 5 | Expert | AQE, plan-driven optimization, structured streaming watermarks, Delta MERGE semantics | performance-aware rewrites, engine-specific semantics, recursive CTEs | bisect, filter-repo, submodule/subtree edge cases, worktrees |
+| 4 | Advanced | partitioning, skew, broadcast, caching, UDF pitfalls | gaps & islands, SCD2 MERGE, DISTINCT ON, dedup patterns | reflog recovery, cherry-pick conflicts, rewriting shared history |
+| 5 | Expert | AQE, plan-driven optimization, structured streaming watermarks, Delta MERGE semantics | performance-aware rewrites (EXPLAIN, indexes), PostgreSQL-specific semantics, recursive CTEs | bisect, filter-repo, submodule/subtree edge cases, worktrees |
 
 ## File format
 
@@ -38,7 +38,7 @@ prompt: |                    # business or technical scenario (markdown)
   The analytics team needs each customer's most recent order...
 context: |                   # optional: schema / sample data (markdown)
   orders(customer_id, order_id, order_ts, amount)
-dialect: null                # sql only, optional
+dialect: null                # always null: all SQL is PostgreSQL
 options:                     # exactly 4
   - code: |
       w = Window.partitionBy("customer_id").orderBy(F.col("order_ts").desc())
@@ -60,7 +60,7 @@ status: approved             # draft | approved | retired
 - every option `code` is unique and non-empty, and every option has a non-empty `explanation`;
 - `id` matches `^(spark|sql|git)-l[1-5]-\d{4}$`, is unique across the repo and equals the filename;
 - `topic` and `level` match the folder and the id prefix;
-- `dialect` appears only on `sql` questions;
+- `dialect` appears only on `sql` questions (and content should always leave it `null`);
 - `title` is at most 120 characters, and `docs_url` is a valid URL when present.
 
 `status` controls what goes live: `draft` is in review, `approved` is served to players, and `retired` is pulled from play but keeps its id and telemetry.
@@ -117,7 +117,7 @@ docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/
 status: approved
 ```
 
-### Worked example: SQL L4 (`QUALIFY`, Snowflake)
+### Worked example: SQL L4 (`DISTINCT ON` dedup)
 
 `content/sql/level-4/sql-l4-0001.yaml`
 
@@ -133,26 +133,24 @@ prompt: |
   give two changes the same `updated_at`; in that case either row is acceptable.
 context: |
   customer_changes(customer_id, email, plan, updated_at)
-dialect: snowflake
+dialect: null
 options:
   - code: |
-      SELECT *
+      SELECT DISTINCT ON (customer_id) *
       FROM customer_changes
-      QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY customer_id ORDER BY updated_at DESC) = 1;
+      ORDER BY customer_id, updated_at DESC;
     correct: true
     explanation: >-
-      QUALIFY filters on the window result after it is computed, and ROW_NUMBER
-      numbers ties uniquely, so exactly one latest row per customer survives.
+      DISTINCT ON keeps the first row of each customer_id group in ORDER BY order,
+      and updated_at DESC makes that first row the latest change.
   - code: |
-      SELECT *
+      SELECT DISTINCT ON (customer_id) *
       FROM customer_changes
-      QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY customer_id ORDER BY updated_at) = 1;
+      ORDER BY customer_id, updated_at;
     correct: false
     explanation: >-
-      The window is ordered ascending, so row number 1 is each customer's oldest
-      change, not the latest one.
+      The groups are sorted ascending, so the first row DISTINCT ON keeps is each
+      customer's oldest change, not the latest one.
   - code: |
       SELECT customer_id, MAX(email) AS email,
              MAX(plan) AS plan, MAX(updated_at) AS updated_at
@@ -163,16 +161,17 @@ options:
       Each MAX is computed on its own, so email and plan can come from different
       changes than the latest updated_at, mixing values across rows.
   - code: |
-      SELECT *
-      FROM customer_changes
-      QUALIFY RANK() OVER (
-        PARTITION BY customer_id ORDER BY updated_at DESC) = 1;
+      SELECT * FROM (
+        SELECT *, RANK() OVER (PARTITION BY customer_id
+                               ORDER BY updated_at DESC) AS rk
+        FROM customer_changes) t
+      WHERE rk = 1;
     correct: false
     explanation: >-
       RANK gives tied rows the same value, so a customer with two changes at the
       latest updated_at keeps both rows instead of exactly one.
-tags: [qualify, dedup, cdc]
-docs_url: https://docs.snowflake.com/en/sql-reference/constructs/qualify
+tags: [distinct-on, dedup, cdc]
+docs_url: https://www.postgresql.org/docs/17/sql-select.html#SQL-DISTINCT
 status: approved
 ```
 
@@ -228,14 +227,14 @@ status: approved
 
 Copy this list into every content PR (the PR template already includes it) and tick it for the batch:
 
-- [ ] The correct answer actually runs and produces the stated result. Run Spark/SQL snippets locally (DuckDB or `pyspark` shell; a git sandbox repo for Git).
+- [ ] The correct answer actually runs and produces the stated result. Run Spark/SQL snippets locally (`pyspark` shell; PostgreSQL 17 via `psql` for SQL; a git sandbox repo for Git).
 - [ ] Each wrong option is wrong for **one specific, teachable reason**, and the explanation names that reason.
 - [ ] Wrong options are plausible: no syntax-error strawmen at L3+.
 - [ ] The correct option isn't identifiable by length or style. Option lengths are within ~30% of each other, and the correct option isn't always the most "complete-looking".
 - [ ] The prompt is a business or technical scenario, not a trivia question.
 - [ ] The level matches the rubric.
 - [ ] It isn't a near-duplicate of an existing question (`grep` the tags and title).
-- [ ] `docs_url` points to official documentation (Spark, Postgres, Snowflake, BigQuery or git-scm).
+- [ ] `docs_url` points to official documentation (Spark, postgresql.org or git-scm).
 
 ## Batch workflow
 

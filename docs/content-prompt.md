@@ -42,7 +42,7 @@ prompt: |
   A business or technical scenario in markdown: who needs what, and why.
 context: |
   Optional. Table schemas, DataFrame columns, sample rows or repo state the options rely on.
-dialect: null
+dialect: null                   # always null
 options:
   - code: |
       <code>
@@ -72,12 +72,12 @@ status: draft
 3. **Write a scenario, not trivia.** The prompt describes a real task (a report, a pipeline fix, a repo mess to untangle) and states the required result precisely enough that exactly one option meets it. Don't ask "What does function X do?".
 4. **Language conventions:**
    - `spark`: PySpark only, using the DataFrame API. Use `spark.sql` only where it's the idiomatic choice. Assume `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`, and say so in `context`.
-   - `sql`: ANSI SQL. Set `dialect` (`postgres`, `snowflake`, `bigquery` or `spark-sql`) **only** when the correct answer depends on an engine-specific feature, such as `QUALIFY`. Otherwise use `dialect: null`. At most 30% of the batch may set a dialect.
+   - `sql`: PostgreSQL 17 only. Every option must be valid PostgreSQL. Postgres features such as `DISTINCT ON`, `FILTER`, `MERGE`, `generate_series` and `LATERAL` are welcome. Never use other engines' syntax (`QUALIFY`, `TOP`, `IFF`, BigQuery or Snowflake functions). Always set `dialect: null`.
    - `git`: Each option is a sequence of shell commands, one per line. State the starting repo state in the prompt or `context`.
 5. **The correct option must work.** It must run as written against the stated `context` and produce exactly the result the prompt asks for. Don't write code you aren't sure runs.
 6. **Each wrong option is wrong for one specific, teachable reason**, such as the wrong window frame, `RANK` vs `ROW_NUMBER`, a detached HEAD, or a lost join key. Its `explanation` names that reason in one or two sentences. Wrong options must be plausible code an engineer might really write. At level 3 and above, never make an option wrong through a syntax error or a typo.
 7. **Don't let length or style give the answer away.** Keep all four options within about 30% of each other in length, and match their formatting and style. Vary where the correct option appears (1st to 4th) across the batch, and don't make it always the most complete-looking or most cautious one.
-8. **Include `docs_url`.** Link the official documentation for the concept the question tests: spark.apache.org, postgresql.org, docs.snowflake.com, cloud.google.com/bigquery or git-scm.com. Link to the specific page, not a docs home page.
+8. **Include `docs_url`.** Link the official documentation for the concept the question tests: spark.apache.org, postgresql.org (version 17 pages) or git-scm.com. Link to the specific page, not a docs home page.
 9. **Match the level.** The question needs the knowledge described above for level {level}, no more and no less.
 10. **YAML hygiene:** Use `|` block scalars for code and multi-line text. Quote any plain scalar that contains `: ` or starts with a special character. Write tags in kebab-case.
 

@@ -7,8 +7,8 @@ const RUBRIC = [
   { level: 1, name: "Fundamentals", spark: "select, filter, withColumn, read/write", sql: "SELECT/WHERE/basic JOIN", git: "init, add, commit, branch, checkout/switch" },
   { level: 2, name: "Practitioner", spark: "groupBy/agg, joins, null handling basics", sql: "GROUP BY/HAVING, CTEs, outer joins", git: "merge, rebase basics, remotes, stash" },
   { level: 3, name: "Intermediate", spark: "window functions, null semantics, explode/structs", sql: "window functions, anti/semi joins, CASE logic", git: "interactive rebase, reset vs revert, conflict resolution" },
-  { level: 4, name: "Advanced", spark: "partitioning, skew, broadcast, caching, UDF pitfalls", sql: "gaps & islands, SCD2 MERGE, QUALIFY, dedup patterns", git: "reflog recovery, cherry-pick conflicts, rewriting shared history" },
-  { level: 5, name: "Expert", spark: "AQE, plan-driven optimization, structured streaming watermarks, Delta MERGE semantics", sql: "performance-aware rewrites, engine-specific semantics, recursive CTEs", git: "bisect, filter-repo, submodule/subtree edge cases, worktrees" },
+  { level: 4, name: "Advanced", spark: "partitioning, skew, broadcast, caching, UDF pitfalls", sql: "gaps & islands, SCD2 MERGE, DISTINCT ON, dedup patterns", git: "reflog recovery, cherry-pick conflicts, rewriting shared history" },
+  { level: 5, name: "Expert", spark: "AQE, plan-driven optimization, structured streaming watermarks, Delta MERGE semantics", sql: "performance-aware rewrites (EXPLAIN, indexes), PostgreSQL-specific semantics, recursive CTEs", git: "bisect, filter-repo, submodule/subtree edge cases, worktrees" },
 ];
 
 export default function AboutPage() {
@@ -17,7 +17,7 @@ export default function AboutPage() {
       <h1 className="text-2xl font-bold">About Skewed</h1>
       <p>
         Skewed is a set of quick drills for data engineers. Every question shows a real-world scenario and four code
-        options in PySpark, SQL or Git, and exactly one of them is correct. Questions come in five levels:
+        options in PySpark, SQL (PostgreSQL) or Git, and exactly one of them is correct. Questions come in five levels:
       </p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
