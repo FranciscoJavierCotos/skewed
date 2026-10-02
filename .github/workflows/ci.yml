@@ -18,6 +18,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm content:validate
       - run: pnpm build
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
