@@ -23,7 +23,7 @@ Non-goals for MVP: login, leaderboards, spaced repetition, non-code question for
 | Topic | Convention |
 |---|---|
 | `spark` | **PySpark only** (DataFrame API; `spark.sql` allowed when idiomatic). |
-| `sql` | **ANSI SQL**; when a feature is engine-specific (e.g. `QUALIFY`, `MERGE` variants) the question sets `dialect` (`postgres`, `snowflake`, `bigquery`, `spark-sql`) and the UI shows a badge. |
+| `sql` | **PostgreSQL only** (version 17, the engine Supabase runs). Postgres-specific features such as `DISTINCT ON`, `FILTER` and `MERGE` are fair game; other engines' syntax (`QUALIFY`, `TOP`, BigQuery/Snowflake functions) is not. `dialect` is always `null`. |
 | `git` | Options are git command sequences (shell). |
 
 **Format rule (MVP): strictly 4 code options, exactly one correct.**
@@ -34,8 +34,8 @@ Non-goals for MVP: login, leaderboards, spaced repetition, non-code question for
 | 1 | Fundamentals | select, filter, withColumn, read/write | SELECT/WHERE/basic JOIN | init, add, commit, branch, checkout/switch |
 | 2 | Practitioner | groupBy/agg, joins, null handling basics | GROUP BY/HAVING, CTEs, outer joins | merge, rebase basics, remotes, stash |
 | 3 | Intermediate | window functions, null semantics, explode/structs | window functions, anti/semi joins, CASE logic | interactive rebase, reset vs revert, conflict resolution |
-| 4 | Advanced | partitioning, skew, broadcast, caching, UDF pitfalls | gaps & islands, SCD2 MERGE, QUALIFY, dedup patterns | reflog recovery, cherry-pick conflicts, rewriting shared history |
-| 5 | Expert | AQE, plan-driven optimization, structured streaming watermarks, Delta MERGE semantics | performance-aware rewrites, engine-specific semantics, recursive CTEs | bisect, filter-repo, submodule/subtree edge cases, worktrees |
+| 4 | Advanced | partitioning, skew, broadcast, caching, UDF pitfalls | gaps & islands, SCD2 MERGE, DISTINCT ON, dedup patterns | reflog recovery, cherry-pick conflicts, rewriting shared history |
+| 5 | Expert | AQE, plan-driven optimization, structured streaming watermarks, Delta MERGE semantics | performance-aware rewrites (EXPLAIN, indexes), PostgreSQL-specific semantics, recursive CTEs | bisect, filter-repo, submodule/subtree edge cases, worktrees |
 
 ### 2.3 Question file format
 Stored in the repo at `content/{topic}/level-{n}/{id}.yaml`:
@@ -49,7 +49,7 @@ prompt: |                    # business or technical scenario (markdown)
   The analytics team needs each customer's most recent order...
 context: |                   # optional: schema / sample data (markdown)
   orders(customer_id, order_id, order_ts, amount)
-dialect: null                # sql only, optional
+dialect: null                # always null: all SQL is PostgreSQL
 options:                     # exactly 4
   - code: |
       w = Window.partitionBy("customer_id").orderBy(F.col("order_ts").desc())

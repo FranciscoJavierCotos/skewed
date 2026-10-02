@@ -1,9 +1,10 @@
 # Skewed
 
-Skewed is a quick-fire quiz for data engineers. Each question shows a PySpark, SQL or Git task with four code options, across five difficulty levels. You can play in Practice, Exam or Survival mode as a guest, without signing up. Questions live as YAML in `content/`, are seeded into Supabase, and are served through RPCs that never send the answers to the browser.
+Skewed is a quick-fire quiz for data engineers. Each question shows a PySpark, SQL (PostgreSQL) or Git task with four code options, across five difficulty levels. You can play in Practice, Exam or Survival mode as a guest, without signing up. Questions live as YAML in `content/`, are seeded into Supabase, and are served through RPCs that never send the answers to the browser.
 
 - Design spec: [docs/superpowers/specs/2026-10-02-skewed-design.md](docs/superpowers/specs/2026-10-02-skewed-design.md)
 - Implementation plan: [docs/superpowers/plans/2026-10-02-skewed-mvp.md](docs/superpowers/plans/2026-10-02-skewed-mvp.md)
+- Content authoring guide: [docs/content-guide.md](docs/content-guide.md)
 
 ## Local setup
 
