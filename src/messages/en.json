@@ -24,5 +24,12 @@
       "wrong_answer": "The marked answer is wrong", "ambiguous": "More than one answer is valid / ambiguous",
       "typo": "Typo or formatting", "other": "Other"
     }
+  },
+  "game": {
+    "next": "Next question", "end": "End session", "score": "Score", "retry": "Retry",
+    "submitFailed": "Couldn't reach the server. Your answer wasn't lost.", "loadFailed": "Couldn't load a question.",
+    "exhausted": "You've seen all questions for this selection.", "restart": "Start over", "changeSetup": "Change setup",
+    "badConfig": "This drill link is invalid.", "empty": "No questions match this selection yet. Try other topics or Mixed level.",
+    "correct": "Correct!", "wrong": "Not quite.", "notSaved": "Progress isn't saved in this browser (private mode?)."
   }
 }
