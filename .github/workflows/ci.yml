@@ -34,6 +34,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version-file: .nvmrc, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # Direct db.<ref>.supabase.co hosts are IPv6-only and runners have no IPv6, so a direct URL is
+      # rewritten to the Supavisor session pooler. A pooler URL in the secret passes through unchanged.
+      - name: Use the session pooler
+        if: env.SUPABASE_DB_URL != ''
+        env:
+          POOLER_HOST: aws-1-eu-west-3.pooler.supabase.com
+        run: |
+          re='^postgres(ql)?://postgres:(.+)@db\.([a-z0-9]+)\.supabase\.co:5432/(.+)$'
+          if [[ "$SUPABASE_DB_URL" =~ $re ]]; then
+            url="postgresql://postgres.${BASH_REMATCH[3]}:${BASH_REMATCH[2]}@${POOLER_HOST}:5432/${BASH_REMATCH[4]}"
+            echo "::add-mask::$url"
+            echo "SUPABASE_DB_URL=$url" >> "$GITHUB_ENV"
+            echo "Rewrote the direct connection URL to the session pooler."
+          fi
       # pgTAP runs against production inside begin/rollback, so its fixtures never persist. No Docker.
       - name: pgTAP (production, rolled back)
         if: env.SUPABASE_DB_URL != ''
