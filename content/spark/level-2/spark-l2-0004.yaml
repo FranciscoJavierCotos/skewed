@@ -1,0 +1,39 @@
+id: spark-l2-0004
+topic: spark
+level: 2
+title: Enrich orders with customer names without losing orders
+prompt: |
+  Attach `name` from the customer dimension to every order. Some orders reference
+  customers missing from the dimension (a known sync lag); those orders must
+  still appear, with a null `name`. The result must have a single `customer_id`
+  column.
+context: |
+  `orders(order_id, customer_id, amount)` and `customers(customer_id, name)`.
+options:
+  - code: |
+      orders.join(customers, "customer_id", "inner")
+    correct: false
+    explanation: >-
+      An inner join drops orders whose customer isn't in the dimension, which the
+      prompt says must be kept.
+  - code: |
+      orders.join(customers, "customer_id", "left")
+    correct: true
+    explanation: >-
+      A left join keeps every order and fills `name` with null when there's no
+      match, and joining on the column name keeps a single `customer_id`.
+  - code: |
+      orders.join(customers, "customer_id", "right")
+    correct: false
+    explanation: >-
+      A right join keeps every customer instead: orders with an unknown customer
+      are dropped, and customers without orders show up as rows.
+  - code: |
+      orders.join(customers, orders.customer_id == customers.customer_id, "left")
+    correct: false
+    explanation: >-
+      The rows are right, but joining on an expression keeps both sides' key
+      columns, so the result has two `customer_id` columns.
+tags: [joins, left-join]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.join.html
+status: approved

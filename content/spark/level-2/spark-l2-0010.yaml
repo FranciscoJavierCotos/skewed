@@ -1,0 +1,43 @@
+id: spark-l2-0010
+topic: spark
+level: 2
+title: Monthly revenue across several years
+prompt: |
+  The data spans several years. Produce revenue per calendar month, with
+  `month` as a `yyyy-MM` string (for example `2024-03`), so that March 2023 and
+  March 2024 are separate rows.
+context: |
+  `df` has columns `order_id`, `order_ts` (timestamp) and `amount`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (df.groupBy(F.month("order_ts").alias("month"))
+         .agg(F.sum("amount").alias("revenue")))
+    correct: false
+    explanation: >-
+      `month` returns only the month number, so March 2023 and March 2024 are
+      added together in one group.
+  - code: |
+      (df.groupBy(F.date_format("order_ts", "yyyy-mm").alias("month"))
+         .agg(F.sum("amount").alias("revenue")))
+    correct: false
+    explanation: >-
+      In datetime patterns, lowercase `mm` means minutes, not month, so orders
+      are grouped by year and minute.
+  - code: |
+      (df.groupBy(F.date_format("order_ts", "yyyy-MM").alias("month"))
+         .agg(F.sum("amount").alias("revenue")))
+    correct: true
+    explanation: >-
+      `yyyy-MM` formats each timestamp as year and month, so every calendar month
+      of every year is its own group.
+  - code: |
+      (df.groupBy(F.col("order_ts").alias("month"))
+         .agg(F.sum("amount").alias("revenue")))
+    correct: false
+    explanation: >-
+      Grouping by the raw timestamp creates one group per distinct timestamp, not
+      per month.
+tags: [group-by, dates]
+docs_url: https://spark.apache.org/docs/latest/sql-ref-datetime-pattern.html
+status: approved

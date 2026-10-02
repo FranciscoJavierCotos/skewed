@@ -1,0 +1,38 @@
+id: spark-l2-0019
+topic: spark
+level: 2
+title: Reconcile the ledger against the bank feed
+prompt: |
+  Finance reconciles the internal ledger against the bank feed. They need one row
+  per `txn_id` that appears in **either** source, with both amounts side by side
+  (null on the side where the transaction is missing).
+context: |
+  `ledger(txn_id, ledger_amount)` and `bank(txn_id, bank_amount)`.
+options:
+  - code: |
+      ledger.join(bank, "txn_id", "left")
+    correct: false
+    explanation: >-
+      A left join keeps every ledger transaction but drops transactions that
+      only appear in the bank feed.
+  - code: |
+      ledger.join(bank, "txn_id", "full_outer")
+    correct: true
+    explanation: >-
+      A full outer join keeps transactions from both sides, matches them on
+      `txn_id`, and fills the missing side with null.
+  - code: |
+      ledger.join(bank, "txn_id", "inner")
+    correct: false
+    explanation: >-
+      An inner join keeps only transactions present in both sources, which hides
+      exactly the mismatches finance is looking for.
+  - code: |
+      ledger.unionByName(bank, allowMissingColumns=True)
+    correct: false
+    explanation: >-
+      The union stacks the sources instead of matching them, so a transaction
+      present in both becomes two rows, each with one amount null.
+tags: [joins, full-outer-join, reconciliation]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.join.html
+status: approved

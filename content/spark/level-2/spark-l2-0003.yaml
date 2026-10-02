@@ -1,0 +1,43 @@
+id: spark-l2-0003
+topic: spark
+level: 2
+title: Customers with more than three orders
+prompt: |
+  The loyalty team wants customers who placed **more than three orders**, with
+  their order count in a column `n_orders`. Note that `df` holds order **lines**:
+  an order with several products has several rows with the same `order_id`.
+context: |
+  `df` has columns `order_id`, `customer_id`, `product_id` and `qty`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (df.groupBy("customer_id").agg(F.count("order_id").alias("n_orders"))
+         .filter(F.col("n_orders") > 3))
+    correct: false
+    explanation: >-
+      `count` counts order lines, so a customer with two multi-product orders can
+      pass the threshold.
+  - code: |
+      (df.groupBy("customer_id").agg(F.countDistinct("order_id").alias("n_orders"))
+         .filter(F.col("n_orders") >= 3))
+    correct: false
+    explanation: >-
+      `>= 3` also keeps customers with exactly three orders, but the prompt asks
+      for more than three.
+  - code: |
+      (df.filter(F.countDistinct("order_id") > 3)
+         .groupBy("customer_id").agg(F.countDistinct("order_id").alias("n_orders")))
+    correct: false
+    explanation: >-
+      An aggregate can't appear in a row-level `filter` before grouping, so Spark
+      rejects the query. The threshold must be applied after `agg`.
+  - code: |
+      (df.groupBy("customer_id").agg(F.countDistinct("order_id").alias("n_orders"))
+         .filter(F.col("n_orders") > 3))
+    correct: true
+    explanation: >-
+      `countDistinct` counts each order once despite multiple lines, and the
+      filter after the aggregation acts like SQL HAVING.
+tags: [group-by, having, count-distinct]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.groupBy.html
+status: approved

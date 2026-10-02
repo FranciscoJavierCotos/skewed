@@ -1,0 +1,43 @@
+id: spark-l2-0017
+topic: spark
+level: 2
+title: Order counts per product, including unsold products
+prompt: |
+  The catalogue team wants every product with its number of orders in
+  `n_orders`. Products that have never been ordered must appear with
+  `n_orders = 0`.
+context: |
+  `products(product_id, name)` and `orders(order_id, product_id)`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (products.join(orders, "product_id", "left")
+         .groupBy("product_id").agg(F.count("*").alias("n_orders")))
+    correct: false
+    explanation: >-
+      An unsold product still has one joined row (with a null `order_id`), and
+      `count("*")` counts it, so it shows 1 instead of 0.
+  - code: |
+      (products.join(orders, "product_id", "inner")
+         .groupBy("product_id").agg(F.count("order_id").alias("n_orders")))
+    correct: false
+    explanation: >-
+      The inner join removes products that were never ordered, so they don't
+      appear at all.
+  - code: |
+      (orders.groupBy("product_id")
+         .agg(F.count("order_id").alias("n_orders")))
+    correct: false
+    explanation: >-
+      Aggregating `orders` alone only covers products that appear in orders, so
+      unsold products are missing.
+  - code: |
+      (products.join(orders, "product_id", "left")
+         .groupBy("product_id").agg(F.count("order_id").alias("n_orders")))
+    correct: true
+    explanation: >-
+      The left join keeps unsold products, and `count("order_id")` skips their
+      null order ids, so they get 0.
+tags: [joins, left-join, aggregate-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.count.html
+status: approved

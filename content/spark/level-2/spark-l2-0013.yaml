@@ -1,0 +1,37 @@
+id: spark-l2-0013
+topic: spark
+level: 2
+title: Sales per store split into channel columns
+prompt: |
+  A store manager report needs one row per `store_id` with one revenue column per
+  sales channel: `web` and `shop`, each holding the sum of `amount`.
+context: |
+  `df` has columns `store_id`, `channel` (`web` or `shop`) and `amount`.
+options:
+  - code: |
+      df.groupBy("store_id").pivot("channel", ["web", "shop"]).sum("amount")
+    correct: true
+    explanation: >-
+      `pivot` turns each channel value into its own column and `sum` fills it,
+      giving one row per store with `web` and `shop` columns.
+  - code: |
+      df.groupBy("store_id", "channel").sum("amount")
+    correct: false
+    explanation: >-
+      This is the long format, with one row per store and channel, instead of one
+      row per store with a column for each channel.
+  - code: |
+      df.groupBy("channel").pivot("store_id").sum("amount")
+    correct: false
+    explanation: >-
+      The roles are swapped: each row is a channel and each store becomes a
+      column.
+  - code: |
+      df.groupBy("store_id").pivot("channel", ["web", "shop"]).count()
+    correct: false
+    explanation: >-
+      The shape is right, but `count` fills the channel columns with numbers of
+      sales, not revenue.
+tags: [group-by, pivot]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.GroupedData.pivot.html
+status: approved

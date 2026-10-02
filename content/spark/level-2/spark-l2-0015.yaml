@@ -1,0 +1,43 @@
+id: spark-l2-0015
+topic: spark
+level: 2
+title: Units sold per product category
+prompt: |
+  Merchandising wants total units sold (sum of `qty`) per product `category`.
+  Order lines whose `product_id` isn't in the product catalogue are test data
+  and must be ignored.
+context: |
+  `orders(order_id, product_id, qty)` and `products(product_id, category)`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (orders.groupBy("product_id").agg(F.sum("qty").alias("qty"))
+         .join(products, "product_id"))
+    correct: false
+    explanation: >-
+      This aggregates per product and only then attaches the category, so there
+      is still one row per product rather than one per category.
+  - code: |
+      (orders.join(products, "product_id", "left")
+         .groupBy("category").agg(F.sum("qty").alias("qty")))
+    correct: false
+    explanation: >-
+      The left join keeps the unknown products, which end up in an extra
+      `category = null` group instead of being ignored.
+  - code: |
+      (orders.join(products, "product_id")
+         .groupBy("category").agg(F.sum("qty").alias("qty")))
+    correct: true
+    explanation: >-
+      The inner join drops the order lines for unknown products, and grouping by
+      category then sums the units per category.
+  - code: |
+      (orders.join(products, "product_id")
+         .groupBy("category").agg(F.count("qty").alias("qty")))
+    correct: false
+    explanation: >-
+      `count` returns the number of order lines per category, not the total
+      units.
+tags: [joins, group-by]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.join.html
+status: approved

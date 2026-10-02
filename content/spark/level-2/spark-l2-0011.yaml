@@ -1,0 +1,37 @@
+id: spark-l2-0011
+topic: spark
+level: 2
+title: Drop customers who can't be contacted
+prompt: |
+  The CRM team wants to remove customers who have **neither** an email **nor**
+  a phone number. Customers with at least one of the two must be kept.
+context: |
+  `df` has columns `customer_id` (never null), `email` and `phone` (both nullable).
+options:
+  - code: |
+      df.na.drop(how="all", subset=["email", "phone"])
+    correct: true
+    explanation: >-
+      `how="all"` drops a row only when every column in the subset is null, so
+      customers with just one contact detail stay.
+  - code: |
+      df.na.drop(subset=["email", "phone"])
+    correct: false
+    explanation: >-
+      The default `how="any"` drops a row if either column is null, so
+      customers with only an email or only a phone are removed too.
+  - code: |
+      df.na.drop(how="all")
+    correct: false
+    explanation: >-
+      Without `subset`, all columns are checked, and `customer_id` is never null,
+      so no row is ever dropped.
+  - code: |
+      df.na.fill("", subset=["email", "phone"])
+    correct: false
+    explanation: >-
+      `na.fill` replaces nulls with empty strings but keeps every row, so
+      uncontactable customers remain.
+tags: [null-handling, data-quality]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameNaFunctions.drop.html
+status: approved

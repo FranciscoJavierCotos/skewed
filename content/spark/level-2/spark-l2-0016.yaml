@@ -1,0 +1,39 @@
+id: spark-l2-0016
+topic: spark
+level: 2
+title: Exclude fraud cancellations but keep live orders
+prompt: |
+  Remove orders cancelled for fraud (`cancel_reason == "fraud"`). Every other
+  order must stay, including the many orders that were never cancelled
+  (`cancel_reason` is null) and any rows that happen to be exact duplicates.
+context: |
+  `df` has columns `order_id`, `amount` and `cancel_reason` (nullable string).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("cancel_reason") != "fraud")
+    correct: false
+    explanation: >-
+      For a null `cancel_reason` the comparison is null, not true, so every order
+      that was never cancelled is dropped too.
+  - code: |
+      df.filter(F.col("cancel_reason").isNull())
+    correct: false
+    explanation: >-
+      This keeps only the never-cancelled orders, so orders cancelled for other
+      reasons are dropped too.
+  - code: |
+      df.subtract(df.filter(F.col("cancel_reason") == "fraud"))
+    correct: false
+    explanation: >-
+      `subtract` works like SQL `EXCEPT DISTINCT`, so it also collapses exact
+      duplicate rows that the prompt says must stay.
+  - code: |
+      df.filter(~F.col("cancel_reason").eqNullSafe("fraud"))
+    correct: true
+    explanation: >-
+      `eqNullSafe` returns false rather than null when `cancel_reason` is null, so
+      the negation keeps those orders and drops only fraud.
+tags: [null-handling, filter]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.eqNullSafe.html
+status: approved

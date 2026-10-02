@@ -1,0 +1,40 @@
+id: spark-l2-0014
+topic: spark
+level: 2
+title: Pick the preferred contact channel
+prompt: |
+  Notifications go to the customer's email if they have one, otherwise to their
+  phone, and if they have neither, the `contact` column must say `"none"`. Add
+  that `contact` column.
+context: |
+  `df` has columns `customer_id`, `email` and `phone` (both nullable strings).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("contact", F.coalesce("email", "phone", "none"))
+    correct: false
+    explanation: >-
+      A bare string in `coalesce` is read as a column name, so `"none"` refers to
+      a column that doesn't exist and analysis fails.
+  - code: |
+      df.withColumn("contact", F.coalesce("email", "phone", F.lit("none")))
+    correct: true
+    explanation: >-
+      `coalesce` returns the first non-null value in order: email, then phone,
+      then the literal `none`.
+  - code: |
+      df.withColumn("contact", F.when(F.col("email").isNotNull(), F.col("email"))
+                               .otherwise(F.col("phone")))
+    correct: false
+    explanation: >-
+      When both email and phone are null, `otherwise` returns the null phone
+      instead of `none`.
+  - code: |
+      df.withColumn("contact", F.coalesce("phone", "email", F.lit("none")))
+    correct: false
+    explanation: >-
+      The order is reversed, so customers with both details are contacted by
+      phone instead of email.
+tags: [null-handling, coalesce]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.coalesce.html
+status: approved
