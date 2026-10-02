@@ -3,5 +3,14 @@
   "quiz": {
     "option": "Option", "correctAnswer": "correct answer", "yourAnswer": "your answer",
     "timedOut": "Time ran out — no answer recorded", "docs": "Read the docs", "level": "Level"
+  },
+  "report": {
+    "open": "Report question", "title": "What's wrong with this question?", "details": "Details (optional)",
+    "send": "Send report", "cancel": "Cancel", "thanks": "Thanks! We'll review it.",
+    "rateLimited": "Too many reports — try again in an hour.", "failed": "Couldn't send the report. Try again.",
+    "reasons": {
+      "wrong_answer": "The marked answer is wrong", "ambiguous": "More than one answer is valid / ambiguous",
+      "typo": "Typo or formatting", "other": "Other"
+    }
   }
 }
