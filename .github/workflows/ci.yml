@@ -23,3 +23,28 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+  db-e2e:
+    runs-on: ubuntu-latest
+    env:
+      # Session-pooler connection string for the production project (direct connections are IPv6-only).
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # pgTAP runs against production inside begin/rollback, so its fixtures never persist. No Docker.
+      - name: pgTAP (production, rolled back)
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          out=$(psql "$SUPABASE_DB_URL" -X -At -v ON_ERROR_STOP=1 -f supabase/tests/database/rpc.test.sql)
+          echo "$out"
+          if echo "$out" | grep -Eq '^not ok|Looks like'; then exit 1; fi
+      - run: pnpm tsx scripts/validate-content.ts fixtures/content
+      - run: pnpm exec playwright install --with-deps chromium
+      # Supabase RPCs are mocked from fixtures/content (e2e/fixture-api.ts): e2e never touches production.
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-traces, path: "test-results\nplaywright-report" }

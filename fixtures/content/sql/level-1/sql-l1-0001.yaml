@@ -1,0 +1,22 @@
+id: sql-l1-0001
+topic: sql
+level: 1
+title: Fixture sql-l1-0001
+prompt: Fixture prompt for sql-l1-0001.
+options:
+  - code: SELECT 'right-sql-l1-0001';
+    correct: true
+    explanation: Explanation right sql-l1-0001
+  - code: SELECT 'nope-sql-l1-0001-1';
+    correct: false
+    explanation: Explanation nope 1 sql-l1-0001
+  - code: SELECT 'nope-sql-l1-0001-2';
+    correct: false
+    explanation: Explanation nope 2 sql-l1-0001
+  - code: SELECT 'nope-sql-l1-0001-3';
+    correct: false
+    explanation: Explanation nope 3 sql-l1-0001
+tags:
+  - fixture
+docs_url: null
+status: approved

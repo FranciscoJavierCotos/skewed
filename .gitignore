@@ -43,3 +43,8 @@ next-env.d.ts
 # supabase
 .env.local
 supabase/.temp
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
