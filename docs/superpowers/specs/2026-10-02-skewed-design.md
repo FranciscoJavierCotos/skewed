@@ -71,7 +71,7 @@ status: approved             # draft | approved | retired
 1. Claude drafts a batch (15–20 questions for one topic and level) as `status: draft` on a branch.
 2. The owner reviews it in a PR and flips accepted questions to `approved`.
 3. CI validates every file.
-4. On merge to `main`, a seed script upserts `approved` questions into Supabase. `retired` questions get `active = false`; nothing is ever hard-deleted, so telemetry keeps its references.
+4. On merge to `main`, a seed script upserts every question in the repo into Supabase with `active = (status == approved)`. Questions removed from the repo are set to `active = false`. Nothing is ever hard-deleted, so telemetry keeps its references.
 
 ## 3. Game modes
 
@@ -96,7 +96,7 @@ All modes: the player selects **one or more topics**. No question repeats within
 ### 3.3 Survival
 - Choose topics. You start at **level 1**, and **every 5 correct answers moves you up a level** (capped at 5).
 - **One wrong answer ends the run.** There is no timer in the MVP.
-- If the current level's pool runs out, draw from the next level up. At level 5, recycle the least recently seen questions.
+- If the current level's pool runs out, draw from the next level up. At level 5, recycle questions, excluding the 20 most recently seen.
 - The game-over screen shows the streak, the highest level reached, the question you missed with its explanations, and your personal best (localStorage) with a "New best!" badge.
 
 ### 3.4 Game engine
@@ -117,19 +117,19 @@ Supabase: Postgres + RLS + RPCs (SECURITY DEFINER)
 ```
 
 ### 4.1 Stack
-Next.js (App Router), TypeScript (strict), Tailwind CSS, Shiki for highlighting (python, sql, bash), `@supabase/supabase-js`, Zod, Vitest + React Testing Library, Playwright, pnpm. UI strings live in `messages/en.json` (i18n-ready; English only).
+Next.js (App Router), TypeScript (strict), Tailwind CSS, Shiki for highlighting (python, sql, bash), `@supabase/supabase-js`, Zod, Vitest + React Testing Library, Playwright, pnpm. UI strings live in `src/messages/en.json` (i18n-ready; English only).
 
 ### 4.2 Data model (Postgres)
 - `questions`: `id text pk`, `topic text check in (spark,sql,git)`, `level int check 1..5`, `title`, `prompt`, `context`, `dialect`, `tags text[]`, `docs_url`, `active bool`, `content_hash text`, `updated_at`.
 - `question_options`: `id uuid pk`, `question_id fk`, `position int`, `code text`, `is_correct bool`, `explanation text`. Unique on `(question_id, position)`.
-- `answer_events`: `id bigserial`, `anon_id uuid`, `session_id uuid`, `question_id`, `option_id`, `correct bool`, `mode text`, `ms_to_answer int`, `created_at`. A null `option_id` means timed out.
+- `answer_events`: `id bigserial`, `client_event_id uuid unique` (makes retries idempotent), `anon_id uuid`, `session_id uuid`, `question_id`, `option_id`, `correct bool`, `mode text`, `ms_to_answer int`, `created_at`. A null `option_id` means timed out.
 - `question_reports`: `id`, `anon_id`, `question_id`, `reason text check in (wrong_answer, ambiguous, typo, other)`, `note text (≤500)`, `created_at`, `resolved bool`.
 
 ### 4.3 Security
 - RLS is enabled on all tables, and the `anon` role has **no direct SELECT/INSERT on any table**.
 - All access goes through `SECURITY DEFINER` functions with a fixed `search_path`:
-  - `get_questions(p_topics text[], p_level int | null, p_exclude text[], p_limit int ≤ 50)` returns questions plus options (`id`, `position`, `code`) **without `is_correct` or explanations**.
-  - `submit_answer(p_anon_id, p_session_id, p_question_id, p_option_id | null, p_mode, p_ms)`:
+  - `get_questions(p_topics text[], p_level int | null, p_exclude text[], p_limit int ≤ 50)` returns questions plus options (`id`, `code`, in position order) **without `is_correct`, explanations or `docs_url`**.
+  - `submit_answer(p_client_event_id, p_anon_id, p_session_id, p_question_id, p_option_id | null, p_mode, p_ms)`:
     - validates that the option belongs to the question;
     - inserts into `answer_events`;
     - returns `{correct, correct_option_id, explanations[{option_id, explanation}], docs_url}`.
@@ -138,10 +138,9 @@ Next.js (App Router), TypeScript (strict), Tailwind CSS, Shiki for highlighting 
 
 ### 4.4 Guest progress (localStorage)
 The `ProgressStore` interface has these methods:
-- `getPersonalBest(mode, topicsKey)`
+- `getPersonalBest(mode, topicsKey)` (Survival: best streak; Exam: best percentage)
 - `recordSession(summary)`
 - `getHistory(limit)`
-- `getSeenQuestionIds()`
 
 `LocalProgressStore` implements it under a versioned key, `skewed:v1:*`. History is capped at the last 200 sessions. A corrupt or missing store resets safely. `SupabaseProgressStore` arrives in M5.
 
@@ -150,14 +149,14 @@ The `ProgressStore` interface has these methods:
 |---|---|
 | `/` | Landing: pitch and a "Play as guest" CTA. |
 | `/play` | Mode picker plus setup (topics, level, length, timer). |
-| `/play/practice`, `/play/exam`, `/play/survival` | Game screens. |
-| `/play/exam/review` | Exam review (state is held client-side). |
+| `/play/practice`, `/play/exam`, `/play/survival` | Game screens. Config comes from query params. The Exam review renders on the same page when the exam finishes. |
 | `/about` | How levels work and how to report a question. |
 
 ### 4.6 Error handling
 - If a network or RPC failure happens mid-game, show an inline retry. The engine state is kept, so the answer is retried rather than lost.
 - If `get_questions` returns an empty pool, show an "empty selection" message with suggestions.
 - If localStorage is unavailable (private mode), the game still runs and personal bests show "not saved".
+- Refreshing or leaving mid-exam triggers a browser "leave page?" confirmation.
 - RPC errors are logged to the console in dev. In prod the user sees a generic message.
 
 ## 5. Testing & CI/CD
@@ -181,6 +180,7 @@ The `ProgressStore` interface has these methods:
 - **M9 – Pipeline Builder:** a drag-and-drop puzzle for ordering pipeline steps, plus a new `modeling` topic (star schema, SCD2).
 
 ## 7. Open risks
+- **Answer key is public.** The repo is public, so the YAML content reveals every answer. That's harmless without leaderboards. Before the M5 leaderboard, decide whether to move `content/` into a private repo or submodule.
 - **Correctness of AI-drafted content.** Mitigations: every question gets human review, a report button and telemetry, and questions with very low accuracy are flagged for re-review.
 - **Option-length bias.** The correct option is often the longest one. The review checklist includes "the correct answer is not visually distinguishable by length or style".
 - **Supabase free tier pausing.** Projects pause after 7 days of inactivity. Acceptable for the MVP; upgrade once there are real users.
