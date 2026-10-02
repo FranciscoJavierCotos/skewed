@@ -1,0 +1,46 @@
+id: spark-l4-0002
+topic: spark
+level: 4
+title: One file per date folder without losing parallelism
+prompt: |
+  A partitioned Parquet export produces dozens of tiny files in every
+  `event_date=` folder, because each input partition writes its own file for
+  every date it contains. Rewrite the job so that **each date folder contains
+  exactly one file**, while different dates are still written by different tasks
+  in parallel.
+context: |
+  `df` has columns `event_id`, `user_id` and `event_date`, spread over many
+  partitions, with every date present in every partition.
+options:
+  - code: |
+      (df.repartition("event_date")
+         .write.mode("overwrite").partitionBy("event_date").parquet(out_path))
+    correct: true
+    explanation: >-
+      Hash-partitioning by `event_date` sends all rows of a date to the same
+      task, so each folder gets exactly one file, and different dates are still
+      written by different tasks.
+  - code: |
+      (df.write.mode("overwrite")
+         .partitionBy("event_date").parquet(out_path))
+    correct: false
+    explanation: >-
+      Every input partition still writes its own file into every date folder it
+      has rows for, so the small-file problem remains.
+  - code: |
+      (df.repartition(5)
+         .write.mode("overwrite").partitionBy("event_date").parquet(out_path))
+    correct: false
+    explanation: >-
+      Round-robin repartitioning spreads every date across all 5 partitions, so
+      each folder still gets up to 5 files.
+  - code: |
+      (df.repartition("user_id")
+         .write.mode("overwrite").partitionBy("event_date").parquet(out_path))
+    correct: false
+    explanation: >-
+      Partitioning by `user_id` scatters each date over many tasks, so every date
+      folder still receives many files.
+tags: [partitioning, small-files, write]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.repartition.html
+status: draft

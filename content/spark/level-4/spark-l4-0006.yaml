@@ -1,0 +1,39 @@
+id: spark-l4-0006
+topic: spark
+level: 4
+title: Shrink partitions after a selective filter without a shuffle
+prompt: |
+  After a very selective filter, `df` still has 100 partitions, almost all of
+  them nearly empty. Reduce it to exactly **10 partitions without triggering a
+  shuffle**.
+context: |
+  `df` has 100 partitions. Adaptive Query Execution is disabled.
+options:
+  - code: |
+      df.repartition(10)
+    correct: false
+    explanation: >-
+      `repartition` always performs a full shuffle (an Exchange in the plan),
+      even when it reduces the number of partitions.
+  - code: |
+      df.coalesce(10)
+    correct: true
+    explanation: >-
+      `coalesce` merges existing partitions on the executors without a shuffle,
+      so it is the cheap way to reduce the partition count.
+  - code: |
+      spark.conf.set("spark.sql.shuffle.partitions", "10")
+      df
+    correct: false
+    explanation: >-
+      `spark.sql.shuffle.partitions` only applies to shuffles. There is no
+      shuffle here, so `df` keeps its 100 partitions.
+  - code: |
+      df.coalesce(200)
+    correct: false
+    explanation: >-
+      `coalesce` can only reduce the number of partitions. Asking for more than
+      100 leaves the count at 100.
+tags: [partitioning, coalesce, shuffle]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.coalesce.html
+status: draft

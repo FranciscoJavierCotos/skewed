@@ -1,0 +1,40 @@
+id: spark-l4-0013
+topic: spark
+level: 4
+title: Broadcast a range table for a non-equi join
+prompt: |
+  Each event must be matched to the pricing window it falls into: `ts` between
+  `start` and `end`, inclusive. `windows` has a few hundred rows and `events` has
+  billions. Auto-broadcast is disabled. Avoid a cartesian product by
+  broadcasting the small side.
+context: |
+  `events(event_id, ts)` and `windows(window_id, start, end)`; windows don't
+  overlap. Adaptive Query Execution is disabled. `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      events.join(F.broadcast(windows), events.ts.between(windows.start, windows.end))
+    correct: true
+    explanation: >-
+      With the hint, Spark plans a broadcast nested loop join that ships the few
+      hundred windows to every executor and checks each event locally.
+  - code: |
+      events.join(windows, events.ts.between(windows.start, windows.end))
+    correct: false
+    explanation: >-
+      A non-equi join has no keys to shuffle on, and with broadcasting disabled
+      Spark falls back to a cartesian product of the two tables.
+  - code: |
+      F.broadcast(events).join(windows, events.ts.between(windows.start, windows.end))
+    correct: false
+    explanation: >-
+      The hint is on the billions-row side, so Spark would try to broadcast the
+      events to every executor.
+  - code: |
+      events.join(F.broadcast(windows), events.ts == windows.start)
+    correct: false
+    explanation: >-
+      The broadcast is right, but equality on `start` only matches events that
+      occur exactly at a window's start, so most events are lost.
+tags: [broadcast-join, non-equi-join, join-strategies]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.broadcast.html
+status: draft

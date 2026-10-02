@@ -1,0 +1,50 @@
+id: spark-l4-0003
+topic: spark
+level: 4
+title: Two-stage salted aggregation for a hot key
+prompt: |
+  One marketplace seller produces 90% of all rows, so the task that aggregates
+  that seller's rows runs for hours. Compute the total `amount` per
+  `customer_id` in a column `total`, using a first aggregation stage in which
+  the hot key's rows are **spread across 8 random salt buckets**.
+context: |
+  `df` has columns `customer_id` and `amount`. Keep the intermediate DataFrame
+  in a variable called `salted`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      salted = df.withColumn("salt", (F.rand() * 8).cast("int"))
+      (salted.groupBy("customer_id", "salt")
+             .agg(F.sum("amount").alias("total")))
+    correct: false
+    explanation: >-
+      This is only the first stage: the result has one row per customer and
+      salt, so the hot customer's total is still split into 8 partial sums.
+  - code: |
+      salted = df.withColumn("salt", F.abs(F.hash("customer_id")) % 8)
+      (salted.groupBy("customer_id", "salt").agg(F.sum("amount").alias("part"))
+             .groupBy("customer_id").agg(F.sum("part").alias("total")))
+    correct: false
+    explanation: >-
+      A salt derived from the key itself is the same for every row of a
+      customer, so the hot key still lands in a single bucket and nothing is
+      spread.
+  - code: |
+      salted = df.withColumn("salt", (F.rand() * 8).cast("int"))
+      (salted.groupBy("customer_id", "salt").agg(F.sum("amount").alias("part"))
+             .groupBy("customer_id").agg(F.count("part").alias("total")))
+    correct: false
+    explanation: >-
+      The second stage must add up the partial sums. `count` returns the number
+      of salt buckets each customer used instead.
+  - code: |
+      salted = df.withColumn("salt", (F.rand() * 8).cast("int"))
+      (salted.groupBy("customer_id", "salt").agg(F.sum("amount").alias("part"))
+             .groupBy("customer_id").agg(F.sum("part").alias("total")))
+    correct: true
+    explanation: >-
+      A random salt splits the hot key across 8 groups for the first sum, and
+      summing the partial sums per customer gives the exact total.
+tags: [skew, salting, aggregation]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.rand.html
+status: draft

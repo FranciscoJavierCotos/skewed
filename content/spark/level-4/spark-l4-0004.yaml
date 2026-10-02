@@ -1,0 +1,55 @@
+id: spark-l4-0004
+topic: spark
+level: 4
+title: Score each row only once across two actions
+prompt: |
+  `score` is an expensive Python UDF. The job needs two results from the scored
+  data: the sum of the scores and the number of rows with a score above 5. Make
+  sure the UDF runs **once per input row** in total, not once per action.
+context: |
+  `df` has a column `raw`. `score` is an existing `F.udf(..., "double")`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      enriched = df.withColumn("s", score("raw"))
+      total = enriched.agg(F.sum("s")).first()[0]
+      enriched.cache()
+      high = enriched.filter("s > 5").count()
+      (total, high)
+    correct: false
+    explanation: >-
+      `cache` only takes effect on the next action. The first action has already
+      scored every row, and the second action scores them again while filling
+      the cache.
+  - code: |
+      enriched = df.withColumn("s", score("raw")).cache()
+      total = enriched.agg(F.sum("s")).first()[0]
+      high = enriched.filter("s > 5").count()
+      (total, high)
+    correct: true
+    explanation: >-
+      Caching before the first action means that action materialises the scored
+      rows once, and the second action reads them from the cache instead of
+      calling the UDF again.
+  - code: |
+      enriched = df.cache().withColumn("s", score("raw"))
+      total = enriched.agg(F.sum("s")).first()[0]
+      high = enriched.filter("s > 5").count()
+      (total, high)
+    correct: false
+    explanation: >-
+      This caches the raw input, not the scored result, so each action still
+      runs the UDF over every row.
+  - code: |
+      enriched = df.withColumn("s", score("raw")).cache()
+      total = enriched.agg(F.sum("s")).first()[0]
+      enriched.unpersist()
+      high = enriched.filter("s > 5").count()
+      (total, high)
+    correct: false
+    explanation: >-
+      `unpersist` drops the cached rows between the two actions, so the second
+      action recomputes them and calls the UDF again.
+tags: [caching, udf]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.cache.html
+status: draft

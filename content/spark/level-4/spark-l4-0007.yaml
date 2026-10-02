@@ -1,0 +1,41 @@
+id: spark-l4-0007
+topic: spark
+level: 4
+title: Read one day from a date-partitioned dataset
+prompt: |
+  A Parquet dataset at `path` is partitioned into `event_date=YYYY-MM-DD/`
+  folders. A backfill needs only the rows for `2024-05-01`, **including the
+  `event_date` column**, and it must list and read only that day's folder.
+context: |
+  `path` contains `event_date=2024-05-01/`, `event_date=2024-05-02/`, and so on.
+  Each file has columns `event_id` and `event_ts`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      spark.read.parquet(path).filter(F.col("event_date") == "2024-05-01")
+    correct: true
+    explanation: >-
+      A filter on the partition column becomes a partition filter, so Spark
+      prunes the other folders before reading and keeps `event_date` in the
+      schema.
+  - code: |
+      spark.read.parquet(path + "/event_date=2024-05-01")
+    correct: false
+    explanation: >-
+      Pointing at the leaf folder reads only that day, but Spark no longer sees
+      the folder as a partition, so the `event_date` column is missing.
+  - code: |
+      spark.read.parquet(path).cache().filter(F.col("event_date") == "2024-05-01")
+    correct: false
+    explanation: >-
+      The cache wraps the unfiltered scan, so the filter is applied to the cached
+      data. Every day is read and cached before the filter can prune anything.
+  - code: |
+      spark.read.parquet(path).filter(F.date_format("event_ts", "yyyy-MM-dd") == "2024-05-01")
+    correct: false
+    explanation: >-
+      The rows match, but the filter is on a data column, so Spark can't prune
+      folders and has to scan every day's files.
+tags: [partitioning, partition-pruning, read]
+docs_url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#partition-discovery
+status: draft

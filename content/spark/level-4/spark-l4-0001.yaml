@@ -1,0 +1,40 @@
+id: spark-l4-0001
+topic: spark
+level: 4
+title: Broadcast the small dimension when auto-broadcast is off
+prompt: |
+  `facts` is a 2 TB order-line table and `products` is a 20 MB dimension. The
+  platform team disabled automatic broadcasting cluster-wide
+  (`spark.sql.autoBroadcastJoinThreshold = -1`). Make this join a broadcast hash
+  join that ships `products` to the executors.
+context: |
+  `facts(order_id, product_id, qty)` and `products(product_id, name)`.
+  Adaptive Query Execution is disabled. `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      F.broadcast(facts).join(products, "product_id")
+    correct: false
+    explanation: >-
+      The hint is on the wrong side: Spark would try to broadcast the 2 TB fact
+      table to every executor instead of the dimension.
+  - code: |
+      facts.join(products.hint("merge"), "product_id")
+    correct: false
+    explanation: >-
+      The `merge` hint explicitly asks for a sort-merge join, so both sides are
+      still shuffled and sorted.
+  - code: |
+      facts.join(F.broadcast(products), "product_id")
+    correct: true
+    explanation: >-
+      An explicit broadcast hint overrides the disabled threshold, so Spark plans
+      a broadcast hash join with `products` as the build side.
+  - code: |
+      facts.join(products.coalesce(1), "product_id")
+    correct: false
+    explanation: >-
+      Putting the dimension in one partition doesn't change the join strategy.
+      With the threshold disabled, Spark still plans a shuffled sort-merge join.
+tags: [broadcast-join, join-strategies]
+docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#join-strategy-hints-for-sql-queries
+status: draft

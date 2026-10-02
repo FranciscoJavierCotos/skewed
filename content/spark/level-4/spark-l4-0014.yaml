@@ -1,0 +1,39 @@
+id: spark-l4-0014
+topic: spark
+level: 4
+title: Choose a partition column for a clickstream table
+prompt: |
+  Analysts almost always query the clickstream for a range of days. Write `df` to
+  `out_path` so that it is laid out as one folder per **calendar day**, which
+  allows those queries to prune folders.
+context: |
+  `df` has columns `event_id`, `user_id` (tens of millions of distinct values)
+  and `ts` (timestamp). `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.write.partitionBy("user_id").parquet(out_path)
+    correct: false
+    explanation: >-
+      Partitioning by a high-cardinality user id creates tens of millions of
+      tiny folders, and day-range queries can't prune any of them.
+  - code: |
+      df.write.partitionBy("ts").parquet(out_path)
+    correct: false
+    explanation: >-
+      The raw timestamp has a distinct value almost every second, so this
+      creates one folder per timestamp instead of one per day.
+  - code: |
+      df.write.bucketBy(30, "ts").parquet(out_path)
+    correct: false
+    explanation: >-
+      Bucketing is only supported with `saveAsTable`. A path-based Parquet write
+      rejects `bucketBy`, and buckets aren't day folders anyway.
+  - code: |
+      df.withColumn("event_date", F.to_date("ts")).write.partitionBy("event_date").parquet(out_path)
+    correct: true
+    explanation: >-
+      A derived date column gives low-cardinality, query-aligned partitions: one
+      folder per day that day-range filters can prune.
+tags: [partitioning, write, data-layout]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.partitionBy.html
+status: draft

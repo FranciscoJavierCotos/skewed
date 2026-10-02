@@ -1,0 +1,42 @@
+id: spark-l4-0011
+topic: spark
+level: 4
+title: Fully warm the cache before a benchmark
+prompt: |
+  Before timing a set of queries, an engineer wants `df` to be **completely**
+  materialised in the cache, with every partition stored, so that the first
+  timed query doesn't pay for computing it.
+context: |
+  `df` has 8 partitions.
+options:
+  - code: |
+      df.cache()
+      df.first()
+    correct: false
+    explanation: >-
+      `first` only computes as many partitions as it needs to return one row, so
+      only those partitions are cached.
+  - code: |
+      df.count()
+      df.cache()
+    correct: false
+    explanation: >-
+      The action runs before the DataFrame is marked for caching, and `cache`
+      itself is lazy, so nothing is stored yet.
+  - code: |
+      df.cache()
+      df.count()
+    correct: true
+    explanation: >-
+      `cache` marks the DataFrame, and `count` scans every partition, so all 8
+      partitions are materialised in the cache.
+  - code: |
+      df.cache()
+      df.explain()
+    correct: false
+    explanation: >-
+      `explain` only prints the query plan. It isn't an action, so no data is
+      computed or cached.
+tags: [caching, lazy-evaluation]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.cache.html
+status: draft

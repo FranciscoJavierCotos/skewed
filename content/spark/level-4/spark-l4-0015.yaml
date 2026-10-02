@@ -1,0 +1,42 @@
+id: spark-l4-0015
+topic: spark
+level: 4
+title: Parse key-value attributes without a Python UDF
+prompt: |
+  `attrs` holds strings such as `"color=red;size=M"`. Add `attrs_map` as a
+  `map<string,string>` column, such as `{color -> red, size -> M}`. The
+  previous implementation, a Python UDF, was a hotspot, so the solution should
+  stay in the JVM.
+context: |
+  `df` has columns `product_id` and `attrs` (string, never null).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      parse = F.udf(lambda s: dict(kv.split("=") for kv in s.split(";")))
+      df.withColumn("attrs_map", parse("attrs"))
+    correct: false
+    explanation: >-
+      This is still a Python UDF, and with no return type it defaults to
+      StringType, so the dict comes back as its string form, not a map.
+  - code: |
+      df.withColumn("attrs_map", F.split("attrs", ";"))
+    correct: false
+    explanation: >-
+      `split` returns an array of `key=value` strings, not a map from keys to
+      values.
+  - code: |
+      df.withColumn("attrs_map", F.expr("str_to_map(attrs, ';', '=')"))
+    correct: true
+    explanation: >-
+      The built-in `str_to_map` splits entries on `;` and keys from values on
+      `=`, returning a native `map<string,string>` with no Python round trip.
+  - code: |
+      parse = F.udf(lambda s: [kv.split("=") for kv in s.split(";")], "map<string,string>")
+      df.withColumn("attrs_map", parse("attrs"))
+    correct: false
+    explanation: >-
+      The UDF returns a list of pairs while declaring a map type, and Spark
+      can't convert a list into a map, so the conversion fails.
+tags: [udf, maps, built-in-functions]
+docs_url: https://spark.apache.org/docs/latest/api/sql/index.html#str_to_map
+status: draft

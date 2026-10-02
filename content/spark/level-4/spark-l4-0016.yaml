@@ -1,0 +1,40 @@
+id: spark-l4-0016
+topic: spark
+level: 4
+title: Keep leading zeros in a partition column
+prompt: |
+  A dataset at `path` is partitioned by postal code, with folders such as
+  `zip=01234/` and `zip=28001/`. Downstream joins need `zip` as a **string with
+  its leading zeros** (`"01234"`). Read the whole dataset so that `zip` comes
+  back that way.
+context: |
+  Each file under `path` holds a single column `id` (int).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      spark.read.parquet(path)
+    correct: false
+    explanation: >-
+      Partition discovery infers types from folder names, so `01234` is read as
+      the integer 1234 and the leading zero is gone.
+  - code: |
+      spark.read.schema("id INT, zip STRING").parquet(path)
+    correct: true
+    explanation: >-
+      A user-supplied schema that includes the partition column fixes its type,
+      so the folder value is kept as the string `01234`.
+  - code: |
+      spark.read.parquet(path).withColumn("zip", F.col("zip").cast("string"))
+    correct: false
+    explanation: >-
+      By the time of the cast, `zip` was already inferred as the integer 1234,
+      so casting it back gives `"1234"` without the zero.
+  - code: |
+      spark.read.parquet(path + "/zip=01234")
+    correct: false
+    explanation: >-
+      Reading a leaf folder drops the partition column entirely and reads only
+      one postal code.
+tags: [partitioning, schema, read]
+docs_url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#partition-discovery
+status: draft
