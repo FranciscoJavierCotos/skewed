@@ -1,0 +1,37 @@
+id: spark-l1-0012
+topic: spark
+level: 1
+title: Strip PII columns before sharing a dataset
+prompt: |
+  Before sharing a customer dataset with an external agency, remove the `email`
+  and `phone` columns entirely. Every row and every other column must stay.
+context: |
+  `df` has columns `customer_id`, `email`, `phone` and `segment`.
+options:
+  - code: |
+      df.na.drop(subset=["email", "phone"])
+    correct: false
+    explanation: >-
+      `na.drop` removes rows with nulls in those columns. It doesn't remove the
+      columns, so the PII is still shared.
+  - code: |
+      df.select([c for c in df.columns if c != "email"])
+    correct: false
+    explanation: >-
+      The comprehension only excludes `email`, so the `phone` column is still in
+      the output.
+  - code: |
+      df.drop("email", "phone")
+    correct: true
+    explanation: >-
+      `drop` takes column names as separate arguments and returns the DataFrame
+      without those columns, keeping all rows.
+  - code: |
+      df.filter("email IS NULL AND phone IS NULL")
+    correct: false
+    explanation: >-
+      This filters rows instead of removing columns: customers who have contact
+      details disappear, and the PII columns are still there.
+tags: [select, drop-columns]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.drop.html
+status: approved

@@ -1,0 +1,39 @@
+id: spark-l1-0006
+topic: spark
+level: 1
+title: Order lines with a computed line total
+prompt: |
+  The billing service needs a DataFrame with exactly two columns: `order_id` and
+  `line_total`, where `line_total` is `qty * unit_price`.
+context: |
+  `df` has columns `order_id`, `sku`, `qty` and `unit_price`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.select("order_id", F.col("qty") * F.col("unit_price"))
+    correct: false
+    explanation: >-
+      Without an alias, Spark names the computed column `(qty * unit_price)`, so
+      there is no `line_total` column.
+  - code: |
+      df.select("order_id", (F.col("qty") * F.col("unit_price")).alias("line_total"))
+    correct: true
+    explanation: >-
+      `select` returns only the two listed columns, and the alias names the
+      product `line_total`.
+  - code: |
+      df.withColumn("line_total", F.col("qty") * F.col("unit_price"))
+    correct: false
+    explanation: >-
+      `withColumn` adds `line_total` but keeps `sku`, `qty` and `unit_price`
+      too, so the result has five columns instead of two.
+  - code: |
+      df.select("order_id", "qty * unit_price AS line_total")
+    correct: false
+    explanation: >-
+      A plain string in `select` is a column name, not an expression, so Spark
+      looks for a column literally called `qty * unit_price AS line_total` and
+      fails. That needs `selectExpr`.
+tags: [select, column-expressions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.select.html
+status: approved

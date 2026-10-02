@@ -1,0 +1,38 @@
+id: spark-l1-0009
+topic: spark
+level: 1
+title: Top 5 products by revenue
+prompt: |
+  The weekly report needs a DataFrame (it will be written to a table) holding
+  the 5 products with the **highest** `revenue`.
+context: |
+  `df` has columns `product_id` and `revenue`, with more than 5 rows.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.orderBy(F.col("revenue").desc()).limit(5)
+    correct: true
+    explanation: >-
+      Sorting by revenue descending and then taking 5 rows returns the five
+      highest-revenue products as a DataFrame.
+  - code: |
+      df.orderBy("revenue").limit(5)
+    correct: false
+    explanation: >-
+      `orderBy` sorts ascending by default, so this returns the five
+      lowest-revenue products.
+  - code: |
+      df.limit(5).orderBy(F.col("revenue").desc())
+    correct: false
+    explanation: >-
+      `limit` runs first and picks 5 arbitrary rows; sorting them afterwards
+      doesn't make them the top 5.
+  - code: |
+      df.sort("revenue", ascending=False).head(5)
+    correct: false
+    explanation: >-
+      The sort is right, but `head(5)` is an action that returns a Python list of
+      Row objects, not a DataFrame that can be written to a table.
+tags: [sorting, limit]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.orderBy.html
+status: approved

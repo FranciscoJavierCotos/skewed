@@ -1,0 +1,40 @@
+id: spark-l1-0007
+topic: spark
+level: 1
+title: Combine two monthly order extracts
+prompt: |
+  The January and February order extracts have the same columns, but the
+  February file lists them in a different order. Build one DataFrame with every
+  row from both months. Some order lines legitimately repeat (the same product
+  ordered twice), and every row must be kept.
+context: |
+  `jan` has columns `order_id`, `sku`, `qty`.
+  `feb` has columns `sku`, `qty`, `order_id`.
+options:
+  - code: |
+      jan.union(feb)
+    correct: false
+    explanation: >-
+      `union` matches columns by position, not by name, so February's `sku`
+      values land in `order_id` and the columns are scrambled.
+  - code: |
+      jan.unionByName(feb).distinct()
+    correct: false
+    explanation: >-
+      The columns line up, but `distinct` removes the legitimately repeated order
+      lines that the prompt says must be kept.
+  - code: |
+      jan.unionByName(feb)
+    correct: true
+    explanation: >-
+      `unionByName` matches columns by name, so the different column order
+      doesn't matter, and like SQL `UNION ALL` it keeps duplicate rows.
+  - code: |
+      jan.join(feb, "order_id", "outer")
+    correct: false
+    explanation: >-
+      A join puts the months side by side: matching order ids are merged into one
+      row with two copies of `sku` and `qty`, instead of stacking the rows.
+tags: [union, combine-dataframes]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.unionByName.html
+status: approved

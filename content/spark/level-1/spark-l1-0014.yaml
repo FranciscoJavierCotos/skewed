@@ -1,0 +1,39 @@
+id: spark-l1-0014
+topic: spark
+level: 1
+title: Classify orders into loyalty tiers
+prompt: |
+  Add a column `tier` that is `"gold"` for orders with `amount` of **1000 or
+  more** and `"standard"` for every other order. No order may end up with a null
+  tier.
+context: |
+  `df` has columns `order_id` and `amount` (double, never null).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("tier", F.when(F.col("amount") >= 1000, "gold").otherwise("standard"))
+    correct: true
+    explanation: >-
+      `>=` includes orders of exactly 1000, and `otherwise` gives every other row
+      `standard`, so no tier is null.
+  - code: |
+      df.withColumn("tier", F.when(F.col("amount") >= 1000, "gold"))
+    correct: false
+    explanation: >-
+      Without `otherwise`, rows that don't match the condition get null instead
+      of `standard`.
+  - code: |
+      df.withColumn("tier", F.when(F.col("amount") > 1000, "gold").otherwise("standard"))
+    correct: false
+    explanation: >-
+      `>` excludes the boundary, so an order of exactly 1000 is labelled
+      `standard` instead of `gold`.
+  - code: |
+      df.withColumn("tier", F.when(F.col("amount") >= 1000, F.col("gold")).otherwise("standard"))
+    correct: false
+    explanation: >-
+      `F.col("gold")` refers to a column named `gold`, which doesn't exist, so the
+      query fails to resolve.
+tags: [with-column, conditional-logic]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.when.html
+status: approved

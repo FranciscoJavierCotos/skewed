@@ -1,0 +1,39 @@
+id: spark-l1-0003
+topic: spark
+level: 1
+title: Rename a legacy key column
+prompt: |
+  A legacy extract calls the customer key `cust_id`. Downstream jobs expect it
+  to be called `customer_id`. Rename it, keep every other column unchanged, and
+  make sure no `cust_id` column remains.
+context: |
+  `df` has columns `cust_id`, `name` and `signup_date`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumnRenamed("customer_id", "cust_id")
+    correct: false
+    explanation: >-
+      The arguments are (existing, new). There is no `customer_id` column to
+      rename, so Spark silently returns the DataFrame unchanged.
+  - code: |
+      df.withColumn("customer_id", F.col("cust_id"))
+    correct: false
+    explanation: >-
+      `withColumn` copies the values into a new column but leaves `cust_id` in
+      place, so the old column remains.
+  - code: |
+      df.select(F.col("cust_id").alias("customer_id"))
+    correct: false
+    explanation: >-
+      The alias renames the key, but `select` keeps only that one column, so
+      `name` and `signup_date` are dropped.
+  - code: |
+      df.withColumnRenamed("cust_id", "customer_id")
+    correct: true
+    explanation: >-
+      `withColumnRenamed(existing, new)` renames the column in place and keeps all
+      other columns as they are.
+tags: [select, rename-columns]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.withColumnRenamed.html
+status: approved
