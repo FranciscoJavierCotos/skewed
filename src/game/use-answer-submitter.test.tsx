@@ -35,3 +35,27 @@ it("allows a new submit after a successful one", async () => {
   act(() => result.current.submit("q2", "o1"));
   await waitFor(() => expect(api.submitAnswer).toHaveBeenCalledTimes(2));
 });
+
+it("measures msToAnswer from markShown (0 if never marked)", async () => {
+  const submitAnswer = vi.fn().mockResolvedValue(makeResult("q", true));
+  const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+  const { result } = renderHook(() => useAnswerSubmitter({ submitAnswer } as unknown as QuizApi, ctx, vi.fn()));
+  act(() => result.current.submit("q1", "o1"));
+  await waitFor(() => expect(result.current.pending).toBe(false));
+  expect(submitAnswer.mock.calls[0][0].msToAnswer).toBe(0);
+  act(() => result.current.markShown());
+  now.mockReturnValue(4_500);
+  act(() => result.current.submit("q2", "o1"));
+  await waitFor(() => expect(submitAnswer).toHaveBeenCalledTimes(2));
+  expect(submitAnswer.mock.calls[1][0].msToAnswer).toBe(3_500);
+  now.mockRestore();
+});
+
+it("blocks a new submit while a failed one awaits retry", async () => {
+  const submitAnswer = vi.fn().mockRejectedValue(new ApiError("offline", "network"));
+  const { result } = renderHook(() => useAnswerSubmitter({ submitAnswer } as unknown as QuizApi, ctx, vi.fn()));
+  act(() => result.current.submit("q1", "o1"));
+  await waitFor(() => expect(result.current.error).not.toBeNull());
+  act(() => result.current.submit("q2", "o1"));
+  expect(submitAnswer).toHaveBeenCalledTimes(1);
+});
