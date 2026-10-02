@@ -37,5 +37,10 @@
     "clearedHint": "You've answered every level {n} question.", "nextLevel": "Go to level {n}",
     "best": "Personal best: {n}", "newBest": "New personal best!", "missed": "The question that got you:",
     "again": "Play again"
+  },
+  "exam": {
+    "progress": "Question {n} of {total}", "short": "Only {n} questions available for this selection.",
+    "result": "Your score", "byTopic": "By topic", "byLevel": "By level", "timeLeft": "{s}s left",
+    "newBest": "New personal best!"
   }
 }
