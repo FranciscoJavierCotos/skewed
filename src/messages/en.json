@@ -1,5 +1,17 @@
 {
   "app": { "name": "Skewed", "tagline": "Data engineering drills: PySpark, SQL & Git" },
+  "nav": { "home": "Home", "play": "Play", "about": "About" },
+  "landing": { "cta": "Play as guest — no sign-up", "levels": "5 levels from fundamentals to expert" },
+  "setup": {
+    "title": "Pick your drill", "mode": "Mode", "topics": "Topics", "level": "Level", "mixed": "Mixed",
+    "questions": "Questions", "timer": "60s timer per question", "start": "Start",
+    "modes": {
+      "practice": { "name": "Practice", "desc": "Instant feedback after every question." },
+      "exam": { "name": "Exam", "desc": "Answer them all, then review your results." },
+      "survival": { "name": "Survival", "desc": "Pick a level. One wrong answer and it's over." }
+    },
+    "topicNames": { "spark": "PySpark", "sql": "SQL", "git": "Git" }
+  },
   "quiz": {
     "option": "Option", "correctAnswer": "correct answer", "yourAnswer": "your answer",
     "timedOut": "Time ran out — no answer recorded", "docs": "Read the docs", "level": "Level"
