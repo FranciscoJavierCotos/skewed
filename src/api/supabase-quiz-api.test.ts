@@ -3,7 +3,7 @@ import { ApiError } from "./quiz-api";
 import { createSupabaseQuizApi } from "./supabase-quiz-api";
 
 const client = (rpc: ReturnType<typeof vi.fn>) => ({ rpc }) as unknown as SupabaseClient;
-const rawQ = { id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null, dialect: null, tags: [],
+const rawQ = { id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null, tags: [],
   options: [1, 2, 3, 4].map((n) => ({ id: `o${n}`, code: `c${n}` })) };
 
 it("getQuestions sends snake_case params and parses rows", async () => {

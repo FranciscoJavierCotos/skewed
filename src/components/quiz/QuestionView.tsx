@@ -22,7 +22,6 @@ export function QuestionView({ question, options, result, disabled, onSelect }: 
       <header className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-neutral-500">
         <span>{question.topic}</span>
         <span>· {en.quiz.level} {question.level}</span>
-        {question.dialect && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">{question.dialect}</span>}
       </header>
       <h2 className="text-xl font-semibold">{question.title}</h2>
       <div className="prose prose-neutral dark:prose-invert max-w-none"><Markdown>{question.prompt}</Markdown></div>

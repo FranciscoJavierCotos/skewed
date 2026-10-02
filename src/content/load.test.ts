@@ -57,9 +57,9 @@ describe("loadContent", () => {
     expect(r.errors.map((e) => e.message).join("\n")).toMatch(/folder/);
   });
 
-  it("rejects dialect on non-sql topics", () => {
-    const q = valid("spark-l1-0001", { topic: "spark", dialect: "postgres" });
-    expect(loadContent(bank({ "spark/level-1/spark-l1-0001.yaml": q })).errors[0].message).toMatch(/dialect/);
+  it("rejects unknown keys, including the removed dialect", () => {
+    const q = valid("sql-l1-0001", { dialect: "postgres" });
+    expect(loadContent(bank({ "sql/level-1/sql-l1-0001.yaml": q })).errors[0].message).toMatch(/dialect/);
   });
 
   it("rejects duplicate ids across files", () => {

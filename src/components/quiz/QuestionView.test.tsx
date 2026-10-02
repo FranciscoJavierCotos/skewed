@@ -5,13 +5,12 @@ import { makeQuestion } from "@/engine/test-helpers";
 import { QuestionView } from "./QuestionView";
 
 vi.mock("./CodeBlock", () => ({ CodeBlock: ({ code }: { code: string }) => <pre>{code}</pre> }));
-const q = makeQuestion("q1", { title: "Latest order", prompt: "Pick **one**", dialect: "snowflake" });
+const q = makeQuestion("q1", { title: "Latest order", prompt: "Pick **one**" });
 
-it("renders title, prompt, dialect badge and 4 lettered options", () => {
+it("renders title, prompt and 4 lettered options", () => {
   render(<QuestionView question={q} options={q.options} result={null} disabled={false} onSelect={() => {}} />);
   expect(screen.getByRole("heading", { name: "Latest order" })).toBeInTheDocument();
   expect(screen.getByText("one", { selector: "strong" })).toBeInTheDocument();
-  expect(screen.getByText("snowflake")).toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /^Option [A-D]/ })).toHaveLength(4);
 });
 

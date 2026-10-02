@@ -26,7 +26,7 @@ function getQuestions(args: { p_topics: string[]; p_level: number | null; p_excl
     .slice(0, limit)
     .map((q) => ({
       id: q.id, topic: q.topic, level: q.level, title: q.title, prompt: q.prompt,
-      context: q.context ?? null, dialect: q.dialect ?? null, tags: q.tags,
+      context: q.context ?? null, tags: q.tags,
       options: q.options.map((o) => ({ id: o.id, code: o.code })),
     }));
 }

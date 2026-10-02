@@ -5,7 +5,7 @@ import { ApiError, type QuizApi } from "./quiz-api";
 
 const QuestionsSchema = z.array(z.object({
   id: z.string(), topic: z.enum(TOPICS), level: z.number().int().min(1).max(5), title: z.string(), prompt: z.string(),
-  context: z.string().nullable(), dialect: z.string().nullable(), tags: z.array(z.string()),
+  context: z.string().nullable(), tags: z.array(z.string()),
   options: z.array(z.object({ id: z.string(), code: z.string() })).length(4),
 }));
 const ResultSchema = z.object({

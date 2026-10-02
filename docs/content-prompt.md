@@ -31,7 +31,7 @@ These questions already exist. Don't write a question that tests the same idea i
 
 ## Output format
 
-Output each question as a separate YAML file. Before each file, write a line with its path: `content/{topic}/level-{level}/<id>.yaml`. Number the ids sequentially from `{first_id}`. Use exactly this shape and these keys:
+Output each question as a separate YAML file. Before each file, write a line with its path: `content/{topic}/level-{level}/<id>.yaml`. Number the ids sequentially from `{first_id}`. Use exactly this shape and these keys, and no others:
 
 ```yaml
 id: {topic}-l{level}-0000       # sequential from {first_id}
@@ -42,7 +42,6 @@ prompt: |
   A business or technical scenario in markdown: who needs what, and why.
 context: |
   Optional. Table schemas, DataFrame columns, sample rows or repo state the options rely on.
-dialect: null                   # always null
 options:
   - code: |
       <code>
@@ -72,7 +71,7 @@ status: draft
 3. **Write a scenario, not trivia.** The prompt describes a real task (a report, a pipeline fix, a repo mess to untangle) and states the required result precisely enough that exactly one option meets it. Don't ask "What does function X do?".
 4. **Language conventions:**
    - `spark`: PySpark only, using the DataFrame API. Use `spark.sql` only where it's the idiomatic choice. Assume `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`, and say so in `context`.
-   - `sql`: PostgreSQL 17 only. Every option must be valid PostgreSQL. Postgres features such as `DISTINCT ON`, `FILTER`, `MERGE`, `generate_series` and `LATERAL` are welcome. Never use other engines' syntax (`QUALIFY`, `TOP`, `IFF`, BigQuery or Snowflake functions). Always set `dialect: null`.
+   - `sql`: PostgreSQL 17 only. Every option must be valid PostgreSQL. Postgres features such as `DISTINCT ON`, `FILTER`, `MERGE`, `generate_series` and `LATERAL` are welcome. Never use other engines' syntax (`QUALIFY`, `TOP`, `IFF`, BigQuery or Snowflake functions).
    - `git`: Each option is a sequence of shell commands, one per line. State the starting repo state in the prompt or `context`.
 5. **The correct option must work.** It must run as written against the stated `context` and produce exactly the result the prompt asks for. Don't write code you aren't sure runs.
 6. **Each wrong option is wrong for one specific, teachable reason**, such as the wrong window frame, `RANK` vs `ROW_NUMBER`, a detached HEAD, or a lost join key. Its `explanation` names that reason in one or two sentences. Wrong options must be plausible code an engineer might really write. At level 3 and above, never make an option wrong through a syntax error or a typo.

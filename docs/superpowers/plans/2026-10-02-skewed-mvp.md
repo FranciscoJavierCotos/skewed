@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- Topics: exactly `spark` (PySpark only), `sql` (PostgreSQL 17 only; `dialect` is always `null` in content), `git`.
+- Topics: exactly `spark` (PySpark only), `sql` (PostgreSQL 17 only), `git`.
 - Levels are integers 1–5. "Mixed" means `level = null` in RPC calls.
 - Every question has **exactly 4 code options, exactly 1 correct**, and an explanation on every option.
 - Question ids match `^(spark|sql|git)-l[1-5]-\d{4}$`, equal the filename, and live at `content/{topic}/level-{n}/{id}.yaml`.
@@ -48,6 +48,7 @@ content/{spark,sql,git}/level-{1..5}/*.yaml      # question bank (Task 17–19)
 fixtures/content/sql/level-{1,2}/*.yaml          # e2e fixture bank (Task 16)
 supabase/migrations/20261002000000_init.sql      # schema, RLS, RPCs (Task 3)
 supabase/migrations/20261002000100_question_stats.sql  # (Task 20)
+supabase/migrations/20261002230000_drop_question_dialect.sql  # (#47)
 supabase/tests/database/rpc.test.sql             # pgTAP (Task 3)
 scripts/validate-content.ts                      # CLI (Task 2)
 scripts/seed-content.ts                          # CLI (Task 4)
@@ -225,7 +226,6 @@ export type ExamLength = (typeof EXAM_LENGTHS)[number];
 export const EXAM_TIMER_SECONDS = 60;
 export const REPORT_REASONS = ["wrong_answer", "ambiguous", "typo", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
-export const DIALECTS = ["postgres", "snowflake", "bigquery", "spark-sql"] as const;
 
 export const isTopic = (s: string): s is Topic => (TOPICS as readonly string[]).includes(s);
 export const isLevel = (n: unknown): n is Level =>
@@ -240,7 +240,6 @@ export interface PublicQuestion {
   title: string;
   prompt: string;
   context: string | null;
-  dialect: string | null;
   tags: string[];
   options: PublicOption[];
 }
@@ -325,9 +324,9 @@ describe("loadContent", () => {
     expect(r.errors.map((e) => e.message).join("\n")).toMatch(/folder/);
   });
 
-  it("rejects dialect on non-sql topics", () => {
-    const q = valid("spark-l1-0001", { topic: "spark", dialect: "postgres" });
-    expect(loadContent(bank({ "spark/level-1/spark-l1-0001.yaml": q })).errors[0].message).toMatch(/dialect/);
+  it("rejects unknown keys, including the removed dialect", () => {
+    const q = valid("sql-l1-0001", { dialect: "postgres" });
+    expect(loadContent(bank({ "sql/level-1/sql-l1-0001.yaml": q })).errors[0].message).toMatch(/dialect/);
   });
 
   it("rejects duplicate ids across files", () => {
@@ -355,7 +354,7 @@ describe("loadContent", () => {
 
 ```ts
 import { z } from "zod";
-import { DIALECTS, TOPICS } from "@/domain/types";
+import { TOPICS } from "@/domain/types";
 
 const OptionSchema = z.object({
   code: z.string().trim().min(1, "option code is required"),
@@ -364,14 +363,13 @@ const OptionSchema = z.object({
 });
 
 export const QuestionFileSchema = z
-  .object({
+  .strictObject({
     id: z.string().regex(/^(spark|sql|git)-l[1-5]-\d{4}$/, "id must look like sql-l3-0007"),
     topic: z.enum(TOPICS),
     level: z.number().int().min(1).max(5),
     title: z.string().trim().min(1).max(120),
     prompt: z.string().trim().min(1),
     context: z.string().trim().min(1).nullish(),
-    dialect: z.enum(DIALECTS).nullish(),
     options: z.array(OptionSchema).length(4, "exactly 4 options required"),
     tags: z.array(z.string()).default([]),
     docs_url: z.url().nullish(),
@@ -383,8 +381,6 @@ export const QuestionFileSchema = z
       ctx.addIssue({ code: "custom", path: ["options"], message: `expected exactly 1 correct option, found ${correct}` });
     if (new Set(q.options.map((o) => o.code.trim())).size !== q.options.length)
       ctx.addIssue({ code: "custom", path: ["options"], message: "option code must be unique" });
-    if (q.dialect && q.topic !== "sql")
-      ctx.addIssue({ code: "custom", path: ["dialect"], message: "dialect is only allowed on sql questions" });
     if (!q.id.startsWith(`${q.topic}-l${q.level}-`))
       ctx.addIssue({ code: "custom", path: ["id"], message: "id prefix must match topic and level" });
   });
@@ -473,7 +469,7 @@ process.exit(errors.length ? 1 : 0);
 
 **Interfaces:**
 - Produces these RPCs:
-  - `get_questions(p_topics text[], p_level int, p_exclude text[], p_limit int) → jsonb`: an array of `{id, topic, level, title, prompt, context, dialect, tags, options:[{id, code}]}`.
+  - `get_questions(p_topics text[], p_level int, p_exclude text[], p_limit int) → jsonb`: an array of `{id, topic, level, title, prompt, context, tags, options:[{id, code}]}`.
   - `submit_answer(p_client_event_id uuid, p_anon_id uuid, p_session_id uuid, p_question_id text, p_option_id uuid, p_mode text, p_ms int) → jsonb`: `{correct, correct_option_id, explanations: {optionId: text}, docs_url}`.
   - `report_question(p_anon_id uuid, p_question_id text, p_reason text, p_note text) → void`. Raises with hint `rate_limited`.
 
@@ -721,7 +717,7 @@ import { toRows } from "./to-rows";
 import type { QuestionFile } from "./schema";
 
 const q: QuestionFile = {
-  id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null, dialect: null,
+  id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null,
   tags: ["x"], docs_url: null, status: "approved",
   options: [
     { code: "A", correct: false, explanation: "a" },
@@ -759,7 +755,7 @@ import type { QuestionFile } from "./schema";
 
 export interface QuestionRow {
   id: string; topic: string; level: number; title: string; prompt: string;
-  context: string | null; dialect: string | null; tags: string[]; docs_url: string | null;
+  context: string | null; tags: string[]; docs_url: string | null;
   active: boolean; content_hash: string; updated_at: string;
 }
 export interface OptionRow {
@@ -771,7 +767,7 @@ export function toRows(q: QuestionFile): { question: QuestionRow; options: Optio
   return {
     question: {
       id: q.id, topic: q.topic, level: q.level, title: q.title, prompt: q.prompt,
-      context: q.context ?? null, dialect: q.dialect ?? null, tags: q.tags, docs_url: q.docs_url ?? null,
+      context: q.context ?? null, tags: q.tags, docs_url: q.docs_url ?? null,
       active: status === "approved",
       content_hash: createHash("sha256").update(JSON.stringify(content)).digest("hex"),
       updated_at: new Date().toISOString(),
@@ -993,7 +989,7 @@ export const levelParam = (level: Level | "mixed"): Level | null => (level === "
 import type { AnswerResult, PublicQuestion } from "@/domain/types";
 
 export const makeQuestion = (id: string, o: Partial<PublicQuestion> = {}): PublicQuestion => ({
-  id, topic: "sql", level: 1, title: id, prompt: "p", context: null, dialect: null, tags: [],
+  id, topic: "sql", level: 1, title: id, prompt: "p", context: null, tags: [],
   options: ["a", "b", "c", "d"].map((x) => ({ id: `${id}-${x}`, code: x })), ...o,
 });
 
@@ -1574,7 +1570,7 @@ import { ApiError } from "./quiz-api";
 import { createSupabaseQuizApi } from "./supabase-quiz-api";
 
 const client = (rpc: ReturnType<typeof vi.fn>) => ({ rpc }) as unknown as SupabaseClient;
-const rawQ = { id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null, dialect: null, tags: [],
+const rawQ = { id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null, tags: [],
   options: [1, 2, 3, 4].map((n) => ({ id: `o${n}`, code: `c${n}` })) };
 
 it("getQuestions sends snake_case params and parses rows", async () => {
@@ -1656,7 +1652,7 @@ import { ApiError, type QuizApi } from "./quiz-api";
 
 const QuestionsSchema = z.array(z.object({
   id: z.string(), topic: z.enum(TOPICS), level: z.number().int().min(1).max(5), title: z.string(), prompt: z.string(),
-  context: z.string().nullable(), dialect: z.string().nullable(), tags: z.array(z.string()),
+  context: z.string().nullable(), tags: z.array(z.string()),
   options: z.array(z.object({ id: z.string(), code: z.string() })).length(4),
 }));
 const ResultSchema = z.object({
@@ -1785,12 +1781,11 @@ import { makeQuestion } from "@/engine/test-helpers";
 import { QuestionView } from "./QuestionView";
 
 vi.mock("./CodeBlock", () => ({ CodeBlock: ({ code }: { code: string }) => <pre>{code}</pre> }));
-const q = makeQuestion("q1", { title: "Latest order", prompt: "Pick **one**", dialect: "snowflake" });
+const q = makeQuestion("q1", { title: "Latest order", prompt: "Pick **one**" });
 
-it("renders title, prompt, dialect badge and 4 lettered options", () => {
+it("renders title, prompt and 4 lettered options", () => {
   render(<QuestionView question={q} options={q.options} result={null} disabled={false} onSelect={() => {}} />);
   expect(screen.getByRole("heading", { name: "Latest order" })).toBeInTheDocument();
-  expect(screen.getByText("snowflake")).toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /^Option [A-D]/ })).toHaveLength(4);
 });
 
@@ -1901,7 +1896,6 @@ export function QuestionView({ question, options, result, disabled, onSelect }: 
       <header className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-neutral-500">
         <span>{question.topic}</span>
         <span>· {en.quiz.level} {question.level}</span>
-        {question.dialect && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">{question.dialect}</span>}
       </header>
       <h2 className="text-xl font-semibold">{question.title}</h2>
       <div className="prose prose-neutral dark:prose-invert max-w-none"><Markdown>{question.prompt}</Markdown></div>
@@ -3122,7 +3116,7 @@ Expected: 4 passed.
   - output YAML files in the exact format;
   - set `status: draft`;
   - write business-scenario prompts;
-  - write PySpark-only Spark code / PostgreSQL-only SQL, with `dialect: null`;
+  - write PySpark-only Spark code / PostgreSQL-only SQL;
   - make each wrong option wrong for one specific reason;
   - keep option lengths balanced;
   - include `docs_url`;
@@ -3150,7 +3144,7 @@ Expected: 4 passed.
 **Files:** `content/sql/level-{1..5}/sql-l{n}-00{01..20}.yaml`
 
 - [ ] For each level n = 1…5, as a separate PR per level:
-  - [ ] Draft 20 questions (topic `sql`). All SQL is PostgreSQL 17; `dialect` stays `null`.
+  - [ ] Draft 20 questions (topic `sql`). All SQL is PostgreSQL 17.
   - [ ] Run `pnpm content:validate` → 0 errors.
   - [ ] Execute every option in PostgreSQL 17 (`psql` against a scratch database) with a tiny dataset from `context`.
   - [ ] Go through the review checklist, approve and merge.

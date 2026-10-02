@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(15);
 
 insert into public.questions (id, topic, level, title, prompt, docs_url, content_hash) values
   ('sql-l1-9001', 'sql', 1, 'Q1', 'P1', 'https://docs.example/q1', 'h1'),
@@ -15,6 +15,8 @@ insert into public.question_options (id, question_id, position, code, is_correct
   ('00000000-0000-0000-0000-000000000023', 'sql-l1-9002', 2, 'SELECT 23', false, 'SECRET_EXPLANATION_23'),
   ('00000000-0000-0000-0000-000000000024', 'sql-l1-9002', 3, 'SELECT 24', false, 'SECRET_EXPLANATION_24');
 
+select hasnt_column('public', 'questions', 'dialect', 'questions has no dialect column');
+
 set local role anon;
 
 select throws_ok($$ select * from public.question_options $$, '42501', null, 'anon cannot read question_options');
@@ -28,6 +30,7 @@ select ok(
   and position('is_correct' in public.get_questions(array['sql'], 1, null, 10)::text) = 0
   and position('docs.example' in public.get_questions(array['sql'], 1, null, 10)::text) = 0,
   'get_questions leaks no answers, explanations or docs');
+select ok(not (public.get_questions(array['sql'], 1, null, 1) -> 0 ? 'dialect'), 'get_questions returns no dialect');
 select is(jsonb_array_length(public.get_questions(array['sql'], 1, array['sql-l1-9001'], 10)), 1, 'exclude works');
 select is(jsonb_array_length(public.get_questions(array['sql'], 1, null, 0)), 1, 'limit is clamped to at least 1');
 
