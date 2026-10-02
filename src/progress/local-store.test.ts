@@ -30,6 +30,7 @@ it("caps history at 200, newest first", () => {
   const s = new LocalProgressStore(localStorage);
   for (let i = 0; i < 205; i++) s.recordSession(exam(i % 10));
   expect(s.getHistory(1000)).toHaveLength(200);
+  expect(s.getHistory(2).map((h) => h.correct)).toEqual([4, 3]);
 });
 
 it("resets on corrupt JSON instead of crashing", () => {
