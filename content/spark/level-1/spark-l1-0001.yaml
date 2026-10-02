@@ -1,0 +1,39 @@
+id: spark-l1-0001
+topic: spark
+level: 1
+title: Active Spanish customers for a regional campaign
+prompt: |
+  Marketing is launching a campaign in Spain and needs every customer who is
+  **both** located in Spain (`country == "ES"`) **and** currently active.
+  Return a DataFrame with those rows and all of their columns.
+context: |
+  `df` has columns `customer_id`, `country` (string) and `active` (boolean, never null).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("country") == "ES" and F.col("active"))
+    correct: false
+    explanation: >-
+      Python's `and` tries to turn a Column into a bool, which PySpark refuses with
+      a ValueError. Column conditions are combined with `&`.
+  - code: |
+      df.filter((F.col("country") == "ES") & F.col("active"))
+    correct: true
+    explanation: >-
+      `&` combines the two Column conditions, and the parentheses make the
+      comparison evaluate before the `&`.
+  - code: |
+      df.filter(F.col("country") == "ES" & F.col("active"))
+    correct: false
+    explanation: >-
+      In Python `&` binds tighter than `==`, so this evaluates `"ES" & active`
+      first, which fails because a string can't be combined with a boolean.
+  - code: |
+      df.where("country = 'ES' OR active")
+    correct: false
+    explanation: >-
+      OR keeps customers who meet either condition, so active customers from
+      other countries and inactive Spanish ones are included.
+tags: [filter, boolean-logic]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.filter.html
+status: approved

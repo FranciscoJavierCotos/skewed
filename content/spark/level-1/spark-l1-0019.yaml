@@ -1,0 +1,42 @@
+id: spark-l1-0019
+topic: spark
+level: 1
+title: Load a CSV with an explicit schema
+prompt: |
+  To avoid a costly schema-inference pass, load `payments.csv` at `path` with an
+  explicit schema: `id` INT, `name` STRING, `amount` DOUBLE. The file has a
+  header line, and the result must hold only the data rows.
+context: |
+  `path` points to a CSV file whose columns appear in this order:
+
+      id,name,amount
+      1,alpha,10
+      2,beta,20
+options:
+  - code: |
+      spark.read.schema("id INT, name STRING, amount DOUBLE").option("header", True).csv(path)
+    correct: true
+    explanation: >-
+      The schema fixes the types without an inference pass, and `header` skips the
+      header line so only data rows are returned.
+  - code: |
+      spark.read.schema("id INT, name STRING, amount DOUBLE").csv(path)
+    correct: false
+    explanation: >-
+      Without `header`, the header line is parsed as data, so the result gets an
+      extra row with `name = "name"` and nulls in the numeric columns.
+  - code: |
+      spark.read.schema("amount DOUBLE, id INT, name STRING").option("header", True).csv(path)
+    correct: false
+    explanation: >-
+      CSV columns are matched to the schema by position, so listing the fields in
+      a different order puts ids into `amount` and names into `id`.
+  - code: |
+      spark.read.option("header", True).option("inferSchema", True).csv(path)
+    correct: false
+    explanation: >-
+      This runs the inference pass the prompt wants to avoid, and because the
+      amounts are whole numbers, `amount` is inferred as INT rather than DOUBLE.
+tags: [read, csv, schema]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameReader.schema.html
+status: approved

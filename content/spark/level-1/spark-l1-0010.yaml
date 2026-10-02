@@ -1,0 +1,39 @@
+id: spark-l1-0010
+topic: spark
+level: 1
+title: Parse European-format signup dates
+prompt: |
+  The CRM export stores `signup_date` as a string such as `"25/03/2024"`
+  (day/month/year). Replace it with a proper `DateType` column holding the same
+  calendar date.
+context: |
+  `df` has columns `customer_id` and `signup_date` (string, `dd/MM/yyyy`).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("signup_date", F.to_date("signup_date"))
+    correct: false
+    explanation: >-
+      Without a format, `to_date` expects ISO `yyyy-MM-dd`, so `25/03/2024` can't
+      be parsed and becomes null.
+  - code: |
+      df.withColumn("signup_date", F.to_date("signup_date", "dd/MM/yyyy"))
+    correct: true
+    explanation: >-
+      The explicit `dd/MM/yyyy` pattern matches the string layout, so each value
+      is parsed into the right DateType value.
+  - code: |
+      df.withColumn("signup_date", F.to_timestamp("signup_date", "dd/MM/yyyy"))
+    correct: false
+    explanation: >-
+      The pattern parses correctly, but `to_timestamp` returns a TimestampType
+      column, not the DateType the prompt asks for.
+  - code: |
+      df.withColumn("signup_date", F.col("signup_date").cast("date"))
+    correct: false
+    explanation: >-
+      Casting a string to date only understands ISO-style `yyyy-MM-dd` strings,
+      so the day/month/year values become null.
+tags: [with-column, dates, casting]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_date.html
+status: approved

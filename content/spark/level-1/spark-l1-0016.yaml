@@ -1,0 +1,38 @@
+id: spark-l1-0016
+topic: spark
+level: 1
+title: Deliver one CSV file with a header to a partner
+prompt: |
+  A partner can only ingest **one** CSV file that starts with a header row. Write
+  the small `df` to the directory `out_path` so that it contains a single
+  `part-*.csv` file with a header line. Replace anything already there.
+context: |
+  `df` is small (a few hundred rows) but is spread over several partitions.
+options:
+  - code: |
+      df.write.mode("overwrite").option("header", True).csv(out_path)
+    correct: false
+    explanation: >-
+      Spark writes one file per partition, so a DataFrame spread over several
+      partitions produces several part files.
+  - code: |
+      df.coalesce(1).write.mode("overwrite").csv(out_path)
+    correct: false
+    explanation: >-
+      There is a single file, but the CSV writer doesn't write a header unless
+      `header` is set to true.
+  - code: |
+      df.coalesce(1).write.mode("overwrite").option("header", True).csv(out_path)
+    correct: true
+    explanation: >-
+      `coalesce(1)` leaves one partition, so exactly one part file is written,
+      and the `header` option puts the column names on its first line.
+  - code: |
+      df.write.mode("overwrite").option("header", True).csv(out_path + "/export.csv")
+    correct: false
+    explanation: >-
+      The path names a directory, not a file. Spark still creates a folder called
+      `export.csv` with one part file per partition inside it.
+tags: [write, csv]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.csv.html
+status: approved

@@ -1,0 +1,43 @@
+id: spark-l1-0004
+topic: spark
+level: 1
+title: Load a CSV export with typed columns
+prompt: |
+  A partner drops `orders.csv` at `path`. Its first line is a header with the
+  column names, and the `amount` column holds numbers such as `12.50`. Load it
+  so the columns get their header names and `amount` comes back as a numeric
+  type rather than a string.
+context: |
+  `path` points to a CSV file:
+
+      order_id,customer_id,amount
+      1,c1,12.50
+      2,c2,7.25
+options:
+  - code: |
+      spark.read.option("header", True).csv(path)
+    correct: false
+    explanation: >-
+      The header gives the right column names, but without `inferSchema` every
+      CSV column is read as a string, including `amount`.
+  - code: |
+      spark.read.option("inferSchema", True).csv(path)
+    correct: false
+    explanation: >-
+      Without `header`, the header line is read as a data row, the columns are
+      named `_c0`, `_c1`, `_c2`, and the text row forces `amount` to a string.
+  - code: |
+      spark.read.option("header", True).option("inferSchema", True).csv(path)
+    correct: true
+    explanation: >-
+      `header` takes the column names from the first line and `inferSchema` scans
+      the data so `amount` is read as a double.
+  - code: |
+      spark.read.option("header", True).option("inferSchema", True).text(path)
+    correct: false
+    explanation: >-
+      The text reader ignores CSV options and returns each line as a single
+      `value` string column, so nothing is split into columns.
+tags: [read, csv]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameReader.csv.html
+status: approved

@@ -1,0 +1,39 @@
+id: spark-l1-0017
+topic: spark
+level: 1
+title: Orders that have left the warehouse
+prompt: |
+  Logistics wants every order whose `status` is `shipped` or `delivered`. Other
+  statuses in the data include `pending` and `cancelled`. All status values are
+  lowercase.
+context: |
+  `df` has columns `order_id` and `status` (string).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("status").like("%ed"))
+    correct: false
+    explanation: >-
+      The pattern matches any status ending in `ed`, which also includes
+      `cancelled`.
+  - code: |
+      df.filter(F.col("status").isin("shipped", "delivered"))
+    correct: true
+    explanation: >-
+      `isin` keeps rows whose status equals one of the listed values exactly,
+      which is shipped or delivered.
+  - code: |
+      df.filter(F.col("status").isin("SHIPPED", "DELIVERED"))
+    correct: false
+    explanation: >-
+      String comparison is case-sensitive, so the uppercase values match none of
+      the lowercase statuses and the result is empty.
+  - code: |
+      df.filter(F.col("status").contains("shipped|delivered"))
+    correct: false
+    explanation: >-
+      `contains` looks for that exact substring, including the `|` character. It
+      isn't a regex, so no status matches.
+tags: [filter, membership]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.isin.html
+status: approved

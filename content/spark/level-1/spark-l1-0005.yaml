@@ -1,0 +1,39 @@
+id: spark-l1-0005
+topic: spark
+level: 1
+title: Rerunnable daily export partitioned by date
+prompt: |
+  A nightly job writes `df` as Parquet to `out_path`. If the job is rerun, the
+  previous output must be replaced, not duplicated, and the files must be laid
+  out in one folder per `event_date` (for example `event_date=2024-05-01/`).
+  Output from an earlier run already exists at `out_path`.
+context: |
+  `df` has columns `event_id`, `user_id` and `event_date`.
+options:
+  - code: |
+      df.write.mode("overwrite").partitionBy("event_date").parquet(out_path)
+    correct: true
+    explanation: >-
+      `overwrite` replaces the previous run's output, and `partitionBy` writes one
+      `event_date=...` folder per date.
+  - code: |
+      df.write.partitionBy("event_date").parquet(out_path)
+    correct: false
+    explanation: >-
+      The default save mode is `errorifexists`, so the rerun fails because the
+      earlier output is already there.
+  - code: |
+      df.write.mode("append").partitionBy("event_date").parquet(out_path)
+    correct: false
+    explanation: >-
+      `append` adds the new files next to the previous run's, so every rerun
+      duplicates the rows.
+  - code: |
+      df.repartition("event_date").write.mode("overwrite").parquet(out_path)
+    correct: false
+    explanation: >-
+      `repartition` only changes how rows are grouped in memory. Without
+      `partitionBy` on the writer, no `event_date=` folders are created.
+tags: [write, parquet, partitioning]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.partitionBy.html
+status: approved

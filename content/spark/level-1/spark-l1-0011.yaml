@@ -1,0 +1,39 @@
+id: spark-l1-0011
+topic: spark
+level: 1
+title: Build a display name when the surname may be missing
+prompt: |
+  The support tool shows a `full_name` built as first name, a space, then last
+  name. Some customers have no last name (null); for them `full_name` must be
+  just the first name, never null and never containing the word `null`.
+context: |
+  `df` has columns `customer_id`, `first_name` (never null) and `last_name` (nullable).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("full_name", F.concat("first_name", F.lit(" "), "last_name"))
+    correct: false
+    explanation: >-
+      `concat` returns null as soon as any input is null, so customers without a
+      last name get a null `full_name`.
+  - code: |
+      df.withColumn("full_name", F.format_string("%s %s", "first_name", "last_name"))
+    correct: false
+    explanation: >-
+      `format_string` renders a null argument as the text `null`, producing
+      values such as `Ana null`.
+  - code: |
+      df.withColumn("full_name", F.col("first_name") + " " + F.col("last_name"))
+    correct: false
+    explanation: >-
+      `+` is numeric addition in Spark, not string concatenation, so the strings
+      are cast to numbers and the result is null.
+  - code: |
+      df.withColumn("full_name", F.concat_ws(" ", "first_name", "last_name"))
+    correct: true
+    explanation: >-
+      `concat_ws` joins the values with the separator and skips null inputs, so a
+      missing last name leaves just the first name.
+tags: [with-column, string-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.concat_ws.html
+status: approved

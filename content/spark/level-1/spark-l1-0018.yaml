@@ -1,0 +1,38 @@
+id: spark-l1-0018
+topic: spark
+level: 1
+title: Products sold in the EU catalogue
+prompt: |
+  EU catalogue SKUs start with the prefix `EU-` (for example `EU-1001`). Other
+  catalogues use prefixes like `NEU-` and `US-`. Return only the EU products.
+context: |
+  `df` has columns `sku` and `name`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("sku").contains("EU-"))
+    correct: false
+    explanation: >-
+      `contains` matches the text anywhere in the string, so `NEU-` SKUs are
+      included too.
+  - code: |
+      df.filter(F.col("sku").like("EU-"))
+    correct: false
+    explanation: >-
+      Without a `%` wildcard, `like` needs an exact match, so only a SKU equal to
+      `EU-` itself would pass and the result is empty.
+  - code: |
+      df.filter(F.substring("sku", 1, 3) == "EU")
+    correct: false
+    explanation: >-
+      The substring is three characters (`EU-`) but is compared to the
+      two-character `EU`, so nothing matches.
+  - code: |
+      df.filter(F.col("sku").startswith("EU-"))
+    correct: true
+    explanation: >-
+      `startswith` checks only the beginning of the string, so it keeps `EU-`
+      SKUs and excludes `NEU-` and `US-`.
+tags: [filter, string-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.startswith.html
+status: approved

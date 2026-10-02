@@ -1,0 +1,39 @@
+id: spark-l1-0013
+topic: spark
+level: 1
+title: Tag every row with its source system
+prompt: |
+  Before merging extracts from several systems, add a column `source` whose value
+  is the string `"crm"` on every row of the CRM extract. Keep all existing
+  columns.
+context: |
+  `df` has columns `customer_id` and `email`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("source", F.col("crm"))
+    correct: false
+    explanation: >-
+      `F.col("crm")` refers to a column named `crm`, which doesn't exist, so
+      Spark raises an analysis error instead of writing the text.
+  - code: |
+      df.withColumn("source", F.lit("crm"))
+    correct: true
+    explanation: >-
+      `F.lit` wraps the constant in a Column, so every row gets the value `crm` in
+      the new `source` column.
+  - code: |
+      df.select("*", F.lit("crm"))
+    correct: false
+    explanation: >-
+      The constant is added, but without an alias the new column is named `crm`
+      instead of `source`.
+  - code: |
+      df.withColumn("source", "crm")
+    correct: false
+    explanation: >-
+      `withColumn` needs a Column, so passing a plain Python string raises a type
+      error. The constant must be wrapped with `F.lit`.
+tags: [with-column, literals]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.lit.html
+status: approved

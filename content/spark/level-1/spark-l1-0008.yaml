@@ -1,0 +1,38 @@
+id: spark-l1-0008
+topic: spark
+level: 1
+title: List the countries we sell to
+prompt: |
+  For a dropdown in a dashboard, the product team needs a DataFrame with a single
+  column `country` and exactly one row per country that appears in the orders
+  table.
+context: |
+  `df` has columns `order_id`, `country` and `amount`.
+options:
+  - code: |
+      df.distinct().select("country")
+    correct: false
+    explanation: >-
+      `distinct` runs on whole rows before the projection, so countries with
+      several different orders still appear several times.
+  - code: |
+      df.groupBy("country").count()
+    correct: false
+    explanation: >-
+      One row per country is right, but the result has an extra `count` column
+      instead of the single `country` column.
+  - code: |
+      df.dropDuplicates()
+    correct: false
+    explanation: >-
+      With no column list, `dropDuplicates` compares whole rows and keeps all
+      columns, so neither requirement is met.
+  - code: |
+      df.select("country").distinct()
+    correct: true
+    explanation: >-
+      Projecting to `country` first means `distinct` deduplicates on country
+      alone, leaving one row per country in a single column.
+tags: [select, distinct]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.distinct.html
+status: approved

@@ -1,0 +1,38 @@
+id: spark-l1-0020
+topic: spark
+level: 1
+title: Derive an event date from a timestamp
+prompt: |
+  Analysts want to group clickstream events by day. Add a column `event_date` of
+  type **DateType** that holds the calendar date of each event's `event_ts`.
+context: |
+  `df` has columns `event_id` and `event_ts` (TimestampType).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("event_date", F.date_format("event_ts", "yyyy-MM-dd"))
+    correct: false
+    explanation: >-
+      `date_format` returns a formatted string, so `event_date` is a StringType
+      column, not a date.
+  - code: |
+      df.withColumn("event_date", F.date_trunc("day", "event_ts"))
+    correct: false
+    explanation: >-
+      `date_trunc` zeroes the time but still returns a TimestampType value, not a
+      DateType.
+  - code: |
+      df.withColumn("event_date", F.to_date("event_ts"))
+    correct: true
+    explanation: >-
+      `to_date` on a timestamp drops the time part and returns a DateType column
+      with the calendar date.
+  - code: |
+      df.withColumn("event_date", F.dayofmonth("event_ts"))
+    correct: false
+    explanation: >-
+      `dayofmonth` returns only the day number (1 to 31) as an integer, losing
+      the month and year.
+tags: [with-column, dates]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_date.html
+status: approved

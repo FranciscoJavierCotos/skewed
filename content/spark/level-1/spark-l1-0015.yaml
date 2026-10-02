@@ -1,0 +1,50 @@
+id: spark-l1-0015
+topic: spark
+level: 1
+title: Read a pretty-printed JSON array file
+prompt: |
+  An API dump at `path` is a single JSON array of objects, pretty-printed across
+  many lines. Load it so each object becomes one row with `id` and `name`
+  columns.
+context: |
+  `path` points to a file like:
+
+      [
+        {
+          "id": 1,
+          "name": "alpha"
+        },
+        {
+          "id": 2,
+          "name": "beta"
+        }
+      ]
+options:
+  - code: |
+      spark.read.json(path)
+    correct: false
+    explanation: >-
+      By default Spark expects JSON Lines, one object per line, so a
+      pretty-printed array is unreadable and ends up in a `_corrupt_record`
+      column.
+  - code: |
+      spark.read.option("mode", "DROPMALFORMED").json(path)
+    correct: false
+    explanation: >-
+      The file is still parsed as JSON Lines, so every line is malformed, and
+      DROPMALFORMED throws them all away and returns no rows.
+  - code: |
+      spark.read.option("multiLine", True).text(path)
+    correct: false
+    explanation: >-
+      The text reader doesn't parse JSON: it returns the raw lines in a single
+      `value` column.
+  - code: |
+      spark.read.option("multiLine", True).json(path)
+    correct: true
+    explanation: >-
+      `multiLine` parses the whole file as one JSON document, and a top-level
+      array is expanded into one row per object.
+tags: [read, json]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameReader.json.html
+status: approved

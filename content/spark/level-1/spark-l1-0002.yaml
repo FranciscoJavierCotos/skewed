@@ -1,0 +1,39 @@
+id: spark-l1-0002
+topic: spark
+level: 1
+title: Add a VAT-inclusive amount column
+prompt: |
+  Finance wants the invoice DataFrame to keep all its existing columns,
+  including the original net `amount`, and gain a new column
+  `amount_with_vat` equal to `amount` times 1.21.
+context: |
+  `df` has columns `invoice_id`, `customer_id` and `amount` (double).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("amount_with_vat", F.col("amount") * 1.21)
+    correct: true
+    explanation: >-
+      `withColumn` appends a new column computed from `amount` and keeps every
+      existing column, including the original `amount`.
+  - code: |
+      df.withColumn("amount", F.col("amount") * 1.21)
+    correct: false
+    explanation: >-
+      Reusing the name `amount` replaces the existing column, so the net amount is
+      lost and no `amount_with_vat` column is created.
+  - code: |
+      df.select((F.col("amount") * 1.21).alias("amount_with_vat"))
+    correct: false
+    explanation: >-
+      `select` returns only the listed expressions, so `invoice_id`, `customer_id`
+      and `amount` are dropped.
+  - code: |
+      df.withColumn("amount_with_vat", "amount * 1.21")
+    correct: false
+    explanation: >-
+      `withColumn` needs a Column, not a SQL string. Passing a string raises a
+      type error; use `F.col(...)` or `F.expr(...)`.
+tags: [with-column, column-expressions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.withColumn.html
+status: approved
