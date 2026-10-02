@@ -40,7 +40,7 @@ export interface AnswerResult {
 export interface SessionConfig {
   mode: Mode;
   topics: Topic[];
-  level: Level | "mixed"; // ignored by survival
+  level: Level | "mixed"; // survival always has a fixed level
   examLength: ExamLength;
   timerSeconds: number | null;
 }

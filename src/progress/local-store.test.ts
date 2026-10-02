@@ -1,22 +1,25 @@
 import { LocalProgressStore } from "./local-store";
+import type { Level } from "@/domain/types";
 import type { SessionSummary } from "./store";
 
-const survival = (streak: number): SessionSummary => ({
-  mode: "survival", topics: ["sql", "git"], level: "mixed", answered: streak + 1, correct: streak,
-  streak, maxLevel: 2, finishedAt: new Date().toISOString(),
+const survival = (streak: number, level: Level = 2): SessionSummary => ({
+  mode: "survival", topics: ["sql", "git"], level, answered: streak + 1, correct: streak,
+  streak, finishedAt: new Date().toISOString(),
 });
 const exam = (correct: number, answered = 10): SessionSummary => ({
-  mode: "exam", topics: ["spark"], level: 3, answered, correct, streak: null, maxLevel: null, finishedAt: new Date().toISOString(),
+  mode: "exam", topics: ["spark"], level: 3, answered, correct, streak: null, finishedAt: new Date().toISOString(),
 });
 
 beforeEach(() => localStorage.clear());
 
-it("tracks survival best streak per topic set (order-insensitive)", () => {
+it("tracks survival best streak per topic set (order-insensitive) and level", () => {
   const s = new LocalProgressStore(localStorage);
   expect(s.recordSession(survival(3)).newBest).toBe(true);
   expect(s.recordSession(survival(2)).newBest).toBe(false);
-  expect(s.getPersonalBest("survival", "git+sql")).toBe(3);
-  expect(new LocalProgressStore(localStorage).getPersonalBest("survival", "git+sql")).toBe(3); // persisted
+  expect(s.getPersonalBest("survival", "git+sql@2")).toBe(3);
+  expect(new LocalProgressStore(localStorage).getPersonalBest("survival", "git+sql@2")).toBe(3); // persisted
+  expect(s.recordSession(survival(1, 3)).newBest).toBe(true); // separate best per level
+  expect(s.getPersonalBest("survival", "git+sql@3")).toBe(1);
 });
 
 it("tracks exam best percentage", () => {
@@ -44,7 +47,7 @@ it("works in memory when storage is unavailable", () => {
   const s = new LocalProgressStore(null);
   expect(s.persistent).toBe(false);
   s.recordSession(survival(4));
-  expect(s.getPersonalBest("survival", "git+sql")).toBe(4);
+  expect(s.getPersonalBest("survival", "git+sql@2")).toBe(4);
 });
 
 it("survives a storage that throws on write (quota/private mode)", () => {

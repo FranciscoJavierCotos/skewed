@@ -58,7 +58,6 @@ src/domain/types.ts                              # shared types/constants (Task 
 src/content/schema.ts, load.ts, to-rows.ts       # content model (Task 2, 4)
 src/engine/shared.ts, session-config.ts          # primitives (Task 5)
 src/engine/practice.ts, exam.ts, survival.ts     # reducers (Task 5–7)
-src/engine/survival-fetch.ts                     # pool fallback (Task 7)
 src/progress/store.ts, local-store.ts, anon-id.ts # guest progress (Task 8)
 src/api/quiz-api.ts, supabase-quiz-api.ts        # API boundary (Task 9)
 src/game/use-answer-submitter.ts, services.tsx   # React glue (Task 9, 12)
@@ -859,8 +858,6 @@ Expected: `Seeded 1 questions (1 active) from content`. Run it again and expect 
 
 **Interfaces:**
 - Produces:
-  - `SURVIVAL_STEP = 5`
-  - `survivalLevel(streak: number): Level`
   - `shuffle<T>(items: readonly T[], rng?: () => number): T[]`
   - `parseSessionConfig(mode: Mode, params: URLSearchParams): SessionConfig | null`
   - `toSearchParams(config: SessionConfig): string`
@@ -869,13 +866,7 @@ Expected: `Seeded 1 questions (1 active) from content`. Run it again and expect 
 - [ ] **Step 1: Write the failing tests.** `src/engine/shared.test.ts`:
 
 ```ts
-import { shuffle, survivalLevel } from "./shared";
-
-describe("survivalLevel", () => {
-  it.each([[0, 1], [4, 1], [5, 2], [9, 2], [10, 3], [20, 5], [99, 5]])("streak %i -> level %i", (s, l) => {
-    expect(survivalLevel(s)).toBe(l);
-  });
-});
+import { shuffle } from "./shared";
 
 describe("shuffle", () => {
   it("returns a permutation without mutating input", () => {
@@ -914,6 +905,11 @@ it("dedupes topics", () => {
 it.each(["", "topics=", "topics=python", "topics=sql&level=6", "topics=sql&level=abc", "topics=sql&length=15"])(
   "rejects %s", (q) => expect(parseSessionConfig("exam", p(q))).toBeNull(),
 );
+it("survival defaults to level 1 and rejects mixed", () => {
+  expect(parseSessionConfig("survival", p("topics=sql"))?.level).toBe(1);
+  expect(parseSessionConfig("survival", p("topics=sql&level=4"))?.level).toBe(4);
+  expect(parseSessionConfig("survival", p("topics=sql&level=mixed"))).toBeNull();
+});
 it("round-trips", () => {
   const c = parseSessionConfig("exam", p("topics=sql&level=2&length=40&timer=on"))!;
   expect(parseSessionConfig("exam", p(toSearchParams(c)))).toEqual(c);
@@ -925,14 +921,6 @@ it("round-trips", () => {
 - [ ] **Step 3: Implement.** `src/engine/shared.ts`:
 
 ```ts
-import type { Level } from "@/domain/types";
-
-export const SURVIVAL_STEP = 5;
-
-export function survivalLevel(streak: number): Level {
-  return Math.min(5, 1 + Math.floor(streak / SURVIVAL_STEP)) as Level;
-}
-
 export function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
   const out = [...items];
   for (let i = out.length - 1; i > 0; i--) {
@@ -954,15 +942,15 @@ import {
 export function parseSessionConfig(mode: Mode, params: URLSearchParams): SessionConfig | null {
   const topics = [...new Set((params.get("topics") ?? "").split(",").filter(Boolean))];
   if (topics.length === 0 || !topics.every(isTopic)) return null;
-  const rawLevel = params.get("level") ?? "mixed";
+  const rawLevel = params.get("level") ?? (mode === "survival" ? "1" : "mixed");
   const level = rawLevel === "mixed" ? "mixed" : Number(rawLevel);
-  if (level !== "mixed" && !isLevel(level)) return null;
+  if (level === "mixed" ? mode === "survival" : !isLevel(level)) return null; // survival needs a fixed level
   const examLength = Number(params.get("length") ?? 10);
   if (!(EXAM_LENGTHS as readonly number[]).includes(examLength)) return null;
   return {
     mode,
     topics: topics as Topic[],
-    level,
+    level: level as Level | "mixed",
     examLength: examLength as ExamLength,
     timerSeconds: params.get("timer") === "on" ? EXAM_TIMER_SECONDS : null,
   };
@@ -1197,39 +1185,36 @@ export function summarizeExam(s: ExamState): ExamSummary {
 
 ---
 
-### Task 7: Survival reducer and pool fallback
+### Task 7: Survival reducer
+
+> **Revised 2026-10-02:** Survival no longer ramps levels. A run stays at the level the player picked and only gets that level's questions. It ends on the first wrong answer (`over`) or when the level has no unseen questions left (`cleared`). From `cleared`, the UI offers a **new run** at the next level. No pool fallback, no recycling, so `survival-fetch.ts` is gone and the game calls `QuizApi.getQuestions` directly.
 
 **Files:**
-- Create: `src/engine/survival.ts`, `src/engine/survival-fetch.ts`
-- Test: `src/engine/survival.test.ts`, `src/engine/survival-fetch.test.ts`
+- Create: `src/engine/survival.ts`
+- Test: `src/engine/survival.test.ts`
 
 **Interfaces:**
-- Consumes: `survivalLevel` (Task 5), `makeQuestion`/`makeResult` (Task 6), and `QuizApi.getQuestions` (signature defined below; implemented in Task 9).
-- Produces:
-  - `SurvivalState`, `SurvivalEvent`, `initialSurvivalState`, `survivalReducer`
-  - `RECYCLE_WINDOW = 20`
-  - `fetchSurvivalQuestion(getQuestions: GetQuestionsFn, topics: Topic[], level: Level, seenIds: string[]): Promise<PublicQuestion | null>`
-  - `type GetQuestionsFn = (p: { topics: Topic[]; level: Level | null; exclude: string[]; limit: number }) => Promise<PublicQuestion[]>`
+- Consumes: `makeQuestion`/`makeResult` (Task 6).
+- Produces: `SurvivalState`, `SurvivalEvent`, `initialSurvivalState(level)`, `nextSurvivalLevel(level): Level | null`, `survivalReducer`.
 
 - [ ] **Step 1: Write the failing tests.** `src/engine/survival.test.ts`:
 
 ```ts
-import { initialSurvivalState as s0, survivalReducer as r, type SurvivalState } from "./survival";
+import { initialSurvivalState, nextSurvivalLevel, survivalReducer as r, type SurvivalState } from "./survival";
 import { makeQuestion, makeResult } from "./test-helpers";
 
+const s0 = initialSurvivalState(3);
+
 function answerCorrect(s: SurvivalState, id: string): SurvivalState {
-  s = r(s, { type: "QUESTION_LOADED", question: makeQuestion(id) });
+  s = r(s, { type: "QUESTION_LOADED", question: makeQuestion(id, { level: 3 }) });
   s = r(s, { type: "ANSWER_RESULT", result: makeResult(id, true) });
   return r(s, { type: "NEXT" });
 }
 
-it("ramps to level 2 after 5 correct and flags the level-up", () => {
+it("stays at the chosen level however long the streak", () => {
   let s = s0;
-  for (let i = 0; i < 4; i++) s = answerCorrect(s, `q${i}`);
-  expect(s.level).toBe(1);
-  s = r(s, { type: "QUESTION_LOADED", question: makeQuestion("q4") });
-  s = r(s, { type: "ANSWER_RESULT", result: makeResult("q4", true) });
-  expect(s).toMatchObject({ streak: 5, level: 2, maxLevel: 2, leveledUp: true, status: "feedback" });
+  for (let i = 0; i < 12; i++) s = answerCorrect(s, `q${i}`);
+  expect(s).toMatchObject({ level: 3, streak: 12, status: "loading" });
 });
 
 it("one wrong answer ends the run and records the miss", () => {
@@ -1240,48 +1225,41 @@ it("one wrong answer ends the run and records the miss", () => {
   expect(s).toMatchObject({ status: "over", streak: 1, missed: { question: q } });
 });
 
-it("caps at level 5", () => {
-  let s = s0;
-  for (let i = 0; i < 30; i++) s = answerCorrect(s, `q${i}`);
-  expect(s.level).toBe(5);
+it("running out of the level's questions clears it (game over)", () => {
+  const s = r(answerCorrect(answerCorrect(s0, "q0"), "q1"), { type: "POOL_EXHAUSTED" });
+  expect(s).toMatchObject({ status: "cleared", streak: 2, missed: null });
+});
+
+it("POOL_EXHAUSTED only applies while loading", () => {
+  const answering = r(s0, { type: "QUESTION_LOADED", question: makeQuestion("q0") });
+  expect(r(answering, { type: "POOL_EXHAUSTED" })).toBe(answering);
+});
+
+it("tracks seen ids and ignores NEXT outside feedback", () => {
+  let s = answerCorrect(answerCorrect(s0, "q0"), "q1");
+  s = r(s, { type: "QUESTION_LOADED", question: makeQuestion("q2") });
+  expect(s.seenIds).toEqual(["q0", "q1", "q2"]);
+  expect(r(s, { type: "NEXT" })).toBe(s);
 });
 
 it("ignores stale results", () => {
   const s = r(s0, { type: "QUESTION_LOADED", question: makeQuestion("q0") });
   expect(r(s, { type: "ANSWER_RESULT", result: makeResult("other", false) })).toBe(s);
 });
-```
 
-`src/engine/survival-fetch.test.ts`:
-
-```ts
-import { fetchSurvivalQuestion, RECYCLE_WINDOW } from "./survival-fetch";
-import { makeQuestion } from "./test-helpers";
-
-it("returns a question from the current level when available", async () => {
-  const get = vi.fn().mockResolvedValue([makeQuestion("x")]);
-  expect((await fetchSurvivalQuestion(get, ["sql"], 2, ["a"]))?.id).toBe("x");
-  expect(get).toHaveBeenCalledWith({ topics: ["sql"], level: 2, exclude: ["a"], limit: 1 });
+it("ignores events once the run is over", () => {
+  let s = r(s0, { type: "QUESTION_LOADED", question: makeQuestion("q0") });
+  s = r(s, { type: "ANSWER_RESULT", result: makeResult("q0", false) });
+  expect(r(s, { type: "ANSWER_RESULT", result: makeResult("q0", true) })).toBe(s);
+  expect(r(s, { type: "QUESTION_LOADED", question: makeQuestion("q1") })).toBe(s);
+  expect(r(s, { type: "NEXT" })).toBe(s);
 });
 
-it("falls through to higher levels when a level is exhausted", async () => {
-  const get = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([makeQuestion("l4")]);
-  expect((await fetchSurvivalQuestion(get, ["sql"], 3, []))?.id).toBe("l4");
-  expect(get.mock.calls[1][0].level).toBe(4);
-});
-
-it("at level 5 recycles excluding only the most recent ids", async () => {
-  const seen = Array.from({ length: 30 }, (_, i) => `s${i}`);
-  const get = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([makeQuestion("old")]);
-  expect((await fetchSurvivalQuestion(get, ["sql"], 5, seen))?.id).toBe("old");
-  expect(get.mock.calls[1][0].exclude).toEqual(seen.slice(-RECYCLE_WINDOW));
-});
-
-it("returns null when nothing exists at all", async () => {
-  expect(await fetchSurvivalQuestion(vi.fn().mockResolvedValue([]), ["git"], 5, [])).toBeNull();
+it("offers the next level up to 5", () => {
+  expect(nextSurvivalLevel(1)).toBe(2);
+  expect(nextSurvivalLevel(5)).toBeNull();
 });
 ```
-
 
 - [ ] **Step 2: Run.** → FAIL.
 
@@ -1289,14 +1267,13 @@ it("returns null when nothing exists at all", async () => {
 
 ```ts
 import type { AnswerResult, Level, PublicQuestion } from "@/domain/types";
-import { survivalLevel } from "./shared";
 
+// A Survival run stays at one level. It ends on the first wrong answer ("over")
+// or when that level has no unseen questions left ("cleared").
 export interface SurvivalState {
-  status: "loading" | "answering" | "feedback" | "over" | "exhausted";
+  status: "loading" | "answering" | "feedback" | "over" | "cleared";
   level: Level;
-  maxLevel: Level;
   streak: number;
-  leveledUp: boolean;
   current: PublicQuestion | null;
   lastResult: AnswerResult | null;
   seenIds: string[];
@@ -1309,27 +1286,24 @@ export type SurvivalEvent =
   | { type: "ANSWER_RESULT"; result: AnswerResult }
   | { type: "NEXT" };
 
-export const initialSurvivalState: SurvivalState = {
-  status: "loading", level: 1, maxLevel: 1, streak: 0, leveledUp: false,
-  current: null, lastResult: null, seenIds: [], missed: null,
-};
+export const initialSurvivalState = (level: Level): SurvivalState => ({
+  status: "loading", level, streak: 0, current: null, lastResult: null, seenIds: [], missed: null,
+});
+
+/** The level offered after clearing `level`, or null at the top. */
+export const nextSurvivalLevel = (level: Level): Level | null => (level < 5 ? ((level + 1) as Level) : null);
 
 export function survivalReducer(s: SurvivalState, e: SurvivalEvent): SurvivalState {
   switch (e.type) {
     case "QUESTION_LOADED":
       if (s.status !== "loading") return s;
-      return { ...s, status: "answering", current: e.question, lastResult: null, leveledUp: false, seenIds: [...s.seenIds, e.question.id] };
+      return { ...s, status: "answering", current: e.question, lastResult: null, seenIds: [...s.seenIds, e.question.id] };
     case "POOL_EXHAUSTED":
-      return s.status === "loading" ? { ...s, status: "exhausted" } : s;
+      return s.status === "loading" ? { ...s, status: "cleared" } : s;
     case "ANSWER_RESULT": {
       if (s.status !== "answering" || !s.current || e.result.questionId !== s.current.id) return s;
       if (!e.result.correct) return { ...s, status: "over", lastResult: e.result, missed: { question: s.current, result: e.result } };
-      const streak = s.streak + 1;
-      const level = survivalLevel(streak);
-      return {
-        ...s, status: "feedback", lastResult: e.result, streak, level,
-        maxLevel: Math.max(s.maxLevel, level) as Level, leveledUp: level > s.level,
-      };
+      return { ...s, status: "feedback", lastResult: e.result, streak: s.streak + 1 };
     }
     case "NEXT":
       return s.status === "feedback" ? { ...s, status: "loading", current: null } : s;
@@ -1337,27 +1311,7 @@ export function survivalReducer(s: SurvivalState, e: SurvivalEvent): SurvivalSta
 }
 ```
 
-`src/engine/survival-fetch.ts`:
-
-```ts
-import type { Level, PublicQuestion, Topic } from "@/domain/types";
-
-export const RECYCLE_WINDOW = 20;
-export type GetQuestionsFn = (p: { topics: Topic[]; level: Level | null; exclude: string[]; limit: number }) => Promise<PublicQuestion[]>;
-
-export async function fetchSurvivalQuestion(
-  getQuestions: GetQuestionsFn, topics: Topic[], level: Level, seenIds: string[],
-): Promise<PublicQuestion | null> {
-  for (let l = level; l <= 5; l++) {
-    const [q] = await getQuestions({ topics, level: l as Level, exclude: seenIds, limit: 1 });
-    if (q) return q;
-  }
-  const [q] = await getQuestions({ topics, level: 5, exclude: seenIds.slice(-RECYCLE_WINDOW), limit: 1 });
-  return q ?? null;
-}
-```
-
-- [ ] **Step 4: Run.** → PASS. **Step 5: Commit.** `git commit -m "feat(engine): survival reducer with level ramp and pool fallback"`
+- [ ] **Step 4: Run.** → PASS. **Step 5: Commit.** `git commit -m "feat(engine): fixed-level survival reducer"`
 
 ---
 
@@ -1370,8 +1324,8 @@ export async function fetchSurvivalQuestion(
 **Interfaces:**
 - Produces:
   - `SessionSummary`
-  - `ProgressStore { persistent; getPersonalBest(mode, topicsKey); recordSession(s): { newBest: boolean }; getHistory(limit) }`
-  - `topicsKey(topics)`
+  - `ProgressStore { persistent; getPersonalBest(mode, key); recordSession(s): { newBest: boolean }; getHistory(limit) }`
+  - `topicsKey(topics)`, `bestKey(mode, topics, level)` (Survival bests are per level, e.g. `"git+sql@2"`; Exam bests per topic set, e.g. `"spark"`)
   - `LocalProgressStore(storage: Storage | null)`
   - `browserStorage(): Storage | null`
   - `getAnonId(storage: Storage | null): string`
@@ -1380,24 +1334,27 @@ export async function fetchSurvivalQuestion(
 
 ```ts
 import { LocalProgressStore } from "./local-store";
+import type { Level } from "@/domain/types";
 import type { SessionSummary } from "./store";
 
-const survival = (streak: number): SessionSummary => ({
-  mode: "survival", topics: ["sql", "git"], level: "mixed", answered: streak + 1, correct: streak,
-  streak, maxLevel: 2, finishedAt: new Date().toISOString(),
+const survival = (streak: number, level: Level = 2): SessionSummary => ({
+  mode: "survival", topics: ["sql", "git"], level, answered: streak + 1, correct: streak,
+  streak, finishedAt: new Date().toISOString(),
 });
 const exam = (correct: number, answered = 10): SessionSummary => ({
-  mode: "exam", topics: ["spark"], level: 3, answered, correct, streak: null, maxLevel: null, finishedAt: new Date().toISOString(),
+  mode: "exam", topics: ["spark"], level: 3, answered, correct, streak: null, finishedAt: new Date().toISOString(),
 });
 
 beforeEach(() => localStorage.clear());
 
-it("tracks survival best streak per topic set (order-insensitive)", () => {
+it("tracks survival best streak per topic set (order-insensitive) and level", () => {
   const s = new LocalProgressStore(localStorage);
   expect(s.recordSession(survival(3)).newBest).toBe(true);
   expect(s.recordSession(survival(2)).newBest).toBe(false);
-  expect(s.getPersonalBest("survival", "git+sql")).toBe(3);
-  expect(new LocalProgressStore(localStorage).getPersonalBest("survival", "git+sql")).toBe(3); // persisted
+  expect(s.getPersonalBest("survival", "git+sql@2")).toBe(3);
+  expect(new LocalProgressStore(localStorage).getPersonalBest("survival", "git+sql@2")).toBe(3); // persisted
+  expect(s.recordSession(survival(1, 3)).newBest).toBe(true); // separate best per level
+  expect(s.getPersonalBest("survival", "git+sql@3")).toBe(1);
 });
 
 it("tracks exam best percentage", () => {
@@ -1411,6 +1368,7 @@ it("caps history at 200, newest first", () => {
   const s = new LocalProgressStore(localStorage);
   for (let i = 0; i < 205; i++) s.recordSession(exam(i % 10));
   expect(s.getHistory(1000)).toHaveLength(200);
+  expect(s.getHistory(2).map((h) => h.correct)).toEqual([4, 3]);
 });
 
 it("resets on corrupt JSON instead of crashing", () => {
@@ -1424,7 +1382,7 @@ it("works in memory when storage is unavailable", () => {
   const s = new LocalProgressStore(null);
   expect(s.persistent).toBe(false);
   s.recordSession(survival(4));
-  expect(s.getPersonalBest("survival", "git+sql")).toBe(4);
+  expect(s.getPersonalBest("survival", "git+sql@2")).toBe(4);
 });
 
 it("survives a storage that throws on write (quota/private mode)", () => {
@@ -1462,25 +1420,28 @@ export interface SessionSummary {
   answered: number;
   correct: number;
   streak: number | null;   // survival only
-  maxLevel: Level | null;  // survival only
   finishedAt: string;      // ISO
 }
 
 export interface ProgressStore {
   readonly persistent: boolean;
-  getPersonalBest(mode: "exam" | "survival", topicsKey: string): number | null;
+  getPersonalBest(mode: "exam" | "survival", key: string): number | null;
   recordSession(s: SessionSummary): { newBest: boolean };
   getHistory(limit: number): SessionSummary[];
 }
 
 export const topicsKey = (topics: Topic[]): string => [...topics].sort().join("+");
+
+/** Personal-best key: Survival bests are per level (streaks at different levels aren't comparable). */
+export const bestKey = (mode: Mode, topics: Topic[], level: Level | "mixed"): string =>
+  mode === "survival" ? `${topicsKey(topics)}@${level}` : topicsKey(topics);
 ```
 
 `src/progress/local-store.ts`:
 
 ```ts
 import { z } from "zod";
-import { topicsKey, type ProgressStore, type SessionSummary } from "./store";
+import { bestKey, type ProgressStore, type SessionSummary } from "./store";
 
 const KEY = "skewed:v1:progress";
 const HISTORY_CAP = 200;
@@ -1515,7 +1476,7 @@ export class LocalProgressStore implements ProgressStore {
     let newBest = false;
     const score = s.mode === "survival" ? s.streak ?? 0 : s.mode === "exam" && s.answered ? Math.round((s.correct / s.answered) * 100) : null;
     if (score !== null) {
-      const k = `${s.mode}:${topicsKey(s.topics)}`;
+      const k = `${s.mode}:${bestKey(s.mode, s.topics, s.level)}`;
       const prev = this.data.bests[k];
       if (prev === undefined || score > prev) { this.data.bests[k] = score; newBest = true; }
     }
@@ -2181,10 +2142,15 @@ it("starts an exam with chosen topics, level, length and timer", async () => {
   expect(onStart).toHaveBeenCalledWith("exam", "topics=spark%2Csql%2Cgit&level=3&length=20&timer=on");
 });
 
-it("hides level for survival and disables start with no topics", async () => {
-  render(<SetupForm onStart={vi.fn()} />);
+it("survival offers levels 1-5 without Mixed and disables start with no topics", async () => {
+  const onStart = vi.fn();
+  render(<SetupForm onStart={onStart} />);
   await userEvent.click(screen.getByRole("radio", { name: /survival/i }));
-  expect(screen.queryByLabelText(/level/i)).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/level/i)).toHaveValue("1");
+  expect(screen.queryByRole("option", { name: /mixed/i })).not.toBeInTheDocument();
+  await userEvent.selectOptions(screen.getByLabelText(/level/i), "3");
+  await userEvent.click(screen.getByRole("button", { name: /start/i }));
+  expect(onStart).toHaveBeenCalledWith("survival", "topics=spark%2Csql&level=3");
   for (const t of ["spark", "sql"]) await userEvent.click(screen.getByRole("checkbox", { name: new RegExp(t, "i") }));
   expect(screen.getByRole("button", { name: /start/i })).toBeDisabled();
 });
@@ -2203,7 +2169,7 @@ it("hides level for survival and disables start with no topics", async () => {
   "modes": {
     "practice": { "name": "Practice", "desc": "Instant feedback after every question." },
     "exam": { "name": "Exam", "desc": "Answer them all, then review your results." },
-    "survival": { "name": "Survival", "desc": "Levels ramp up. One wrong answer and it's over." }
+    "survival": { "name": "Survival", "desc": "Pick a level. One wrong answer and it's over." }
   },
   "topicNames": { "spark": "PySpark", "sql": "SQL", "git": "Git" }
 }
@@ -2229,11 +2195,13 @@ export function SetupForm({ onStart }: { onStart: (mode: Mode, query: string) =>
 
   const toggle = (t: Topic) => setTopics((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : [...ts, t]));
   const ordered = TOPICS.filter((t) => topics.includes(t));
+  // Survival always runs at one fixed level, so "Mixed" falls back to level 1 there.
+  const shownLevel: Level | "mixed" = mode === "survival" && level === "mixed" ? 1 : level;
 
   return (
     <form className="space-y-6" onSubmit={(e) => {
       e.preventDefault();
-      onStart(mode, toSearchParams({ mode, topics: ordered, level: mode === "survival" ? "mixed" : level, examLength, timerSeconds: timer ? EXAM_TIMER_SECONDS : null }));
+      onStart(mode, toSearchParams({ mode, topics: ordered, level: shownLevel, examLength, timerSeconds: timer ? EXAM_TIMER_SECONDS : null }));
     }}>
       <fieldset className="grid gap-2 sm:grid-cols-3">
         <legend className="mb-2 font-medium">{en.setup.mode}</legend>
@@ -2254,15 +2222,13 @@ export function SetupForm({ onStart }: { onStart: (mode: Mode, query: string) =>
           </label>
         ))}
       </fieldset>
-      {mode !== "survival" && (
-        <label className="block">
-          {en.setup.level}
-          <select className="ml-2 rounded border p-1" value={String(level)} onChange={(e) => setLevel(e.target.value === "mixed" ? "mixed" : (Number(e.target.value) as Level))}>
-            <option value="mixed">{en.setup.mixed}</option>
-            {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </label>
-      )}
+      <label className="block">
+        {en.setup.level}
+        <select className="ml-2 rounded border p-1" value={String(shownLevel)} onChange={(e) => setLevel(e.target.value === "mixed" ? "mixed" : (Number(e.target.value) as Level))}>
+          {mode !== "survival" && <option value="mixed">{en.setup.mixed}</option>}
+          {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </label>
       {mode === "exam" && (
         <div className="flex flex-wrap gap-6">
           <label>
@@ -2465,7 +2431,7 @@ export function PracticeGame({ config }: { config: SessionConfig }) {
   useEffect(() => {
     if (state.status === "ended" && state.answered > 0)
       progress.recordSession({ mode: "practice", topics: config.topics, level: config.level, answered: state.answered,
-        correct: state.correct, streak: null, maxLevel: null, finishedAt: new Date().toISOString() });
+        correct: state.correct, streak: null, finishedAt: new Date().toISOString() });
   }, [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const score = <p className="text-sm text-neutral-500">{en.game.score}: {state.correct} / {state.answered}</p>;
@@ -2715,7 +2681,7 @@ export function ExamGame({ config }: { config: SessionConfig }) {
     recorded.current = true;
     const s = summarizeExam(state);
     setNewBest(progress.recordSession({ mode: "exam", topics: config.topics, level: config.level, answered: s.total,
-      correct: s.correct, streak: null, maxLevel: null, finishedAt: new Date().toISOString() }).newBest);
+      correct: s.correct, streak: null, finishedAt: new Date().toISOString() }).newBest);
   }, [state, progress, config]);
 
   if (loadError) return <ErrorRetry message={en.game.loadFailed} onRetry={() => setAttempt((n) => n + 1)} />;
@@ -2788,43 +2754,64 @@ export function ExamReview({ state, newBest, persistent }: { state: ExamState; n
 - Test: `src/app/play/survival/SurvivalGame.test.tsx`
 
 **Interfaces:**
-- Consumes: `survivalReducer`, `fetchSurvivalQuestion` (Task 7), `topicsKey` (Task 8), plus the shared UI.
+- Consumes: `survivalReducer`, `initialSurvivalState`, `nextSurvivalLevel` (Task 7), `bestKey` (Task 8), `toSearchParams` (Task 5), plus the shared UI.
 - Produces: `<SurvivalGame config />`.
 
-- [ ] **Step 1: Write the failing test.** Use the same harness as Task 13, with config `{ mode: "survival", topics: ["sql"], level: "mixed", examLength: 10, timerSeconds: null }`.
+**Behaviour:** the run stays at `config.level` (always 1–5 for survival; `parseSessionConfig` guarantees it). A wrong answer → "Game over" with the missed question. Running out of the level's questions → "Level N cleared!" with a link that starts a **new run** at N+1 (none at level 5). Both record the session and show the per-level personal best. If the level has no questions at all (cleared with streak 0), show `en.game.empty` and record nothing.
+
+- [ ] **Step 1: Write the failing tests.** Use the same harness as Task 13 (mocks for `CodeBlock` and an identity `shuffle`), with config `{ mode: "survival", topics: ["sql"], level: 1, examLength: 10, timerSeconds: null }`.
 
 ```tsx
-it("ramps to level 2 after 5 correct, ends on a wrong answer, records best", async () => {
-  let n = 0;
-  const getQuestions = vi.fn().mockImplementation(async () => [makeQuestion(`q${n++}`)]);
-  const submitAnswer = vi.fn().mockImplementation(async ({ questionId, optionId }) => ({
-    questionId, chosenOptionId: optionId, correct: optionId.endsWith("-a"), correctOptionId: `${questionId}-a`,
-    explanations: { [`${questionId}-a`]: "why" }, docsUrl: null,
-  }));
-  const progress = new LocalProgressStore(null);
+const submitAnswer = vi.fn().mockImplementation(async ({ questionId, optionId }) => ({
+  questionId, chosenOptionId: optionId, correct: optionId.endsWith("-a"), correctOptionId: `${questionId}-a`,
+  explanations: { [`${questionId}-a`]: "why" }, docsUrl: null,
+}));
+const renderGame = (getQuestions: ReturnType<typeof vi.fn>, progress = new LocalProgressStore(null)) => {
   render(
     <GameServicesProvider services={{ api: { getQuestions, submitAnswer } as unknown as QuizApi, progress, anonId: "a" }}>
       <SurvivalGame config={config} />
     </GameServicesProvider>,
   );
-  for (let i = 0; i < 5; i++) {
-    await screen.findByRole("heading", { name: `q${i}` });
-    await userEvent.click(screen.getAllByRole("button", { name: /^Option/ })[0]);
-    await userEvent.click(await screen.findByRole("button", { name: /next/i }));
-  }
-  expect(getQuestions).toHaveBeenLastCalledWith(expect.objectContaining({ level: 2 }));
+  return progress;
+};
+const answerRight = async (id: string) => {
+  await screen.findByRole("heading", { name: id });
+  await userEvent.click(screen.getAllByRole("button", { name: /^Option/ })[0]);
+  await userEvent.click(await screen.findByRole("button", { name: /next/i }));
+};
+
+it("stays at the chosen level, ends on a wrong answer, records the per-level best", async () => {
+  let n = 0;
+  const getQuestions = vi.fn().mockImplementation(async () => [makeQuestion(`q${n++}`)]);
+  const progress = renderGame(getQuestions);
+  for (let i = 0; i < 5; i++) await answerRight(`q${i}`);
+  expect(getQuestions).toHaveBeenLastCalledWith(expect.objectContaining({ level: 1, exclude: ["q0", "q1", "q2", "q3", "q4"] }));
   await screen.findByRole("heading", { name: "q5" });
-  expect(screen.getByText(/level 2/i)).toBeInTheDocument();
+  expect(screen.getByText(/level 1/i)).toBeInTheDocument();
   await userEvent.click(screen.getAllByRole("button", { name: /^Option/ })[1]);
-  expect(await screen.findByText(/streak: 5/i)).toBeInTheDocument();
+  expect(await screen.findByText(/game over/i)).toBeInTheDocument();
+  expect(screen.getByText(/streak: 5/i)).toBeInTheDocument();
   expect(screen.getByText(/new personal best/i)).toBeInTheDocument();
-  expect(progress.getPersonalBest("survival", "sql")).toBe(5);
+  expect(progress.getPersonalBest("survival", "sql@1")).toBe(5);
+});
+
+it("clearing the level ends the run and offers a new run one level up", async () => {
+  const getQuestions = vi.fn()
+    .mockResolvedValueOnce([makeQuestion("q0")])
+    .mockResolvedValueOnce([makeQuestion("q1")])
+    .mockResolvedValue([]);
+  const progress = renderGame(getQuestions);
+  await answerRight("q0");
+  await answerRight("q1");
+  expect(await screen.findByText(/level 1 cleared/i)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /go to level 2/i })).toHaveAttribute("href", "/play/survival?topics=sql&level=2");
+  expect(progress.getPersonalBest("survival", "sql@1")).toBe(2);
 });
 ```
 
 - [ ] **Step 2: Run.** → FAIL.
 
-- [ ] **Step 3: Implement.** Add to `en.json`: `"survival": { "streak": "Streak: {n}", "level": "Level {n}", "levelUp": "Level up! Now at level {n}.", "over": "Game over", "reached": "Reached level {n}", "best": "Personal best: {n}", "newBest": "New personal best!", "missed": "The question that got you:", "again": "Play again" }`.
+- [ ] **Step 3: Implement.** Add to `en.json`: `"survival": { "streak": "Streak: {n}", "level": "Level {n}", "over": "Game over", "cleared": "Level {n} cleared!", "clearedHint": "You've answered every level {n} question.", "nextLevel": "Go to level {n}", "best": "Personal best: {n}", "newBest": "New personal best!", "missed": "The question that got you:", "again": "Play again" }`.
 
 `src/app/play/survival/SurvivalGame.tsx`:
 
@@ -2836,34 +2823,35 @@ import { ErrorRetry } from "@/components/quiz/ErrorRetry";
 import { QuestionView } from "@/components/quiz/QuestionView";
 import { ReportDialog } from "@/components/quiz/ReportDialog";
 import { useShuffledOptions } from "@/components/quiz/useShuffledOptions";
-import type { AnswerResult, SessionConfig } from "@/domain/types";
-import { initialSurvivalState, survivalReducer } from "@/engine/survival";
-import { fetchSurvivalQuestion } from "@/engine/survival-fetch";
+import type { AnswerResult, Level, SessionConfig } from "@/domain/types";
+import { toSearchParams } from "@/engine/session-config";
+import { initialSurvivalState, nextSurvivalLevel, survivalReducer } from "@/engine/survival";
 import { useAnswerSubmitter } from "@/game/use-answer-submitter";
 import { useGameServices } from "@/game/services";
-import { topicsKey } from "@/progress/store";
+import { bestKey } from "@/progress/store";
 import en from "@/messages/en.json";
 
 const fmt = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k]));
 
 export function SurvivalGame({ config }: { config: SessionConfig }) {
+  const level = config.level as Level; // parseSessionConfig never yields "mixed" for survival
   const { api, anonId, progress } = useGameServices();
   const [sessionId] = useState(() => crypto.randomUUID());
-  const [state, dispatch] = useReducer(survivalReducer, initialSurvivalState);
+  const [state, dispatch] = useReducer(survivalReducer, level, initialSurvivalState);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [newBest, setNewBest] = useState(false);
   const recorded = useRef(false);
   const onResult = useCallback((result: AnswerResult) => dispatch({ type: "ANSWER_RESULT", result }), []);
   const submitter = useAnswerSubmitter(api, { anonId, sessionId, mode: "survival" }, onResult);
-  const options = useShuffledOptions(state.current);
+  const options = useShuffledOptions(state.current ?? state.missed?.question ?? null);
 
   useEffect(() => {
     if (state.status !== "loading") return;
     let alive = true;
     setLoadError(false);
-    fetchSurvivalQuestion((p) => api.getQuestions(p), config.topics, state.level, state.seenIds)
-      .then((q) => alive && dispatch(q ? { type: "QUESTION_LOADED", question: q } : { type: "POOL_EXHAUSTED" }))
+    api.getQuestions({ topics: config.topics, level: state.level, exclude: state.seenIds, limit: 1 })
+      .then(([q]) => alive && dispatch(q ? { type: "QUESTION_LOADED", question: q } : { type: "POOL_EXHAUSTED" }))
       .catch(() => alive && setLoadError(true));
     return () => { alive = false; };
   }, [state.status, state.level, state.seenIds, api, config.topics, attempt]);
@@ -2871,33 +2859,48 @@ export function SurvivalGame({ config }: { config: SessionConfig }) {
   const { markShown } = submitter;
   useEffect(() => { if (state.status === "answering") markShown(); }, [state.status, state.current?.id, markShown]);
 
+  const ended = state.status === "over" || (state.status === "cleared" && state.streak > 0);
   useEffect(() => {
-    if (state.status !== "over" || recorded.current) return;
+    if (!ended || recorded.current) return;
     recorded.current = true;
-    setNewBest(progress.recordSession({ mode: "survival", topics: config.topics, level: "mixed", answered: state.streak + 1,
-      correct: state.streak, streak: state.streak, maxLevel: state.maxLevel, finishedAt: new Date().toISOString() }).newBest);
-  }, [state, progress, config.topics]);
+    setNewBest(progress.recordSession({
+      mode: "survival", topics: config.topics, level: state.level,
+      answered: state.streak + (state.status === "over" ? 1 : 0), correct: state.streak, streak: state.streak,
+      finishedAt: new Date().toISOString(),
+    }).newBest);
+  }, [ended, state, progress, config.topics]);
 
   if (loadError) return <ErrorRetry message={en.game.loadFailed} onRetry={() => setAttempt((n) => n + 1)} />;
-  if (state.status === "exhausted") return <p>{en.game.empty}</p>;
+  if (state.status === "cleared" && state.streak === 0) return <p>{en.game.empty}</p>;
 
-  if (state.status === "over" && state.missed) {
-    const best = progress.getPersonalBest("survival", topicsKey(config.topics));
+  if (ended) {
+    const best = progress.getPersonalBest("survival", bestKey("survival", config.topics, state.level));
+    const next = state.status === "cleared" ? nextSurvivalLevel(state.level) : null;
     return (
       <div className="space-y-6">
         <section>
-          <h1 className="text-2xl font-bold">{en.survival.over}</h1>
-          <p>{fmt(en.survival.streak, { n: state.streak })} · {fmt(en.survival.reached, { n: state.maxLevel })}</p>
+          <h1 className="text-2xl font-bold">{state.status === "cleared" ? fmt(en.survival.cleared, { n: state.level }) : en.survival.over}</h1>
+          {state.status === "cleared" && <p>{fmt(en.survival.clearedHint, { n: state.level })}</p>}
+          <p>{fmt(en.survival.streak, { n: state.streak })} · {fmt(en.survival.level, { n: state.level })}</p>
           {newBest ? <p className="text-emerald-600">{en.survival.newBest}</p> : best !== null && <p>{fmt(en.survival.best, { n: best })}</p>}
           {!progress.persistent && <p className="text-sm text-neutral-500">{en.game.notSaved}</p>}
           <div className="mt-3 flex gap-3">
+            {next && (
+              <Link href={`/play/survival?${toSearchParams({ ...config, level: next })}`} className="rounded bg-emerald-600 px-4 py-2 text-white">
+                {fmt(en.survival.nextLevel, { n: next })}
+              </Link>
+            )}
             <button type="button" onClick={() => window.location.reload()} className="rounded bg-sky-600 px-4 py-2 text-white">{en.survival.again}</button>
             <Link href="/play" className="rounded border px-4 py-2">{en.game.changeSetup}</Link>
           </div>
         </section>
-        <h2 className="font-medium">{en.survival.missed}</h2>
-        <QuestionView question={state.missed.question} options={options} result={state.missed.result} disabled onSelect={() => {}} />
-        <ReportDialog api={api} anonId={anonId} questionId={state.missed.question.id} />
+        {state.missed && (
+          <>
+            <h2 className="font-medium">{en.survival.missed}</h2>
+            <QuestionView question={state.missed.question} options={options} result={state.missed.result} disabled onSelect={() => {}} />
+            <ReportDialog api={api} anonId={anonId} questionId={state.missed.question.id} />
+          </>
+        )}
       </div>
     );
   }
@@ -2917,7 +2920,7 @@ export function SurvivalGame({ config }: { config: SessionConfig }) {
           {submitter.error && <ErrorRetry message={en.game.submitFailed} onRetry={submitter.retry} />}
           {state.status === "feedback" && (
             <div className="flex items-center justify-between">
-              <p className="text-emerald-600">{state.leveledUp ? fmt(en.survival.levelUp, { n: state.level }) : en.game.correct}</p>
+              <p className="text-emerald-600">{en.game.correct}</p>
               <button type="button" onClick={() => dispatch({ type: "NEXT" })} className="rounded bg-sky-600 px-4 py-2 text-white">{en.game.next}</button>
             </div>
           )}
@@ -2929,9 +2932,9 @@ export function SurvivalGame({ config }: { config: SessionConfig }) {
 }
 ```
 
-`src/app/play/survival/page.tsx`: same pattern as Practice, with `parseSessionConfig("survival", ...)`.
+`src/app/play/survival/page.tsx`: same pattern as Practice, with `parseSessionConfig("survival", ...)`, rendering `<SurvivalGame key={toSearchParams(config)} config={config} />`. The `key` matters: "Go to level N+1" is a client-side navigation to the same route, and the key forces a fresh run (new reducer state and session id).
 
-- [ ] **Step 4: Run.** → PASS. **Step 5: Commit.** `git commit -m "feat(ui): survival mode with level ramp and game over"`
+- [ ] **Step 4: Run.** → PASS. **Step 5: Commit.** `git commit -m "feat(ui): fixed-level survival with game over and level-up offer"`
 
 ---
 
@@ -3029,17 +3032,28 @@ test("exam: setup flow from /play", async ({ page }) => {
 ```ts
 import { expect, test } from "@playwright/test";
 
-test("survival: 5 correct levels up, wrong answer ends run", async ({ page }) => {
-  await page.goto("/play/survival?topics=sql");
+test("survival: stays at level 1, wrong answer ends run", async ({ page }) => {
+  await page.goto("/play/survival?topics=sql&level=1");
   for (let i = 0; i < 5; i++) {
     await page.getByRole("button", { name: /^Option/ }).filter({ hasText: "right-" }).click();
     await page.getByRole("button", { name: /next question/i }).click();
   }
-  await expect(page.getByText("Level 2")).toBeVisible();
+  await expect(page.getByText("Level 1", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^Option/ }).filter({ hasText: "nope-" }).first().click();
   await expect(page.getByText("Game over")).toBeVisible();
   await expect(page.getByText(/Streak: 5/)).toBeVisible();
   await expect(page.getByText(/new personal best/i)).toBeVisible();
+});
+
+test("survival: clearing a level offers a new run one level up", async ({ page }) => {
+  await page.goto("/play/survival?topics=sql&level=2"); // the fixture bank has 2 level-2 questions
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole("button", { name: /^Option/ }).filter({ hasText: "right-" }).click();
+    await page.getByRole("button", { name: /next question/i }).click();
+  }
+  await expect(page.getByText("Level 2 cleared!")).toBeVisible();
+  await page.getByRole("link", { name: "Go to level 3" }).click();
+  await expect(page).toHaveURL(/\/play\/survival\?topics=sql&level=3/);
 });
 ```
 

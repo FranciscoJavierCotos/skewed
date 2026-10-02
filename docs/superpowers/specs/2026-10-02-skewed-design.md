@@ -94,10 +94,10 @@ All modes: the player selects **one or more topics**. No question repeats within
 - If the pool is smaller than the chosen length, the exam uses what's available and tells the player.
 
 ### 3.3 Survival
-- Choose topics. You start at **level 1**, and **every 5 correct answers moves you up a level** (capped at 5).
+- Choose topics and **one level (1–5; no Mixed)**. The run stays at that level and only draws that level's questions. There is no level ramp.
 - **One wrong answer ends the run.** There is no timer in the MVP.
-- If the current level's pool runs out, draw from the next level up. At level 5, recycle questions, excluding the 20 most recently seen.
-- The game-over screen shows the streak, the highest level reached, the question you missed with its explanations, and your personal best (localStorage) with a "New best!" badge.
+- **Running out of the level's questions also ends the run** ("Level N cleared!"). The player is then offered a **new run at level N+1** (none after level 5). The streak does not carry over.
+- The end screen shows the streak, the level, your personal best for that topic set **and level** (localStorage) with a "New best!" badge, and, after a wrong answer, the question you missed with its explanations.
 
 ### 3.4 Game engine
 A pure TypeScript module per mode (`src/engine/`), with no React and no I/O. Each one is a reducer, `(state, event) => state`, with these events: `START`, `QUESTION_LOADED`, `ANSWER_RESULT`, `TIMEOUT`, `END`. Fetching questions and submitting answers happen in a thin adapter layer that dispatches events.
@@ -138,7 +138,7 @@ Next.js (App Router), TypeScript (strict), Tailwind CSS, Shiki for highlighting 
 
 ### 4.4 Guest progress (localStorage)
 The `ProgressStore` interface has these methods:
-- `getPersonalBest(mode, topicsKey)` (Survival: best streak; Exam: best percentage)
+- `getPersonalBest(mode, key)` (Survival: best streak per topic set and level; Exam: best percentage per topic set)
 - `recordSession(summary)`
 - `getHistory(limit)`
 
@@ -161,7 +161,7 @@ The `ProgressStore` interface has these methods:
 
 ## 5. Testing & CI/CD
 - **Unit (Vitest):**
-  - engines: Survival ramping and game over, Exam timer and scoring, Practice with no repeats and pool exhaustion;
+  - engines: Survival at a fixed level, game over and level cleared, Exam timer and scoring, Practice with no repeats and pool exhaustion;
   - content validator;
   - LocalProgressStore.
 - **Database (SQL tests against local Supabase):**

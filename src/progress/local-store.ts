@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { topicsKey, type ProgressStore, type SessionSummary } from "./store";
+import { bestKey, type ProgressStore, type SessionSummary } from "./store";
 
 const KEY = "skewed:v1:progress";
 const HISTORY_CAP = 200;
@@ -34,7 +34,7 @@ export class LocalProgressStore implements ProgressStore {
     let newBest = false;
     const score = s.mode === "survival" ? s.streak ?? 0 : s.mode === "exam" && s.answered ? Math.round((s.correct / s.answered) * 100) : null;
     if (score !== null) {
-      const k = `${s.mode}:${topicsKey(s.topics)}`;
+      const k = `${s.mode}:${bestKey(s.mode, s.topics, s.level)}`;
       const prev = this.data.bests[k];
       if (prev === undefined || score > prev) { this.data.bests[k] = score; newBest = true; }
     }
