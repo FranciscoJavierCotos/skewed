@@ -1,3 +1,7 @@
 {
-  "app": { "name": "Skewed", "tagline": "Data engineering drills: PySpark, SQL & Git" }
+  "app": { "name": "Skewed", "tagline": "Data engineering drills: PySpark, SQL & Git" },
+  "quiz": {
+    "option": "Option", "correctAnswer": "correct answer", "yourAnswer": "your answer",
+    "timedOut": "Time ran out — no answer recorded", "docs": "Read the docs", "level": "Level"
+  }
 }
