@@ -1,12 +1,11 @@
 import type { AnswerResult, Level, PublicQuestion } from "@/domain/types";
-import { survivalLevel } from "./shared";
 
+// A Survival run stays at one level. It ends on the first wrong answer ("over")
+// or when that level has no unseen questions left ("cleared").
 export interface SurvivalState {
-  status: "loading" | "answering" | "feedback" | "over" | "exhausted";
+  status: "loading" | "answering" | "feedback" | "over" | "cleared";
   level: Level;
-  maxLevel: Level;
   streak: number;
-  leveledUp: boolean;
   current: PublicQuestion | null;
   lastResult: AnswerResult | null;
   seenIds: string[];
@@ -19,27 +18,24 @@ export type SurvivalEvent =
   | { type: "ANSWER_RESULT"; result: AnswerResult }
   | { type: "NEXT" };
 
-export const initialSurvivalState: SurvivalState = {
-  status: "loading", level: 1, maxLevel: 1, streak: 0, leveledUp: false,
-  current: null, lastResult: null, seenIds: [], missed: null,
-};
+export const initialSurvivalState = (level: Level): SurvivalState => ({
+  status: "loading", level, streak: 0, current: null, lastResult: null, seenIds: [], missed: null,
+});
+
+/** The level offered after clearing `level`, or null at the top. */
+export const nextSurvivalLevel = (level: Level): Level | null => (level < 5 ? ((level + 1) as Level) : null);
 
 export function survivalReducer(s: SurvivalState, e: SurvivalEvent): SurvivalState {
   switch (e.type) {
     case "QUESTION_LOADED":
       if (s.status !== "loading") return s;
-      return { ...s, status: "answering", current: e.question, lastResult: null, leveledUp: false, seenIds: [...s.seenIds, e.question.id] };
+      return { ...s, status: "answering", current: e.question, lastResult: null, seenIds: [...s.seenIds, e.question.id] };
     case "POOL_EXHAUSTED":
-      return s.status === "loading" ? { ...s, status: "exhausted" } : s;
+      return s.status === "loading" ? { ...s, status: "cleared" } : s;
     case "ANSWER_RESULT": {
       if (s.status !== "answering" || !s.current || e.result.questionId !== s.current.id) return s;
       if (!e.result.correct) return { ...s, status: "over", lastResult: e.result, missed: { question: s.current, result: e.result } };
-      const streak = s.streak + 1;
-      const level = survivalLevel(streak);
-      return {
-        ...s, status: "feedback", lastResult: e.result, streak, level,
-        maxLevel: Math.max(s.maxLevel, level) as Level, leveledUp: level > s.level,
-      };
+      return { ...s, status: "feedback", lastResult: e.result, streak: s.streak + 1 };
     }
     case "NEXT":
       return s.status === "feedback" ? { ...s, status: "loading", current: null } : s;

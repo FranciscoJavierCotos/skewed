@@ -22,3 +22,8 @@ it("round-trips", () => {
   const c = parseSessionConfig("exam", p("topics=sql&level=2&length=40&timer=on"))!;
   expect(parseSessionConfig("exam", p(toSearchParams(c)))).toEqual(c);
 });
+it("survival defaults to level 1 and rejects mixed", () => {
+  expect(parseSessionConfig("survival", p("topics=sql"))?.level).toBe(1);
+  expect(parseSessionConfig("survival", p("topics=sql&level=4"))?.level).toBe(4);
+  expect(parseSessionConfig("survival", p("topics=sql&level=mixed"))).toBeNull();
+});
