@@ -4,6 +4,7 @@ Skewed is a quick-fire quiz for data engineers. Each question shows a PySpark, S
 
 - Design spec: [docs/superpowers/specs/2026-10-02-skewed-design.md](docs/superpowers/specs/2026-10-02-skewed-design.md)
 - Implementation plan: [docs/superpowers/plans/2026-10-02-skewed-mvp.md](docs/superpowers/plans/2026-10-02-skewed-mvp.md)
+- Content authoring guide: [docs/content-guide.md](docs/content-guide.md)
 
 ## Local setup
 
