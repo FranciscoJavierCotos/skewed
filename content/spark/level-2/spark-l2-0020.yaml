@@ -1,0 +1,39 @@
+id: spark-l2-0020
+topic: spark
+level: 2
+title: Count returned orders per customer
+prompt: |
+  Customer service wants, for every customer, the number of orders with
+  `status == "returned"` in a column `n_returned`. Customers who never returned
+  anything must show 0, not null.
+context: |
+  `df` has columns `order_id`, `customer_id` and `status`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.groupBy("customer_id").agg(F.count(F.when(F.col("status") == "returned", 1)).alias("n_returned"))
+    correct: true
+    explanation: >-
+      `when` without `otherwise` gives null for other statuses, and `count` skips
+      nulls, so only returned orders are counted and the minimum is 0.
+  - code: |
+      df.groupBy("customer_id").agg(F.sum(F.when(F.col("status") == "returned", 1)).alias("n_returned"))
+    correct: false
+    explanation: >-
+      For a customer with no returns, every value is null, and `sum` over only
+      nulls is null rather than 0.
+  - code: |
+      df.groupBy("customer_id").agg(F.count("status").alias("n_returned"))
+    correct: false
+    explanation: >-
+      `count("status")` counts every order that has a status, not only the
+      returned ones.
+  - code: |
+      df.groupBy("customer_id").agg(F.countDistinct("status").alias("n_returned"))
+    correct: false
+    explanation: >-
+      This counts how many different statuses a customer has, not how many of
+      their orders were returned.
+tags: [null-handling, aggregate-functions, conditional-aggregation]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.when.html
+status: approved

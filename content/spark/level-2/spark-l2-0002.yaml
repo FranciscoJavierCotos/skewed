@@ -1,0 +1,39 @@
+id: spark-l2-0002
+topic: spark
+level: 2
+title: Daily active users from a clickstream
+prompt: |
+  Product analytics wants daily active users: for each `event_date`, the number
+  of **distinct** users who produced at least one event that day, in a column
+  `dau`. A user active on several days counts once on each of those days.
+context: |
+  `df` has one row per event with columns `event_date`, `user_id` and `event_type`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.groupBy("event_date").agg(F.countDistinct("user_id").alias("dau"))
+    correct: true
+    explanation: >-
+      `countDistinct` counts each user once per date group, which is exactly the
+      daily active user count.
+  - code: |
+      df.groupBy("event_date").agg(F.count("user_id").alias("dau"))
+    correct: false
+    explanation: >-
+      `count` counts events, so a user who clicks five times in a day is counted
+      five times.
+  - code: |
+      df.dropDuplicates(["user_id"]).groupBy("event_date").agg(F.count("*").alias("dau"))
+    correct: false
+    explanation: >-
+      Deduplicating on `user_id` alone keeps one event per user across all days,
+      so a user active on several days is only counted on one of them.
+  - code: |
+      df.groupBy("event_date", "user_id").agg(F.count("*").alias("dau"))
+    correct: false
+    explanation: >-
+      Grouping by user as well gives one row per user per day, holding that
+      user's event count, instead of one row per day.
+tags: [group-by, count-distinct]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.countDistinct.html
+status: approved

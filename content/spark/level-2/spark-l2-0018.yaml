@@ -1,0 +1,39 @@
+id: spark-l2-0018
+topic: spark
+level: 2
+title: Categories each customer has bought from
+prompt: |
+  A recommendation feature needs, per customer, an array of the **distinct**
+  categories they've bought from, sorted alphabetically, in a column
+  `categories`.
+context: |
+  `df` has columns `customer_id`, `order_id` and `category`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.groupBy("customer_id").agg(F.sort_array(F.collect_list("category")).alias("categories"))
+    correct: false
+    explanation: >-
+      `collect_list` keeps one entry per order line, so a category bought several
+      times appears several times.
+  - code: |
+      df.groupBy("customer_id").agg(F.countDistinct("category").alias("categories"))
+    correct: false
+    explanation: >-
+      `countDistinct` returns the number of distinct categories, not an array of
+      their names.
+  - code: |
+      df.groupBy("customer_id").agg(F.sort_array(F.collect_set("category")).alias("categories"))
+    correct: true
+    explanation: >-
+      `collect_set` gathers each category once per customer, and `sort_array`
+      orders the array alphabetically.
+  - code: |
+      df.groupBy("customer_id").agg(F.sort_array(F.collect_set("category"), asc=False).alias("categories"))
+    correct: false
+    explanation: >-
+      The categories are distinct, but `asc=False` sorts them in reverse
+      alphabetical order.
+tags: [group-by, aggregate-functions, arrays]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.collect_set.html
+status: approved

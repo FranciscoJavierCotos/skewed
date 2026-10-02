@@ -1,0 +1,39 @@
+id: spark-l2-0007
+topic: spark
+level: 2
+title: Missing emails per country
+prompt: |
+  A data-quality dashboard needs, for **every** country in the customer table,
+  the number of customers whose `email` is null, in a column `missing_email`.
+  Countries with no missing emails must appear with 0.
+context: |
+  `df` has columns `customer_id`, `country` and `email` (nullable).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.groupBy("country").agg(F.sum(F.col("email").isNull().cast("int")).alias("missing_email"))
+    correct: true
+    explanation: >-
+      `isNull` gives true/false for every row, the cast turns it into 1/0, and
+      the sum counts the nulls, giving 0 for countries with none.
+  - code: |
+      df.groupBy("country").agg(F.count("email").alias("missing_email"))
+    correct: false
+    explanation: >-
+      `count(column)` skips nulls, so it counts the customers who do have an
+      email: the opposite of what's asked.
+  - code: |
+      df.groupBy("country").agg(F.count(F.col("email").isNull()).alias("missing_email"))
+    correct: false
+    explanation: >-
+      `isNull` returns true or false, and neither is null, so `count` counts every
+      customer in the country.
+  - code: |
+      df.filter(F.col("email").isNull()).groupBy("country").agg(F.count("*").alias("missing_email"))
+    correct: false
+    explanation: >-
+      Filtering first removes countries with no missing emails entirely, so they
+      don't appear with 0.
+tags: [null-handling, aggregate-functions, data-quality]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.isNull.html
+status: approved

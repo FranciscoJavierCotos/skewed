@@ -1,0 +1,39 @@
+id: spark-l2-0006
+topic: spark
+level: 2
+title: Net amount when the discount may be missing
+prompt: |
+  Compute `net = amount - discount` for every order. A null `discount` means no
+  discount was applied, so those orders must get `net = amount`. Every order row
+  must be kept.
+context: |
+  `df` has columns `order_id`, `amount` (never null) and `discount` (nullable).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("net", F.col("amount") - F.col("discount"))
+    correct: false
+    explanation: >-
+      Arithmetic with a null gives null, so orders without a discount get a null
+      `net` instead of their amount.
+  - code: |
+      df.na.drop(subset=["discount"]).withColumn("net", F.col("amount") - F.col("discount"))
+    correct: false
+    explanation: >-
+      The net values are right for the rows that remain, but orders with no
+      discount are dropped instead of kept.
+  - code: |
+      df.withColumn("net", F.col("amount") - F.when(F.col("discount").isNull(), 0))
+    correct: false
+    explanation: >-
+      `when` without `otherwise` returns null when the condition is false, so
+      every order that does have a discount gets a null `net`.
+  - code: |
+      df.withColumn("net", F.col("amount") - F.coalesce("discount", F.lit(0)))
+    correct: true
+    explanation: >-
+      `coalesce` replaces a null discount with 0, so those orders get
+      `net = amount`, and real discounts are subtracted as usual.
+tags: [null-handling, coalesce]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.coalesce.html
+status: approved

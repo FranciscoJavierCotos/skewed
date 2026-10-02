@@ -1,0 +1,42 @@
+id: spark-l2-0012
+topic: spark
+level: 2
+title: Customers who never ordered
+prompt: |
+  For a win-back campaign, find the customers who have **no** orders at all.
+  Use a join between the two DataFrames.
+context: |
+  `customers(customer_id, name)` and `orders(order_id, customer_id)`.
+  `order_id` is never null in `orders`. `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (customers.join(orders, "customer_id", "left")
+         .filter(F.col("order_id") == None))
+    correct: false
+    explanation: >-
+      Comparing with `== None` gives null rather than true, so the filter keeps
+      no rows. Use `isNull()`.
+  - code: |
+      (customers.join(orders, "customer_id", "left")
+         .filter(F.col("order_id").isNull()))
+    correct: true
+    explanation: >-
+      A left join fills the order columns with null for customers with no match,
+      so filtering on a null `order_id` keeps exactly those customers.
+  - code: |
+      (customers.join(orders, "customer_id", "inner")
+         .filter(F.col("order_id").isNull()))
+    correct: false
+    explanation: >-
+      An inner join only keeps customers who have orders, so no row has a null
+      `order_id` and the result is empty.
+  - code: |
+      (customers.join(orders, "customer_id", "left")
+         .filter(F.col("customer_id").isNull()))
+    correct: false
+    explanation: >-
+      The joined `customer_id` comes from `customers`, so it's never null after a
+      left join, and the result is empty.
+tags: [joins, left-join, null-handling]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.join.html
+status: approved

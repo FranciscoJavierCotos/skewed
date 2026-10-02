@@ -1,0 +1,39 @@
+id: spark-l2-0001
+topic: spark
+level: 2
+title: Revenue per customer
+prompt: |
+  The account managers need one row per customer with two columns:
+  `customer_id` and `revenue`, the sum of `amount` across all of that customer's
+  orders.
+context: |
+  `df` has columns `order_id`, `customer_id` and `amount`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.groupBy("customer_id").sum("amount")
+    correct: false
+    explanation: >-
+      The totals are right, but the shortcut names the column `sum(amount)`, not
+      `revenue`.
+  - code: |
+      df.groupBy("customer_id").agg(F.count("amount").alias("revenue"))
+    correct: false
+    explanation: >-
+      `count` returns how many orders each customer placed, not the sum of their
+      amounts.
+  - code: |
+      df.groupBy("customer_id").agg(F.sum("amount").alias("revenue"))
+    correct: true
+    explanation: >-
+      Grouping by customer and summing `amount` under the alias `revenue` gives
+      one row per customer with exactly the two required columns.
+  - code: |
+      df.select("customer_id", F.sum("amount").alias("revenue"))
+    correct: false
+    explanation: >-
+      Without `groupBy`, `sum` aggregates the whole DataFrame, and mixing it with
+      the non-aggregated `customer_id` column fails analysis.
+tags: [group-by, aggregate-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.GroupedData.agg.html
+status: approved

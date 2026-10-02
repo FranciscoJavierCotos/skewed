@@ -1,0 +1,38 @@
+id: spark-l2-0005
+topic: spark
+level: 2
+title: Look up regional prices on a composite key
+prompt: |
+  Prices differ by region: the price table has one row per (`sku`, `region`).
+  Attach the matching `price` to each order line. Every order has a matching
+  price, and the result must have exactly one row per order line.
+context: |
+  `orders(order_id, sku, region, qty)` and `prices(sku, region, price)`.
+options:
+  - code: |
+      orders.join(prices, "sku", "inner")
+    correct: false
+    explanation: >-
+      Joining on `sku` alone matches the order to that SKU's price in every
+      region, so each order line is multiplied by the number of regions.
+  - code: |
+      orders.join(prices, ["sku", "region"], "inner")
+    correct: true
+    explanation: >-
+      Joining on both key columns matches each order line to exactly one price
+      row, keeping one output row per order line.
+  - code: |
+      orders.join(prices, (orders.sku == prices.sku) | (orders.region == prices.region))
+    correct: false
+    explanation: >-
+      `|` matches rows when either key is equal, so an order also picks up every
+      price from its region and every regional price of its SKU.
+  - code: |
+      orders.join(prices, ["sku", "region"], "left_semi")
+    correct: false
+    explanation: >-
+      A semi join only filters `orders` to the rows that have a match. It returns
+      no columns from `prices`, so `price` is missing.
+tags: [joins, composite-keys]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.join.html
+status: approved

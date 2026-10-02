@@ -1,0 +1,50 @@
+id: spark-l2-0009
+topic: spark
+level: 2
+title: Store-level min, max and total sales
+prompt: |
+  For each store, finance wants the smallest sale, the largest sale and the total
+  in columns named `min_amount`, `max_amount` and `total`.
+context: |
+  `df` has columns `sale_id`, `store_id` and `amount`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (df.groupBy("store_id")
+         .agg(F.min("amount"), F.max("amount"), F.sum("amount"))
+         .toDF("min_amount", "max_amount", "total"))
+    correct: false
+    explanation: >-
+      `toDF` renames columns by position and needs one name per column. The
+      result has four columns (including `store_id`) but only three names are
+      given, so it fails.
+  - code: |
+      (df.groupBy("store_id")
+         .agg(F.min("amount").alias("min_amount"),
+              F.max("amount").alias("max_amount"),
+              F.sum("min_amount").alias("total")))
+    correct: false
+    explanation: >-
+      An alias defined in an `agg` call can't be referenced by another
+      expression in the same call, and `total` must sum `amount` anyway.
+  - code: |
+      (df.groupBy("store_id")
+         .agg(F.min("amount").alias("min_amount"),
+              F.max("amount").alias("max_amount"),
+              F.count("amount").alias("total")))
+    correct: false
+    explanation: >-
+      The names are right, but `count` returns the number of sales, not their
+      total amount.
+  - code: |
+      (df.groupBy("store_id")
+         .agg(F.min("amount").alias("min_amount"),
+              F.max("amount").alias("max_amount"),
+              F.sum("amount").alias("total")))
+    correct: true
+    explanation: >-
+      A single `agg` call computes all three aggregates in one pass, and each
+      alias gives its column the required name.
+tags: [group-by, aggregate-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.GroupedData.agg.html
+status: approved

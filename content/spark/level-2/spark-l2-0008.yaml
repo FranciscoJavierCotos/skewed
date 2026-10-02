@@ -1,0 +1,39 @@
+id: spark-l2-0008
+topic: spark
+level: 2
+title: Average rating over rated reviews only
+prompt: |
+  Reviews can be left without a star rating (`rating` is null). The product page
+  should show, per product, the average of the ratings that were actually given,
+  ignoring unrated reviews, in a column `avg_rating`.
+context: |
+  `df` has columns `review_id`, `product_id` and `rating` (int, nullable).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.groupBy("product_id").agg(F.avg(F.coalesce("rating", F.lit(0))).alias("avg_rating"))
+    correct: false
+    explanation: >-
+      Replacing null with 0 counts unrated reviews as zero stars, which drags the
+      average down.
+  - code: |
+      df.groupBy("product_id").agg((F.sum("rating") / F.count("*")).alias("avg_rating"))
+    correct: false
+    explanation: >-
+      `count("*")` counts every review, rated or not, so the sum is divided by too
+      many rows.
+  - code: |
+      df.groupBy("product_id").agg(F.avg("rating").alias("avg_rating"))
+    correct: true
+    explanation: >-
+      Aggregate functions skip nulls, so `avg` divides the sum of the given
+      ratings by the number of rated reviews only.
+  - code: |
+      df.groupBy("product_id").agg(F.avg(F.col("rating").isNotNull().cast("int")).alias("avg_rating"))
+    correct: false
+    explanation: >-
+      This averages a 1/0 flag, which gives the share of reviews that have a
+      rating, not the average rating.
+tags: [null-handling, aggregate-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.avg.html
+status: approved
