@@ -2,7 +2,7 @@ import { toRows } from "./to-rows";
 import type { QuestionFile } from "./schema";
 
 const q: QuestionFile = {
-  id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null, dialect: null,
+  id: "sql-l1-0001", topic: "sql", level: 1, title: "T", prompt: "P", context: null,
   tags: ["x"], docs_url: null, status: "approved",
   options: [
     { code: "A", correct: false, explanation: "a" },
@@ -15,6 +15,7 @@ const q: QuestionFile = {
 it("maps a question to rows with positions and active flag", () => {
   const { question, options } = toRows(q);
   expect(question).toMatchObject({ id: "sql-l1-0001", topic: "sql", level: 1, active: true, tags: ["x"] });
+  expect(question).not.toHaveProperty("dialect");
   expect(question.content_hash).toMatch(/^[a-f0-9]{64}$/);
   expect(options.map((o) => [o.position, o.is_correct])).toEqual([[0, false], [1, true], [2, false], [3, false]]);
   expect(options[0]).not.toHaveProperty("id"); // ids are DB-generated and stay stable across upserts

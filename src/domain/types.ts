@@ -8,7 +8,6 @@ export type ExamLength = (typeof EXAM_LENGTHS)[number];
 export const EXAM_TIMER_SECONDS = 60;
 export const REPORT_REASONS = ["wrong_answer", "ambiguous", "typo", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
-export const DIALECTS = ["postgres", "snowflake", "bigquery", "spark-sql"] as const;
 
 export const isTopic = (s: string): s is Topic => (TOPICS as readonly string[]).includes(s);
 export const isLevel = (n: unknown): n is Level =>
@@ -23,7 +22,6 @@ export interface PublicQuestion {
   title: string;
   prompt: string;
   context: string | null;
-  dialect: string | null;
   tags: string[];
   options: PublicOption[];
 }

@@ -23,7 +23,7 @@ Non-goals for MVP: login, leaderboards, spaced repetition, non-code question for
 | Topic | Convention |
 |---|---|
 | `spark` | **PySpark only** (DataFrame API; `spark.sql` allowed when idiomatic). |
-| `sql` | **PostgreSQL only** (version 17, the engine Supabase runs). Postgres-specific features such as `DISTINCT ON`, `FILTER` and `MERGE` are fair game; other engines' syntax (`QUALIFY`, `TOP`, BigQuery/Snowflake functions) is not. `dialect` is always `null`. |
+| `sql` | **PostgreSQL only** (version 17, the engine Supabase runs). Postgres-specific features such as `DISTINCT ON`, `FILTER` and `MERGE` are fair game; other engines' syntax (`QUALIFY`, `TOP`, BigQuery/Snowflake functions) is not. |
 | `git` | Options are git command sequences (shell). |
 
 **Format rule (MVP): strictly 4 code options, exactly one correct.**
@@ -49,7 +49,6 @@ prompt: |                    # business or technical scenario (markdown)
   The analytics team needs each customer's most recent order...
 context: |                   # optional: schema / sample data (markdown)
   orders(customer_id, order_id, order_ts, amount)
-dialect: null                # always null: all SQL is PostgreSQL
 options:                     # exactly 4
   - code: |
       w = Window.partitionBy("customer_id").orderBy(F.col("order_ts").desc())
@@ -65,7 +64,7 @@ docs_url: https://spark.apache.org/docs/latest/api/python/...
 status: approved             # draft | approved | retired
 ```
 
-**Validation (Zod, run in CI):** exactly 4 options; exactly 1 `correct: true`; all option `code` unique and non-empty; every option has a non-empty `explanation`; `id` unique across the repo and matches the filename; `topic`/`level` match the folder; `dialect` only on `sql`.
+**Validation (Zod, run in CI):** exactly 4 options; exactly 1 `correct: true`; all option `code` unique and non-empty; every option has a non-empty `explanation`; `id` unique across the repo and matches the filename; `topic`/`level` match the folder; unknown keys are rejected.
 
 ### 2.4 Content pipeline
 1. Claude drafts a batch (15–20 questions for one topic and level) as `status: draft` on a branch.
@@ -120,7 +119,7 @@ Supabase: Postgres + RLS + RPCs (SECURITY DEFINER)
 Next.js (App Router), TypeScript (strict), Tailwind CSS, Shiki for highlighting (python, sql, bash), `@supabase/supabase-js`, Zod, Vitest + React Testing Library, Playwright, pnpm. UI strings live in `src/messages/en.json` (i18n-ready; English only).
 
 ### 4.2 Data model (Postgres)
-- `questions`: `id text pk`, `topic text check in (spark,sql,git)`, `level int check 1..5`, `title`, `prompt`, `context`, `dialect`, `tags text[]`, `docs_url`, `active bool`, `content_hash text`, `updated_at`.
+- `questions`: `id text pk`, `topic text check in (spark,sql,git)`, `level int check 1..5`, `title`, `prompt`, `context`, `tags text[]`, `docs_url`, `active bool`, `content_hash text`, `updated_at`.
 - `question_options`: `id uuid pk`, `question_id fk`, `position int`, `code text`, `is_correct bool`, `explanation text`. Unique on `(question_id, position)`.
 - `answer_events`: `id bigserial`, `client_event_id uuid unique` (makes retries idempotent), `anon_id uuid`, `session_id uuid`, `question_id`, `option_id`, `correct bool`, `mode text`, `ms_to_answer int`, `created_at`. A null `option_id` means timed out.
 - `question_reports`: `id`, `anon_id`, `question_id`, `reason text check in (wrong_answer, ambiguous, typo, other)`, `note text (≤500)`, `created_at`, `resolved bool`.

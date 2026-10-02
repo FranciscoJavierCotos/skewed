@@ -10,7 +10,7 @@ This guide covers how to write, review and ship questions for the Skewed questio
 | Topic | Convention |
 |---|---|
 | `spark` | **PySpark only** (DataFrame API; `spark.sql` allowed when idiomatic). |
-| `sql` | **PostgreSQL only** (version 17, the engine Supabase runs). Postgres-specific features such as `DISTINCT ON`, `FILTER` and `MERGE` are fair game; other engines' syntax (`QUALIFY`, `TOP`, BigQuery/Snowflake functions) is not. `dialect` is always `null`. |
+| `sql` | **PostgreSQL only** (version 17, the engine Supabase runs). Postgres-specific features such as `DISTINCT ON`, `FILTER` and `MERGE` are fair game; other engines' syntax (`QUALIFY`, `TOP`, BigQuery/Snowflake functions) is not. |
 | `git` | Options are git command sequences (shell). |
 
 Every question has **exactly 4 code options and exactly 1 correct**.
@@ -38,7 +38,6 @@ prompt: |                    # business or technical scenario (markdown)
   The analytics team needs each customer's most recent order...
 context: |                   # optional: schema / sample data (markdown)
   orders(customer_id, order_id, order_ts, amount)
-dialect: null                # always null: all SQL is PostgreSQL
 options:                     # exactly 4
   - code: |
       w = Window.partitionBy("customer_id").orderBy(F.col("order_ts").desc())
@@ -60,7 +59,7 @@ status: approved             # draft | approved | retired
 - every option `code` is unique and non-empty, and every option has a non-empty `explanation`;
 - `id` matches `^(spark|sql|git)-l[1-5]-\d{4}$`, is unique across the repo and equals the filename;
 - `topic` and `level` match the folder and the id prefix;
-- `dialect` appears only on `sql` questions (and content should always leave it `null`);
+- no keys outside this format are allowed (a typo such as `doc_url` fails validation);
 - `title` is at most 120 characters, and `docs_url` is a valid URL when present.
 
 `status` controls what goes live: `draft` is in review, `approved` is served to players, and `retired` is pulled from play but keeps its id and telemetry.
@@ -133,7 +132,6 @@ prompt: |
   give two changes the same `updated_at`; in that case either row is acceptable.
 context: |
   customer_changes(customer_id, email, plan, updated_at)
-dialect: null
 options:
   - code: |
       SELECT DISTINCT ON (customer_id) *
