@@ -1,0 +1,40 @@
+id: spark-l3-0013
+topic: spark
+level: 3
+title: Flatten a nested customer struct
+prompt: |
+  A downstream CSV export can't hold nested types. Produce exactly three flat
+  columns: `order_id`, `name` and `city`, taken from the nested `customer`
+  struct.
+context: |
+  `df` has columns `order_id` and
+  `customer: struct<name: string, address: struct<city: string, zip: string>>`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.select("order_id", "customer.*")
+    correct: false
+    explanation: >-
+      `customer.*` expands only one level, giving `name` and an `address` struct
+      instead of a flat `city` column.
+  - code: |
+      df.select("order_id", F.col("customer.name"), F.col("customer.address"))
+    correct: false
+    explanation: >-
+      `customer.address` is itself a struct, so the export still contains a
+      nested column instead of `city`.
+  - code: |
+      df.withColumn("city", F.col("customer.address.city"))
+    correct: false
+    explanation: >-
+      `city` is extracted, but the nested `customer` struct is kept and there's
+      no top-level `name` column.
+  - code: |
+      df.select("order_id", "customer.name", "customer.address.city")
+    correct: true
+    explanation: >-
+      Dot paths reach into nested structs, and each selected leaf field becomes
+      a top-level column named after the field.
+tags: [structs, nested-data]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.select.html
+status: approved

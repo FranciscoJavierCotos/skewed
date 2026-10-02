@@ -1,0 +1,40 @@
+id: spark-l3-0011
+topic: spark
+level: 3
+title: Detect changed emails between two snapshots
+prompt: |
+  Comparing yesterday's and today's customer snapshots, flag `changed = true`
+  whenever the email differs: a value replaced by another value, a value
+  removed (became null), or a value added (was null). Null to null is **not** a
+  change, and an empty string is a real value distinct from null.
+context: |
+  `df` has columns `customer_id`, `old_email` and `new_email` (both nullable).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("changed", F.col("old_email") != F.col("new_email"))
+    correct: false
+    explanation: >-
+      When either side is null, `!=` returns null instead of true, so removed
+      and added emails aren't flagged.
+  - code: |
+      df.withColumn("changed", F.coalesce("old_email", F.lit("")) != F.coalesce("new_email", F.lit("")))
+    correct: false
+    explanation: >-
+      Using `""` as a stand-in for null makes a change from an empty string to
+      null look like no change.
+  - code: |
+      df.withColumn("changed", F.col("old_email").isNull() != F.col("new_email").isNull())
+    correct: false
+    explanation: >-
+      This only compares whether each side is null, so a change from one real
+      email to another isn't flagged.
+  - code: |
+      df.withColumn("changed", ~F.col("old_email").eqNullSafe(F.col("new_email")))
+    correct: true
+    explanation: >-
+      `eqNullSafe` always returns true or false: two nulls are equal and null vs a
+      value is unequal, so negating it flags exactly the changes.
+tags: [null-semantics, change-detection]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.eqNullSafe.html
+status: approved

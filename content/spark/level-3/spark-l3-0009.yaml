@@ -1,0 +1,40 @@
+id: spark-l3-0009
+topic: spark
+level: 3
+title: Exclude blocked customers when the block list has nulls
+prompt: |
+  Remove customers that appear in the `blocked` list. A bad import left some
+  `blocked` rows with a null `customer_id`; those rows block nobody. Every
+  other customer must be kept, exactly once.
+context: |
+  `customers(customer_id, name)` and `blocked(customer_id)`, both registered as
+  temp views with those names. `customers.customer_id` is never null.
+options:
+  - code: |
+      customers.join(blocked, "customer_id", "left_anti")
+    correct: true
+    explanation: >-
+      A left anti join keeps customers with no matching blocked row. The null
+      blocked rows match nothing, so they don't affect the result.
+  - code: |
+      spark.sql("""SELECT * FROM customers
+                   WHERE customer_id NOT IN (SELECT customer_id FROM blocked)""")
+    correct: false
+    explanation: >-
+      `NOT IN` against a list that contains a null evaluates to null, never
+      true, for unblocked customers, so the query returns no rows.
+  - code: |
+      customers.join(blocked, "customer_id", "left_semi")
+    correct: false
+    explanation: >-
+      A semi join does the opposite: it keeps only the customers that do appear
+      in the block list.
+  - code: |
+      customers.join(blocked, customers.customer_id != blocked.customer_id)
+    correct: false
+    explanation: >-
+      An inequality join pairs each customer with every block row that has a
+      different id, so customers repeat and blocked ones still appear.
+tags: [null-semantics, anti-join, joins]
+docs_url: https://spark.apache.org/docs/latest/sql-ref-null-semantics.html
+status: approved

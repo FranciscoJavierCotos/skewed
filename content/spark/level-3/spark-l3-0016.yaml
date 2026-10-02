@@ -1,0 +1,43 @@
+id: spark-l3-0016
+topic: spark
+level: 3
+title: Parse a JSON payload into typed columns
+prompt: |
+  Webhook events land with a JSON string in `payload`, such as
+  `{"user_id": "u1", "amount": 12.5}`. Produce columns `user_id` (string) and
+  `amount` as a **double**, ready for aggregation.
+context: |
+  `df` has a single column `payload` (string).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (df.select(F.from_json("payload", "user_id STRING, amount DOUBLE").alias("p"))
+         .select("p.user_id", "p.amount"))
+    correct: true
+    explanation: >-
+      `from_json` parses the payload into a struct with the declared types, so
+      `amount` comes out as a double.
+  - code: |
+      (df.select(F.from_json("payload", "userId STRING, amount DOUBLE").alias("p"))
+         .select(F.col("p.userId").alias("user_id"), "p.amount"))
+    correct: false
+    explanation: >-
+      JSON field names are matched case-sensitively, so `userId` never matches
+      `user_id` in the payload and every `user_id` comes back null.
+  - code: |
+      df.select(F.get_json_object("payload", "$.user_id").alias("user_id"),
+                F.get_json_object("payload", "$.amount").alias("amount"))
+    correct: false
+    explanation: >-
+      `get_json_object` always returns strings, so `amount` is a string column
+      rather than a double.
+  - code: |
+      (df.select(F.from_json("payload", "user_id STRING, amount INT").alias("p"))
+         .select("p.user_id", "p.amount"))
+    correct: false
+    explanation: >-
+      `12.5` doesn't fit the declared INT type, so the field can't be parsed and
+      `amount` comes back null.
+tags: [json, structs]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.from_json.html
+status: approved

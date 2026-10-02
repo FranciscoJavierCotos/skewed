@@ -1,0 +1,39 @@
+id: spark-l3-0019
+topic: spark
+level: 3
+title: Explode a map of product attributes
+prompt: |
+  Product attributes are stored as a map, such as `{"color": "red", "size": "M"}`.
+  The search index needs one row per product **and attribute**, with the
+  attribute name in `attr` and its value in `val`.
+context: |
+  `df` has columns `product_id` and `attrs` (map<string, string>).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.select("product_id", F.explode(F.map_values("attrs")).alias("val"))
+    correct: false
+    explanation: >-
+      Exploding only the values gives one row per attribute but loses the
+      attribute names.
+  - code: |
+      df.select("product_id", F.explode("attrs").alias("attr", "val"))
+    correct: true
+    explanation: >-
+      Exploding a map emits one row per entry with two columns, the key and the
+      value, which the two-name alias calls `attr` and `val`.
+  - code: |
+      df.select("product_id", F.posexplode(F.map_keys("attrs")).alias("attr", "val"))
+    correct: false
+    explanation: >-
+      `posexplode` on the keys returns each key's position and the key itself,
+      so `attr` holds a number and `val` holds the name, with no values.
+  - code: |
+      df.select("product_id", F.explode(F.map_keys("attrs")).alias("attr"))
+    correct: false
+    explanation: >-
+      Exploding only the keys gives one row per attribute name but no `val`
+      column.
+tags: [explode, maps]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.explode.html
+status: approved
