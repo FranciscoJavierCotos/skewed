@@ -10,27 +10,37 @@ context: |
   `F` is `pyspark.sql.functions`.
 options:
   - code: |
-      df.groupBy("store_id").agg({"amount": "min", "amount": "max", "amount": "sum"})
+      (df.groupBy("store_id")
+         .agg(F.min("amount"), F.max("amount"), F.sum("amount"))
+         .toDF("min_amount", "max_amount", "total"))
     correct: false
     explanation: >-
-      A Python dict can't hold the same key three times, so only the last entry
-      (`sum`) survives, and its column is named `sum(amount)`.
+      `toDF` renames columns by position and needs one name per column. The
+      result has four columns (including `store_id`) but only three names are
+      given, so it fails.
   - code: |
-      df.groupBy("store_id").agg(F.min("amount"), F.max("amount"), F.sum("amount"))
+      (df.groupBy("store_id")
+         .agg(F.min("amount").alias("min_amount"),
+              F.max("amount").alias("max_amount"),
+              F.sum("min_amount").alias("total")))
     correct: false
     explanation: >-
-      The values are right, but without aliases the columns are named
-      `min(amount)`, `max(amount)` and `sum(amount)`.
+      An alias defined in an `agg` call can't be referenced by another
+      expression in the same call, and `total` must sum `amount` anyway.
   - code: |
-      df.groupBy("store_id").min("amount").max("amount")
+      (df.groupBy("store_id")
+         .agg(F.min("amount").alias("min_amount"),
+              F.max("amount").alias("max_amount"),
+              F.count("amount").alias("total")))
     correct: false
     explanation: >-
-      `GroupedData.min` already returns an aggregated DataFrame, and a DataFrame
-      has no `max` aggregation method, so this fails.
+      The names are right, but `count` returns the number of sales, not their
+      total amount.
   - code: |
-      df.groupBy("store_id").agg(F.min("amount").alias("min_amount"),
-                                 F.max("amount").alias("max_amount"),
-                                 F.sum("amount").alias("total"))
+      (df.groupBy("store_id")
+         .agg(F.min("amount").alias("min_amount"),
+              F.max("amount").alias("max_amount"),
+              F.sum("amount").alias("total")))
     correct: true
     explanation: >-
       A single `agg` call computes all three aggregates in one pass, and each
