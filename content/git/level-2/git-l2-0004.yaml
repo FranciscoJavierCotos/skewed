@@ -1,0 +1,37 @@
+id: git-l2-0004
+topic: git
+level: 2
+title: Publish a new branch and set its upstream
+prompt: |
+  You're on a local branch `feature/x` that doesn't exist on `origin` yet.
+  Publish it to `origin` under the same name, and make it track that remote
+  branch so a plain `git push` or `git pull` works from now on. `origin/main`
+  must not change.
+options:
+  - code: |
+      git push origin feature/x
+    correct: false
+    explanation: >-
+      The branch is pushed, but without `-u` no upstream is recorded, so a plain
+      `git pull` still has nothing to track.
+  - code: |
+      git push -u origin feature/x
+    correct: true
+    explanation: >-
+      `-u` (`--set-upstream`) pushes the branch and records `origin/feature/x`
+      as its upstream for future pushes and pulls.
+  - code: |
+      git push -u origin main
+    correct: false
+    explanation: >-
+      This pushes and tracks your local `main`, not the branch you're on, so
+      `feature/x` is never published.
+  - code: |
+      git push -u origin HEAD:main
+    correct: false
+    explanation: >-
+      `HEAD:main` pushes your feature commits **into** `origin`'s `main` branch,
+      which changes `main` instead of creating `feature/x`.
+tags: [remotes, push, upstream]
+docs_url: https://git-scm.com/docs/git-push#Documentation/git-push.txt--u
+status: approved

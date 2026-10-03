@@ -1,0 +1,43 @@
+id: git-l2-0009
+topic: git
+level: 2
+title: See what teammates pushed without touching your branch
+prompt: |
+  Before you push, you want to see which commits teammates have pushed to
+  `origin/main` that your local `main` doesn't have yet. Don't change any local
+  branch or your working tree.
+context: |
+  Your local `main` has one unpushed commit of its own. You last fetched
+  yesterday.
+options:
+  - code: |
+      git fetch origin
+      git log --oneline main..origin/main
+    correct: true
+    explanation: >-
+      The fetch updates only `origin/main`, and `main..origin/main` lists commits
+      reachable from `origin/main` that aren't in `main`.
+  - code: |
+      git status -sb
+      git log --oneline main..origin/main
+    correct: false
+    explanation: >-
+      Without a fetch, `origin/main` still shows what you saw yesterday, so
+      today's teammate commits are missing.
+  - code: |
+      git fetch origin
+      git log --oneline origin/main..main
+    correct: false
+    explanation: >-
+      The range is reversed: this lists your own unpushed commit, not the
+      teammates' new ones.
+  - code: |
+      git pull --rebase origin main
+      git log --oneline -3
+    correct: false
+    explanation: >-
+      `pull --rebase` rewrites your local `main` on top of the new commits,
+      which the prompt said not to do.
+tags: [remotes, fetch, log]
+docs_url: https://git-scm.com/docs/gitrevisions#_dotted_range_notations
+status: approved

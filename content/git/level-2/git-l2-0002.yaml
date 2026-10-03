@@ -1,0 +1,39 @@
+id: git-l2-0002
+topic: git
+level: 2
+title: Land a feature as one squashed commit
+prompt: |
+  You're on `main`. `feature/exports` has three messy work-in-progress commits,
+  and `main` has moved on since the branch was created. Land the whole feature
+  on `main` as **exactly one new commit** with an ordinary single parent. The
+  feature's individual commits must not appear in `main`'s history.
+options:
+  - code: |
+      git merge --squash feature/exports
+      git commit -m "Add exports"
+    correct: true
+    explanation: >-
+      `--squash` stages the combined result of all three commits without
+      recording a merge, and the commit turns it into one ordinary commit.
+  - code: |
+      git merge --no-ff -m "Add exports" feature/exports
+    correct: false
+    explanation: >-
+      This makes a merge commit with two parents, so all three feature commits
+      become part of `main`'s history.
+  - code: |
+      git merge --ff-only -m "Add exports" feature/exports
+    correct: false
+    explanation: >-
+      `main` has diverged from the feature, so a fast-forward is impossible and
+      `--ff-only` refuses to merge at all.
+  - code: |
+      git cherry-pick -n feature/exports
+      git commit -m "Add exports"
+    correct: false
+    explanation: >-
+      Cherry-picking the branch name applies only its **tip** commit, so the
+      changes from the first two feature commits are missing.
+tags: [merge, squash]
+docs_url: https://git-scm.com/docs/git-merge#Documentation/git-merge.txt---squash
+status: approved

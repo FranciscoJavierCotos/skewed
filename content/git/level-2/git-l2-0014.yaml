@@ -1,0 +1,42 @@
+id: git-l2-0014
+topic: git
+level: 2
+title: Update a shared feature branch with main
+prompt: |
+  `feature/x` is shared with two teammates and already pushed to `origin`. You
+  need `main`'s latest commits in it. Its pushed commits must not be rewritten,
+  and `main` must not change. Finish on `feature/x`.
+context: |
+  You're on `main`, which is up to date.
+options:
+  - code: |
+      git switch feature/x
+      git merge main
+    correct: true
+    explanation: >-
+      Merging `main` into `feature/x` adds a merge commit on top of the existing
+      commits, so nothing already pushed is rewritten.
+  - code: |
+      git switch feature/x
+      git rebase main
+    correct: false
+    explanation: >-
+      Rebasing rewrites the pushed `feature/x` commits as new ones, so the
+      teammates' copies no longer match.
+  - code: |
+      git switch main
+      git merge feature/x
+    correct: false
+    explanation: >-
+      This merges in the wrong direction: `main` gets the feature, and
+      `feature/x` still lacks `main`'s commits.
+  - code: |
+      git switch feature/x
+      git cherry-pick main
+    correct: false
+    explanation: >-
+      Cherry-picking `main` copies only its tip commit, so the other new commits
+      on `main` are missing.
+tags: [merge, rebase, shared-branches]
+docs_url: https://git-scm.com/docs/git-merge
+status: approved

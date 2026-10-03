@@ -1,0 +1,42 @@
+id: git-l2-0013
+topic: git
+level: 2
+title: Pull while you have uncommitted edits
+prompt: |
+  You have an uncommitted edit near the bottom of `config.py`. A teammate pushed
+  a commit that changes the top of the same file, and `git pull` refuses
+  because your local changes would be overwritten. Bring in their commit and
+  keep your edit as an uncommitted change, with an empty stash list at the end.
+options:
+  - code: |
+      git restore --staged .
+      git pull --ff-only
+    correct: false
+    explanation: >-
+      The edit was never staged, so unstaging changes nothing, and the pull is
+      refused again for the same reason.
+  - code: |
+      git stash
+      git pull --ff-only
+      git stash drop
+    correct: false
+    explanation: >-
+      `stash drop` deletes the stash without applying it, so your edit is lost.
+  - code: |
+      git stash
+      git pull --ff-only
+      git stash pop
+    correct: true
+    explanation: >-
+      The stash clears the working tree so the pull can fast-forward, and `pop`
+      re-applies your edit on top and removes the stash entry.
+  - code: |
+      git commit -am "wip"
+      git pull --ff-only
+    correct: false
+    explanation: >-
+      Committing makes your `main` diverge from `origin/main`, so `--ff-only`
+      refuses, and your edit is no longer uncommitted.
+tags: [stash, pull]
+docs_url: https://git-scm.com/docs/git-stash#Documentation/git-stash.txt-pop--index-q--quietstash
+status: approved

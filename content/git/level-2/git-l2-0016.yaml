@@ -1,0 +1,42 @@
+id: git-l2-0016
+topic: git
+level: 2
+title: Restore one particular stash entry
+prompt: |
+  `git stash list` shows three entries:
+
+  ```
+  stash@{0}: On main: wip: docs
+  stash@{1}: On main: wip: config
+  stash@{2}: On main: wip: api
+  ```
+
+  Bring back only the "wip: config" changes and remove that entry from the
+  list. The other two entries must stay.
+options:
+  - code: |
+      git stash pop --index
+    correct: false
+    explanation: >-
+      With no stash named, `pop` takes the newest entry, `stash@{0}` ("wip:
+      docs"). `--index` only controls whether the staged state is restored.
+  - code: |
+      git stash apply stash@{1}
+    correct: false
+    explanation: >-
+      `apply` restores the changes but keeps the entry in the stash list.
+  - code: |
+      git stash pop stash@{2}
+    correct: false
+    explanation: >-
+      Stash indexes start at 0 for the newest entry, so `stash@{2}` is
+      "wip: api".
+  - code: |
+      git stash pop stash@{1}
+    correct: true
+    explanation: >-
+      `stash@{1}` is "wip: config", and `pop` applies it and drops it from the
+      list, leaving the other two entries.
+tags: [stash]
+docs_url: https://git-scm.com/docs/git-stash#Documentation/git-stash.txt-pop--index-q--quietstash
+status: approved

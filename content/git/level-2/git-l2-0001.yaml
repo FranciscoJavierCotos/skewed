@@ -1,0 +1,37 @@
+id: git-l2-0001
+topic: git
+level: 2
+title: Merge a feature with an explicit merge commit
+prompt: |
+  You're on `main`. `feature/x` branched from the current `main` tip and has two
+  commits, so Git could fast-forward. Team policy is that every feature lands as
+  a merge commit, so the history shows where the feature began and ended. Merge
+  `feature/x` into `main` accordingly.
+options:
+  - code: |
+      git merge --ff feature/x
+    correct: false
+    explanation: >-
+      `--ff` is the default: since `main` hasn't moved, Git just fast-forwards
+      `main` to the feature tip and creates no merge commit.
+  - code: |
+      git merge --squash feature/x
+    correct: false
+    explanation: >-
+      `--squash` stages the combined changes but creates no commit, and the
+      eventual commit wouldn't record `feature/x` as a parent.
+  - code: |
+      git merge --no-ff feature/x
+    correct: true
+    explanation: >-
+      `--no-ff` always creates a merge commit, with `main`'s old tip and
+      `feature/x` as its two parents, even when a fast-forward was possible.
+  - code: |
+      git rebase feature/x main
+    correct: false
+    explanation: >-
+      Rebasing `main` onto the feature just moves `main` up to the feature tip,
+      which is the same linear result as a fast-forward with no merge commit.
+tags: [merge, fast-forward]
+docs_url: https://git-scm.com/docs/git-merge#Documentation/git-merge.txt---no-ff
+status: approved

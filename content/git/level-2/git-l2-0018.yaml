@@ -1,0 +1,36 @@
+id: git-l2-0018
+topic: git
+level: 2
+title: Point origin at a repository's new URL
+prompt: |
+  The team moved the repository from `https://github.com/acme/old-etl.git` to
+  `https://github.com/acme/etl.git`, and the old URL no longer works. Update
+  your clone so that **both** fetch and push on `origin` use the new URL.
+options:
+  - code: |
+      git remote add --fetch origin https://github.com/acme/etl.git
+    correct: false
+    explanation: >-
+      A remote named `origin` already exists, so `remote add` fails and the old
+      URL stays.
+  - code: |
+      git remote add --fetch etl https://github.com/acme/etl.git
+    correct: false
+    explanation: >-
+      This adds a second remote called `etl`. `origin`, which your branches
+      track, still points at the dead URL.
+  - code: |
+      git remote set-url origin https://github.com/acme/etl.git
+    correct: true
+    explanation: >-
+      `set-url` replaces `origin`'s URL, which is used for both fetch and push
+      unless a separate push URL is configured.
+  - code: |
+      git remote set-url --push origin https://github.com/acme/etl.git
+    correct: false
+    explanation: >-
+      `--push` sets only a push URL, so fetches from `origin` still go to the
+      old, dead address.
+tags: [remotes]
+docs_url: https://git-scm.com/docs/git-remote#Documentation/git-remote.txt-set-url
+status: approved

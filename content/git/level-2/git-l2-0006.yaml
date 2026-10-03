@@ -1,0 +1,37 @@
+id: git-l2-0006
+topic: git
+level: 2
+title: Stash everything, including a new untracked file
+prompt: |
+  You have a staged change to `a.py`, an unstaged change to `b.py` and a new
+  untracked file `new_job.py`. A release script needs a completely clean
+  working tree: `git status` must report nothing at all. Set **all** of this
+  work aside so you can bring it back later with `git stash pop`.
+options:
+  - code: |
+      git stash push --keep-index -m "wip"
+    correct: false
+    explanation: >-
+      `--keep-index` leaves the staged `a.py` change in place, and untracked
+      files aren't stashed by default, so the tree isn't clean.
+  - code: |
+      git stash push --staged -m "wip release"
+    correct: false
+    explanation: >-
+      `--staged` stashes only the staged change, so the `b.py` edit and the
+      untracked file stay in the working tree.
+  - code: |
+      git stash push --include-untracked -m "wip"
+    correct: true
+    explanation: >-
+      `--include-untracked` stashes the untracked file as well as the staged and
+      unstaged changes, so the working tree is fully clean.
+  - code: |
+      git stash push --quiet -m "wip release"
+    correct: false
+    explanation: >-
+      A plain stash saves staged and unstaged changes but skips untracked
+      files, so `new_job.py` still shows up in `git status`.
+tags: [stash, untracked]
+docs_url: https://git-scm.com/docs/git-stash#Documentation/git-stash.txt--u
+status: approved

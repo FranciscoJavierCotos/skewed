@@ -1,0 +1,37 @@
+id: git-l2-0011
+topic: git
+level: 2
+title: Delete a merged branch on the remote
+prompt: |
+  `feature/x` has been merged, and you want to remove it from `origin`, the
+  shared server, so it no longer shows up for the team. You're on `main`.
+options:
+  - code: |
+      git branch -d feature/x
+      git fetch --prune
+    correct: false
+    explanation: >-
+      This deletes only your local branch. Pruning removes remote-tracking refs
+      for branches that are already gone on the server; it never deletes them
+      there.
+  - code: |
+      git push origin --delete feature/x
+    correct: true
+    explanation: >-
+      `push --delete` asks `origin` to remove its `feature/x` branch, so it's
+      gone for everyone.
+  - code: |
+      git branch --delete -r origin/feature/x
+    correct: false
+    explanation: >-
+      `--delete -r` deletes only your local remote-tracking ref. The branch still exists
+      on the server and comes back on the next fetch.
+  - code: |
+      git push origin --delete origin/feature/x
+    correct: false
+    explanation: >-
+      The server's branch is called `feature/x`. It has no ref named
+      `origin/feature/x`, so the delete fails.
+tags: [remotes, push, branch]
+docs_url: https://git-scm.com/docs/git-push#Documentation/git-push.txt--d
+status: approved

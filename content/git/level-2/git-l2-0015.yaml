@@ -1,0 +1,36 @@
+id: git-l2-0015
+topic: git
+level: 2
+title: Make an existing branch track its remote branch
+prompt: |
+  You're on a local `dev` branch that's one commit behind `origin/dev`.
+  `git pull` says "There is no tracking information for the current branch".
+  Make `dev` track `origin/dev` without pushing anything or moving `dev`.
+options:
+  - code: |
+      git push -u origin dev:dev
+    correct: false
+    explanation: >-
+      `dev` is behind `origin/dev`, so the push is rejected, and `-u` only records
+      the upstream when the push succeeds.
+  - code: |
+      git branch -u origin/dev
+    correct: true
+    explanation: >-
+      `-u <upstream>` sets the upstream of the current branch, so `dev` tracks
+      `origin/dev` without anything being pushed or moved.
+  - code: |
+      git branch -u dev origin/dev
+    correct: false
+    explanation: >-
+      The upstream comes first: this tries to make a local branch named
+      `origin/dev` track `dev`, and fails because that branch doesn't exist.
+  - code: |
+      git switch --track origin/dev
+    correct: false
+    explanation: >-
+      `--track` creates a **new** `dev` branch from `origin/dev`. A local `dev`
+      already exists, so Git refuses.
+tags: [remotes, upstream, tracking]
+docs_url: https://git-scm.com/docs/git-branch#Documentation/git-branch.txt--uupstream
+status: approved
