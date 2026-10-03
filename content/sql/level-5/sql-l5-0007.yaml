@@ -1,0 +1,43 @@
+id: sql-l5-0007
+topic: sql
+level: 5
+title: Filter JSONB events through a jsonb_path_ops GIN index
+prompt: |
+  `events.payload` is indexed with `USING gin (payload jsonb_path_ops)`. The
+  alerting job needs every event whose payload has `"status": "failed"` at
+  the top level, and the filter must be one that this GIN index can serve.
+context: |
+  events(id, payload jsonb)
+  CREATE INDEX events_payload_gin ON events USING gin (payload jsonb_path_ops);
+options:
+  - code: |
+      SELECT id FROM events
+      WHERE payload ->> 'status' = 'failed';
+    correct: false
+    explanation: >-
+      The rows are right, but the GIN index doesn't support the ->> expression
+      with =, so the planner has to check every row.
+  - code: |
+      SELECT id FROM events
+      WHERE payload @> '{"status": "failed"}';
+    correct: true
+    explanation: >-
+      @> (containment) is the operator jsonb_path_ops is built for, so the GIN
+      index finds the matching documents directly.
+  - code: |
+      SELECT id FROM events
+      WHERE payload -> 'status' = 'failed';
+    correct: false
+    explanation: >-
+      -> returns jsonb, so 'failed' is parsed as a JSON literal. Unquoted text
+      isn't valid JSON, so the query fails with an invalid json input error.
+  - code: |
+      SELECT id FROM events
+      WHERE payload::text LIKE '%"status": "failed"%';
+    correct: false
+    explanation: >-
+      Matching the serialized text also finds a nested "status": "failed"
+      deeper in the document, and the GIN index can't serve a LIKE.
+tags: [jsonb, gin-index, explain]
+docs_url: https://www.postgresql.org/docs/17/datatype-json.html#JSON-INDEXING
+status: approved

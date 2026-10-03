@@ -1,0 +1,49 @@
+id: sql-l5-0008
+topic: sql
+level: 5
+title: Keyset pagination with a tie-breaking cursor
+prompt: |
+  The feed lists posts by `created_at DESC, id DESC`. Deep OFFSET pages got
+  slow and showed duplicates while new posts arrived, so the client now sends
+  the `(created_at, id)` of the last post it displayed, here
+  `('2026-09-01 10:00', 40)`. Return the next 3 posts after that cursor.
+  Several posts can share a `created_at`.
+context: |
+  posts(id, created_at timestamp, title)
+  CREATE INDEX ON posts (created_at DESC, id DESC);
+options:
+  - code: |
+      SELECT id, created_at FROM posts
+      WHERE created_at < '2026-09-01 10:00' AND id < 40
+      ORDER BY created_at DESC, id DESC LIMIT 3;
+    correct: false
+    explanation: >-
+      Requiring both columns to be smaller skips older posts that happen to
+      have a larger id, and posts sharing the cursor's timestamp.
+  - code: |
+      SELECT id, created_at FROM posts
+      WHERE created_at <= '2026-09-01 10:00'
+      ORDER BY created_at DESC, id DESC LIMIT 3;
+    correct: false
+    explanation: >-
+      <= on the timestamp alone returns posts already shown, including the
+      cursor row itself, because id isn't compared.
+  - code: |
+      SELECT id, created_at FROM posts
+      WHERE created_at < '2026-09-01 10:00'
+      ORDER BY created_at DESC, id DESC LIMIT 3;
+    correct: false
+    explanation: >-
+      Comparing only the timestamp skips the remaining posts that share the
+      cursor's created_at but have a smaller id.
+  - code: |
+      SELECT id, created_at FROM posts
+      WHERE (created_at, id) < ('2026-09-01 10:00', 40)
+      ORDER BY created_at DESC, id DESC LIMIT 3;
+    correct: true
+    explanation: >-
+      A row-value comparison orders by created_at, then by id, exactly like the
+      sort, so it resumes right after the cursor and can use the index.
+tags: [pagination, keyset, row-comparison]
+docs_url: https://www.postgresql.org/docs/17/functions-comparisons.html#ROW-WISE-COMPARISON
+status: approved

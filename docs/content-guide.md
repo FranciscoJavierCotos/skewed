@@ -227,7 +227,7 @@ status: approved
 
 Copy this list into every content PR (the PR template already includes it) and tick it for the batch:
 
-- [ ] The correct answer actually runs and produces the stated result. Run Spark/SQL snippets locally (`pyspark` shell; PostgreSQL 17 via `psql` for SQL; a git sandbox repo for Git).
+- [ ] The correct answer actually runs and produces the stated result. Run Spark/SQL snippets locally (`pyspark` shell; PostgreSQL 17 via `psql` for SQL, or the Supabase MCP `execute_sql` wrapped in `begin … rollback`; a git sandbox repo for Git).
 - [ ] Each wrong option is wrong for **one specific, teachable reason**, and the explanation names that reason.
 - [ ] Wrong options are plausible: no syntax-error strawmen at L3+.
 - [ ] The correct option isn't identifiable by length or style. Option lengths are within ~30% of each other, and the correct option isn't always the most "complete-looking".

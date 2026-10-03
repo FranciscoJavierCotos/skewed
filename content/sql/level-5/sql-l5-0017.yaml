@@ -1,0 +1,61 @@
+id: sql-l5-0017
+topic: sql
+level: 5
+title: Display a comment thread in depth-first order
+prompt: |
+  A discussion page renders threaded comments: every reply must appear
+  directly under its parent, before the parent's next sibling, and siblings
+  are shown in `id` order. Comment ids are integers and some exceed 9.
+context: |
+  comments(id, parent_id, body)   -- parent_id is NULL for top-level comments
+
+  Each option builds the same recursive CTE `t(id, parent_id, depth)`.
+options:
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, parent_id, 0 AS depth FROM comments WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.parent_id, t.depth + 1 FROM comments c JOIN t ON c.parent_id = t.id)
+      SELECT id, depth FROM t
+      ORDER BY depth, id;
+    correct: false
+    explanation: >-
+      Sorting by depth lists all top-level comments first, then all replies, so
+      the result is breadth-first, not threaded.
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, parent_id, 0 AS depth, id::text AS path FROM comments WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.parent_id, t.depth + 1, t.path || '/' || c.id FROM comments c JOIN t ON c.parent_id = t.id)
+      SELECT id, depth FROM t
+      ORDER BY path;
+    correct: false
+    explanation: >-
+      The path is text, which sorts character by character, so '1/10' comes
+      before '1/2' and reply 10 is shown before reply 2.
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, parent_id, 0 AS depth FROM comments WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.parent_id, t.depth + 1 FROM comments c JOIN t ON c.parent_id = t.id)
+      SEARCH DEPTH FIRST BY id SET ord
+      SELECT id, depth FROM t
+      ORDER BY ord;
+    correct: true
+    explanation: >-
+      SEARCH DEPTH FIRST BY id builds a sort key from the ids along each path,
+      as integers, so ORDER BY ord gives depth-first order with siblings by id.
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, parent_id, 0 AS depth FROM comments WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.parent_id, t.depth + 1 FROM comments c JOIN t ON c.parent_id = t.id)
+      SELECT id, depth FROM t
+      ORDER BY parent_id NULLS FIRST, id;
+    correct: false
+    explanation: >-
+      Sorting by parent_id groups siblings together but puts every top-level
+      comment first, so replies are separated from their parents.
+tags: [recursive-cte, search-depth-first, hierarchies]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-SEARCH
+status: approved

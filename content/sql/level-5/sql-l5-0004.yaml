@@ -1,0 +1,44 @@
+id: sql-l5-0004
+topic: sql
+level: 5
+title: Index-friendly filter for one day of orders
+prompt: |
+  The daily report must return every order created on 1 September 2026 (UTC)
+  and nothing else. `orders.created_at` has a plain btree index, the session
+  time zone is UTC, and the filter must be written so that the planner can
+  use that index.
+context: |
+  orders(id, created_at timestamptz, amount)
+  CREATE INDEX orders_created_idx ON orders (created_at);
+options:
+  - code: |
+      SELECT id FROM orders
+      WHERE (created_at AT TIME ZONE 'UTC')::date = DATE '2026-09-01';
+    correct: false
+    explanation: >-
+      The conversion and cast wrap the indexed column in an expression, so the
+      index on created_at can't be used and every row is converted and checked.
+  - code: |
+      SELECT id FROM orders
+      WHERE date_trunc('day', created_at) = TIMESTAMPTZ '2026-09-01';
+    correct: false
+    explanation: >-
+      date_trunc is applied to the indexed column, which makes the predicate
+      non-sargable, and the plain index can't serve it.
+  - code: |
+      SELECT id FROM orders
+      WHERE created_at >= TIMESTAMPTZ '2026-09-01' AND created_at < TIMESTAMPTZ '2026-09-02';
+    correct: true
+    explanation: >-
+      Comparing the bare column with a half-open range is an index range
+      condition, and it covers exactly that day.
+  - code: |
+      SELECT id FROM orders
+      WHERE created_at BETWEEN TIMESTAMPTZ '2026-09-01' AND TIMESTAMPTZ '2026-09-02';
+    correct: false
+    explanation: >-
+      This can use the index, but BETWEEN is inclusive, so orders at exactly
+      midnight on 2 September are returned as well.
+tags: [indexes, sargable, explain]
+docs_url: https://www.postgresql.org/docs/17/indexes-types.html#INDEXES-TYPES-BTREE
+status: approved

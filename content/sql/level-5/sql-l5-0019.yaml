@@ -1,0 +1,43 @@
+id: sql-l5-0019
+topic: sql
+level: 5
+title: Index that serves ORDER BY ... DESC NULLS LAST
+prompt: |
+  The task board runs `SELECT id FROM tasks ORDER BY due_at DESC NULLS LAST
+  LIMIT 20`. Tasks without a due date have `due_at = NULL` and must appear
+  last. Add the index that lets PostgreSQL read the first 20 rows straight
+  from the index, with **no Sort** node.
+context: |
+  tasks(id, title, due_at timestamptz)   -- millions of rows, many NULL due_at
+options:
+  - code: |
+      CREATE INDEX tasks_due_idx
+      ON tasks (due_at ASC NULLS LAST);
+    correct: false
+    explanation: >-
+      Read backwards, ASC NULLS LAST becomes DESC NULLS FIRST, which doesn't
+      match the query's NULLS LAST, so a Sort is added.
+  - code: |
+      CREATE INDEX tasks_due_idx
+      ON tasks (due_at DESC NULLS FIRST);
+    correct: false
+    explanation: >-
+      The index puts NULLs at the start, but the query wants them at the end,
+      so the planner still has to sort.
+  - code: |
+      CREATE INDEX tasks_due_idx
+      ON tasks (due_at) WHERE due_at IS NOT NULL;
+    correct: false
+    explanation: >-
+      The partial index leaves out NULL rows, but the query must return them
+      too, so the planner can't use it.
+  - code: |
+      CREATE INDEX tasks_due_idx
+      ON tasks (due_at DESC NULLS LAST);
+    correct: true
+    explanation: >-
+      The index is stored in exactly the requested order, so a forward index
+      scan feeds LIMIT 20 without sorting.
+tags: [indexes, order-by, null-ordering]
+docs_url: https://www.postgresql.org/docs/17/indexes-ordering.html
+status: approved

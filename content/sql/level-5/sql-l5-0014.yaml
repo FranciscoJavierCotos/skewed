@@ -1,0 +1,55 @@
+id: sql-l5-0014
+topic: sql
+level: 5
+title: Explode a bill of materials into total part counts
+prompt: |
+  Production planning needs, for one `bike`, the total quantity of every part
+  and sub-assembly at any depth. Quantities multiply down the tree (a bike
+  has 2 wheels, each with 32 spokes, so 64 spokes). The same part can be used
+  by several sub-assemblies.
+context: |
+  bom(parent, child, qty)   -- one row per (parent, child) pair
+options:
+  - code: |
+      WITH RECURSIVE parts AS (
+        SELECT child AS part, qty FROM bom WHERE parent = 'bike'
+        UNION ALL
+        SELECT b.child, b.qty FROM bom b JOIN parts p ON b.parent = p.part)
+      SELECT part, SUM(qty) AS total FROM parts GROUP BY part ORDER BY part;
+    correct: false
+    explanation: >-
+      The recursive step keeps the child's own qty instead of multiplying by
+      the parent's, so 2 wheels × 32 spokes is counted as 32.
+  - code: |
+      WITH RECURSIVE parts AS (
+        SELECT child AS part, qty FROM bom WHERE parent = 'bike'
+        UNION
+        SELECT b.child, p.qty * b.qty FROM bom b JOIN parts p ON b.parent = p.part)
+      SELECT part, SUM(qty) AS total FROM parts GROUP BY part ORDER BY part;
+    correct: false
+    explanation: >-
+      UNION removes duplicate rows during recursion, so when two sub-assemblies
+      contribute the same (part, qty), one contribution is lost.
+  - code: |
+      WITH RECURSIVE parts AS (
+        SELECT child AS part, qty FROM bom WHERE parent = 'bike'
+        UNION ALL
+        SELECT b.child, p.qty * b.qty FROM bom b JOIN parts p ON b.parent = p.part)
+      SELECT part, SUM(qty) AS total FROM parts GROUP BY part ORDER BY part;
+    correct: true
+    explanation: >-
+      Each level multiplies by the quantity of its parent path, and UNION ALL
+      keeps every path, so the SUM adds the contributions of all of them.
+  - code: |
+      WITH RECURSIVE parts AS (
+        SELECT child AS part, qty FROM bom WHERE parent = 'bike'
+        UNION ALL
+        SELECT b.parent, p.qty * b.qty FROM bom b JOIN parts p ON b.child = p.part)
+      SELECT part, SUM(qty) AS total FROM parts GROUP BY part ORDER BY part;
+    correct: false
+    explanation: >-
+      Joining on b.child walks up toward the bike instead of down to the
+      components, so the deeper parts are never reached.
+tags: [recursive-cte, bill-of-materials, union-all]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-RECURSIVE
+status: approved

@@ -1,0 +1,44 @@
+id: sql-l5-0012
+topic: sql
+level: 5
+title: Count events per Madrid calendar day
+prompt: |
+  `created_at` is a `timestamptz` and the session time zone is UTC. The
+  Spanish team wants event counts per **Madrid local** calendar day, which is
+  UTC+2 in September. An event at 22:30 UTC on 1 September belongs to
+  2 September in Madrid.
+context: |
+  events(id, created_at timestamptz)
+options:
+  - code: |
+      SELECT (created_at AT TIME ZONE 'UTC')::date AS day, COUNT(*) AS events
+      FROM events GROUP BY 1 ORDER BY 1;
+    correct: false
+    explanation: >-
+      This takes the UTC wall-clock date, so events late in the Madrid evening
+      (after 22:00 UTC) land on the previous day.
+  - code: |
+      SELECT (created_at AT TIME ZONE '+02')::date AS day, COUNT(*) AS events
+      FROM events GROUP BY 1 ORDER BY 1;
+    correct: false
+    explanation: >-
+      Numeric offsets in time zone names follow the POSIX convention, where
+      '+02' means two hours west of UTC, so the days shift the wrong way.
+  - code: |
+      SELECT (created_at AT TIME ZONE 'Europe/Madrid')::date AS day, COUNT(*) AS events
+      FROM events GROUP BY 1 ORDER BY 1;
+    correct: true
+    explanation: >-
+      AT TIME ZONE on a timestamptz returns the local wall-clock time in Madrid,
+      DST included, and its date is the Madrid calendar day.
+  - code: |
+      SELECT (created_at::timestamp AT TIME ZONE 'Europe/Madrid')::date AS day, COUNT(*) AS events
+      FROM events GROUP BY 1 ORDER BY 1;
+    correct: false
+    explanation: >-
+      On a plain timestamp, AT TIME ZONE does the reverse: it treats the UTC
+      wall time as Madrid time and converts it back, shifting it two hours the
+      wrong way.
+tags: [time-zones, timestamptz, dates]
+docs_url: https://www.postgresql.org/docs/17/functions-datetime.html#FUNCTIONS-DATETIME-ZONECONVERT
+status: approved

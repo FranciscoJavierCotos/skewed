@@ -1,0 +1,52 @@
+id: sql-l5-0010
+topic: sql
+level: 5
+title: Total revenue across two yearly sales tables
+prompt: |
+  Sales are archived into one table per year. Finance needs the **total
+  revenue** across both years. Each table numbers its rows from 1, and
+  legitimate duplicate lines exist: the same product at the same amount,
+  sold twice.
+context: |
+  sales_2025(sale_id, product_id, amount)
+  sales_2026(sale_id, product_id, amount)   -- sale_id restarts at 1 each year
+options:
+  - code: |
+      SELECT SUM(amount) FROM (
+        SELECT product_id, amount FROM sales_2025
+        UNION
+        SELECT product_id, amount FROM sales_2026) s;
+    correct: false
+    explanation: >-
+      UNION removes duplicate rows, so identical (product, amount) lines within
+      or across years are counted once and revenue is understated.
+  - code: |
+      SELECT SUM(amount) FROM (
+        SELECT product_id, amount FROM sales_2025
+        UNION ALL
+        SELECT product_id, amount FROM sales_2026) s;
+    correct: true
+    explanation: >-
+      UNION ALL keeps every row, duplicates included, and also skips the sort
+      or hash that de-duplication would cost.
+  - code: |
+      SELECT SUM(DISTINCT amount) FROM (
+        SELECT product_id, amount FROM sales_2025
+        UNION ALL
+        SELECT product_id, amount FROM sales_2026) s;
+    correct: false
+    explanation: >-
+      SUM(DISTINCT) adds each different amount once, so repeated amounts, even
+      from different products, are counted a single time.
+  - code: |
+      SELECT SUM(amount) FROM (
+        SELECT sale_id, amount FROM sales_2025
+        UNION
+        SELECT sale_id, amount FROM sales_2026) s;
+    correct: false
+    explanation: >-
+      sale_id restarts every year, so a 2026 sale with the same id and amount
+      as a 2025 sale is removed by UNION as a duplicate.
+tags: [set-operations, union-all, performance]
+docs_url: https://www.postgresql.org/docs/17/queries-union.html
+status: approved

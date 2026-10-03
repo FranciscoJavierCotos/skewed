@@ -1,0 +1,42 @@
+id: sql-l5-0003
+topic: sql
+level: 5
+title: Index for prefix autocomplete under a non-C collation
+prompt: |
+  The search box autocompletes product names with
+  `WHERE name LIKE 'lap%'` (a fixed prefix plus `%`). The database's default
+  collation is `en_US.UTF-8`. Add the index that this predicate can use.
+context: |
+  products(id, name text, price)   -- name uses the database default collation
+options:
+  - code: |
+      CREATE INDEX products_name_idx
+      ON products (name text_pattern_ops);
+    correct: true
+    explanation: >-
+      text_pattern_ops compares strings character by character, ignoring the
+      locale, which is the ordering a LIKE prefix range needs.
+  - code: |
+      CREATE INDEX products_name_idx
+      ON products USING btree (name);
+    correct: false
+    explanation: >-
+      A default btree index sorts by the en_US collation, whose order isn't the
+      character-by-character order LIKE needs, so the planner can't use it.
+  - code: |
+      CREATE INDEX products_name_idx
+      ON products (lower(name) text_pattern_ops);
+    correct: false
+    explanation: >-
+      The operator class is right, but the index stores lower(name) and the
+      predicate is on name, so the expression doesn't match the query.
+  - code: |
+      CREATE INDEX products_name_idx
+      ON products USING hash (name);
+    correct: false
+    explanation: >-
+      Hash indexes only support equality, so they can't serve a prefix range
+      like LIKE 'lap%'.
+tags: [indexes, like, collation]
+docs_url: https://www.postgresql.org/docs/17/indexes-opclass.html
+status: approved
