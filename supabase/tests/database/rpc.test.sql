@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(32);
 
 insert into public.questions (id, topic, level, title, prompt, docs_url, content_hash) values
   ('sql-l1-9001', 'sql', 1, 'Q1', 'P1', 'https://docs.example/q1', 'h1'),
@@ -104,6 +104,43 @@ select public.report_question('20000000-0000-0000-0000-000000000001', 'sql-l1-90
 select throws_ok(
   $$ select public.report_question('20000000-0000-0000-0000-000000000001', 'sql-l1-9001', 'typo', 'n') $$,
   'P0001', 'rate limit exceeded', '11th report in an hour is rejected');
+
+select is(jsonb_array_length(public.get_questions(array['sql'], 1,
+  array(select 'x' || g from generate_series(1, 501) g), 10)), 0, 'p_exclude over 500 entries returns nothing');
+
+-- Per-IP throttle, keyed on the edge-set cf-connecting-ip.
+select set_config('request.headers', '{"cf-connecting-ip":"203.0.113.7"}', true);
+select is((select count(*)::int from (
+  select public.submit_answer(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'sql-l1-9001', null, 'practice', 1)
+  from generate_series(1, 60)) s), 60, '60 answers a minute from one IP are allowed');
+select throws_ok(
+  $$ select public.submit_answer(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'sql-l1-9001', null, 'practice', 1) $$,
+  'P0001', 'rate limit exceeded', 'the 61st answer in a minute from one IP is rejected');
+select set_config('request.headers', '{"cf-connecting-ip":"203.0.113.8"}', true);
+select lives_ok(
+  $$ select public.submit_answer(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'sql-l1-9001', null, 'practice', 1) $$,
+  'another IP is unaffected');
+select set_config('request.headers', '{}', true);
+select lives_ok(
+  $$ select public.submit_answer(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'sql-l1-9001', null, 'practice', 1) $$,
+  'no IP header fails open');
+
+reset role;
+insert into private.rpc_throttle (ip, fn, window_start, hits)
+values ('203.0.113.9', 'submit_answer', date_trunc('minute', now()) - interval '30 minutes', 1200);
+set local role anon;
+select set_config('request.headers', '{"cf-connecting-ip":"203.0.113.9"}', true);
+select throws_ok(
+  $$ select public.submit_answer(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'sql-l1-9001', null, 'practice', 1) $$,
+  'P0001', 'rate limit exceeded', 'the hourly cap applies across minutes');
+
+select set_config('request.headers', '{"cf-connecting-ip":"203.0.113.10"}', true);
+select lives_ok(
+  $$ select public.report_question(gen_random_uuid(), 'sql-l1-9001', 'typo', 'n') from generate_series(1, 5) $$,
+  '5 reports a minute from one IP are allowed, whatever the anon_id');
+select throws_ok(
+  $$ select public.report_question(gen_random_uuid(), 'sql-l1-9001', 'typo', 'n') $$,
+  'P0001', 'rate limit exceeded', 'the 6th report in a minute from one IP is rejected');
 
 select * from finish();
 rollback;
