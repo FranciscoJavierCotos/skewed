@@ -1,0 +1,40 @@
+id: git-l4-0008
+topic: git
+level: 4
+title: Force-push a rebased branch without clobbering a teammate
+prompt: |
+  You rebased your pushed `feature/x` onto `main`, so a normal push is rejected.
+  Publish it **only if** `origin/feature/x` is still where you last fetched it.
+  If a teammate has pushed since, the push must fail and their commit must stay
+  on the server.
+context: |
+  `feature/x` tracks `origin/feature/x`. Your last fetch was before the rebase.
+options:
+  - code: |
+      git push --force-with-lease origin
+    correct: true
+    explanation: >-
+      The lease compares the server's branch with your remote-tracking ref. If
+      anyone pushed since your fetch they differ, so the push is refused.
+  - code: |
+      git push --force origin feature/x
+    correct: false
+    explanation: >-
+      `--force` overwrites the remote branch unconditionally, so a teammate's
+      new commit would be lost.
+  - code: |
+      git fetch
+      git push --force-with-lease
+    correct: false
+    explanation: >-
+      The fetch moves `origin/feature/x` to include the teammate's commit, so
+      the lease matches and the force push wipes it out.
+  - code: |
+      git push origin +HEAD:feature/x
+    correct: false
+    explanation: >-
+      A leading `+` on a refspec forces that update, so it overwrites the remote
+      branch just like `--force`.
+tags: [push, force-with-lease, shared-branches]
+docs_url: https://git-scm.com/docs/git-push#Documentation/git-push.txt---force-with-lease
+status: approved

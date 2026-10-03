@@ -1,0 +1,35 @@
+id: git-l4-0018
+topic: git
+level: 4
+title: Review everything a pull just brought in
+prompt: |
+  `git pull` just fast-forwarded your `main` by several commits. Before
+  running anything, you want to see the combined diff of **everything** that
+  pull brought in.
+options:
+  - code: |
+      git diff main@{1} main
+    correct: true
+    explanation: >-
+      `main@{1}` is where `main` was before the pull, according to its reflog,
+      so the diff covers every commit the fast-forward added.
+  - code: |
+      git diff HEAD~1 HEAD
+    correct: false
+    explanation: >-
+      `HEAD~1` is one commit back, so this shows only the newest pulled commit.
+  - code: |
+      git diff origin/main main
+    correct: false
+    explanation: >-
+      After the pull, `main` and `origin/main` point at the same commit, so the
+      diff is empty.
+  - code: |
+      git diff --cached main
+    correct: false
+    explanation: >-
+      This compares the index with `main`, which have matched since the pull, so
+      it shows nothing.
+tags: [reflog, diff, pull]
+docs_url: https://git-scm.com/docs/gitrevisions#Documentation/gitrevisions.txt-refnamenegmaster1
+status: approved

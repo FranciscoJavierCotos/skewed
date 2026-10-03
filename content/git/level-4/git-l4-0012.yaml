@@ -1,0 +1,44 @@
+id: git-l4-0012
+topic: git
+level: 4
+title: Purge a secret from your last pushed commit
+prompt: |
+  Your last commit on `feature/x`, a branch only you use, is already pushed and
+  accidentally includes `secrets.env`. Make sure no commit on the remote
+  `feature/x` contains the file any more. Keep your local copy of the file,
+  and keep the rest of the commit.
+options:
+  - code: |
+      git rm --cached secrets.env
+      git commit -m "Remove secrets"
+      git push
+    correct: false
+    explanation: >-
+      A new commit removes the file from the tip only. The previous commit
+      still contains `secrets.env` on the remote.
+  - code: |
+      git rm --cached secrets.env
+      git commit --amend --no-edit
+      git push
+    correct: false
+    explanation: >-
+      The amend rewrites the pushed commit, so a plain push is rejected as
+      non-fast-forward and the old commit stays on the remote.
+  - code: |
+      git rm --cached secrets.env
+      git commit --amend --no-edit
+      git push --force-with-lease
+    correct: true
+    explanation: >-
+      Amending rebuilds the commit without the file, `--cached` keeps it on disk,
+      and the lease-protected force push replaces the remote commit.
+  - code: |
+      git rm secrets.env
+      git commit --amend --no-edit
+      git push --force-with-lease
+    correct: false
+    explanation: >-
+      Without `--cached`, `git rm` deletes your local copy of `secrets.env` too.
+tags: [amend, force-with-lease, secrets]
+docs_url: https://git-scm.com/docs/git-commit#Documentation/git-commit.txt---amend
+status: approved

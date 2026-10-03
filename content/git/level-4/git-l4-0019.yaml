@@ -1,0 +1,48 @@
+id: git-l4-0019
+topic: git
+level: 4
+title: Bring back a commit dropped in an interactive rebase
+prompt: |
+  During an interactive rebase of your local `feature` branch you deleted the
+  "Add retry" line by mistake, and you've since committed "Add docs". Bring
+  "Add retry" back as a new commit on top of `feature`, keeping everything that
+  is there now.
+context: |
+  ```
+  $ git reflog -7
+  2feb57e HEAD@{0}: commit: Add docs
+  b31246f HEAD@{1}: rebase (finish): returning to refs/heads/feature
+  b31246f HEAD@{2}: rebase (pick): Add CLI
+  d6f7fda HEAD@{3}: rebase (start): checkout HEAD~2
+  763e423 HEAD@{4}: commit: Add CLI
+  57cb151 HEAD@{5}: commit: Add retry
+  d6f7fda HEAD@{6}: commit: Add parser
+  ```
+options:
+  - code: |
+      git reset --hard 57cb151
+    correct: false
+    explanation: >-
+      This moves `feature` back to "Add retry", which discards "Add docs" and
+      the rebased "Add CLI".
+  - code: |
+      git switch --detach 57cb151
+    correct: false
+    explanation: >-
+      This detaches HEAD at the old commit. `feature` itself doesn't get the
+      change back.
+  - code: |
+      git merge --no-edit 57cb151
+    correct: false
+    explanation: >-
+      The merge succeeds, but it adds a merge commit instead of a new commit on
+      top.
+  - code: |
+      git cherry-pick 57cb151
+    correct: true
+    explanation: >-
+      The reflog still has the dropped commit's hash, and cherry-picking it
+      re-applies its change as a new commit on top of `feature`.
+tags: [reflog, cherry-pick, recovery]
+docs_url: https://git-scm.com/docs/git-reflog
+status: approved

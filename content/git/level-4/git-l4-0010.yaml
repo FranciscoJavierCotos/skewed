@@ -1,0 +1,40 @@
+id: git-l4-0010
+topic: git
+level: 4
+title: Move your commits after the base branch was rewritten
+prompt: |
+  You built `feature/mine` (two commits) on top of a teammate's `base` branch.
+  They squashed `base` into a single commit and force-pushed, and you've
+  fetched, so `origin/base` is the squashed commit. Your local `base` still
+  points at the old, unsquashed tip. Move **only** your two commits onto
+  `origin/base`.
+context: |
+  You're on `feature/mine`.
+options:
+  - code: |
+      git rebase origin/base feature/mine
+    correct: false
+    explanation: >-
+      The old `base` commits aren't in `origin/base` any more, so they're
+      replayed along with yours and collide with the squashed commit.
+  - code: |
+      git merge --no-edit origin/base
+    correct: false
+    explanation: >-
+      The merge keeps the old unsquashed commits in your history and adds the
+      squashed version next to them.
+  - code: |
+      git rebase --onto base origin/base
+    correct: false
+    explanation: >-
+      The arguments are swapped. This replays the commits that aren't in
+      `origin/base`, the old base commits included, onto old `base`.
+  - code: |
+      git rebase --onto origin/base base
+    correct: true
+    explanation: >-
+      `--onto origin/base base` takes the commits in `base..HEAD`, just yours,
+      and replays them onto the squashed commit.
+tags: [rebase, onto, shared-branches]
+docs_url: https://git-scm.com/docs/git-rebase#Documentation/git-rebase.txt---ontonewbase
+status: approved

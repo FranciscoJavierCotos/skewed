@@ -1,0 +1,36 @@
+id: git-l4-0014
+topic: git
+level: 4
+title: Continue a cherry-pick range past an empty commit
+prompt: |
+  On `release/1.4` you ran `git cherry-pick main~3..main` to backport "Fix A",
+  "Fix B" and "Fix C". Git applied "Fix A", then stopped because "Fix B" is
+  already on the release branch, so its cherry-pick is empty. Leave it out and
+  carry on with "Fix C".
+options:
+  - code: |
+      git cherry-pick --skip
+    correct: true
+    explanation: >-
+      `--skip` drops the empty "Fix B" step and continues with the rest of the
+      sequence, so "Fix C" is applied.
+  - code: |
+      git cherry-pick --continue
+    correct: false
+    explanation: >-
+      There's nothing to commit for this step, so `--continue` stops again and
+      asks you to skip it or allow an empty commit.
+  - code: |
+      git cherry-pick --abort
+    correct: false
+    explanation: >-
+      `--abort` cancels the whole sequence and returns to where you started,
+      which undoes "Fix A" as well.
+  - code: |
+      git cherry-pick --quit
+    correct: false
+    explanation: >-
+      `--quit` forgets the remaining sequence, so "Fix C" is never applied.
+tags: [cherry-pick, sequencer]
+docs_url: https://git-scm.com/docs/git-cherry-pick#Documentation/git-cherry-pick.txt---skip
+status: approved

@@ -1,0 +1,36 @@
+id: git-l4-0002
+topic: git
+level: 4
+title: Recreate a branch deleted by mistake
+prompt: |
+  You were on `spike/arrow` (unmerged, never pushed), ran `git switch main`, and
+  then `git branch -D spike/arrow`. You've run nothing else since. Recreate
+  `spike/arrow` pointing at the commit it had before the delete.
+options:
+  - code: |
+      git branch spike/arrow spike/arrow@{1}
+    correct: false
+    explanation: >-
+      Deleting a branch also deletes its own reflog, so `spike/arrow@{1}` no
+      longer resolves.
+  - code: |
+      git switch -c spike/arrow HEAD@{0}
+    correct: false
+    explanation: >-
+      `HEAD@{0}` is where HEAD is now, `main`, so the new branch starts at `main`
+      without the spike's commits.
+  - code: |
+      git branch spike/arrow HEAD@{1}
+    correct: true
+    explanation: >-
+      `branch -D` doesn't move HEAD, so `HEAD@{1}` is the position before
+      `git switch main`: the spike's tip.
+  - code: |
+      git branch spike/arrow ORIG_HEAD
+    correct: false
+    explanation: >-
+      `ORIG_HEAD` is only set by commands such as reset, merge and rebase. Here
+      it was never set, so it doesn't resolve to the spike.
+tags: [reflog, branch, recovery]
+docs_url: https://git-scm.com/docs/gitrevisions#Documentation/gitrevisions.txt-refnamenegmaster1
+status: approved

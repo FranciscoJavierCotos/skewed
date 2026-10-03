@@ -212,7 +212,6 @@ options:
       Checking out the reflog entry detaches HEAD at C, but the feature branch
       itself still points at the commit before A.
   - code: |
-      git fetch origin
       git reset --hard origin/feature
     correct: false
     explanation: >-

@@ -1,0 +1,40 @@
+id: git-l4-0013
+topic: git
+level: 4
+title: Sync with a branch a teammate force-pushed
+prompt: |
+  A teammate rewrote the shared `feature/x` and force-pushed it. You have no
+  local work on it of your own. Make your local `feature/x` identical to the new
+  `origin/feature/x`, with a clean working tree, without touching the remote.
+options:
+  - code: |
+      git fetch origin
+      git merge origin/feature/x
+    correct: false
+    explanation: >-
+      Merging keeps the old, rewritten commits in your branch next to their new
+      versions, so it doesn't match the remote.
+  - code: |
+      git fetch origin
+      git reset --soft origin/feature/x
+    correct: false
+    explanation: >-
+      `--soft` moves the branch but keeps your old files in the index and working
+      tree, so the differences show up as staged changes.
+  - code: |
+      git fetch origin
+      git push --force origin feature/x
+    correct: false
+    explanation: >-
+      This pushes your old history over the teammate's rewrite, which undoes
+      their work on the server.
+  - code: |
+      git fetch origin
+      git reset --hard origin/feature/x
+    correct: true
+    explanation: >-
+      With no local work to keep, a hard reset to the fetched branch makes the
+      branch, index and working tree match the new remote exactly.
+tags: [reset, force-push, shared-branches]
+docs_url: https://git-scm.com/docs/git-reset#Documentation/git-reset.txt---hard
+status: approved

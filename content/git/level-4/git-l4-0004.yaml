@@ -1,0 +1,43 @@
+id: git-l4-0004
+topic: git
+level: 4
+title: Backport a hotfix with a traceable cherry-pick
+prompt: |
+  The commit "Fix rounding" is `main~1`. Backport just that commit to
+  `release/1.4`. Team policy says every backport must record which commit it
+  was copied from in its message.
+context: |
+  You're on `main`, which has "Add feature", "Fix rounding" and "Add docs" on top
+  of the point where `release/1.4` branched.
+options:
+  - code: |
+      git switch release/1.4
+      git cherry-pick main~1
+    correct: false
+    explanation: >-
+      The fix is copied, but without `-x` the message doesn't record the
+      original commit, which breaks the backport policy.
+  - code: |
+      git switch release/1.4
+      git merge main~1
+    correct: false
+    explanation: >-
+      Merging `main~1` brings in its whole history, so "Add feature" lands on the
+      release branch too.
+  - code: |
+      git switch release/1.4
+      git cherry-pick -x main~1
+    correct: true
+    explanation: >-
+      `-x` appends "(cherry picked from commit …)" to the message, and only
+      "Fix rounding" is applied.
+  - code: |
+      git switch release/1.4
+      git cherry-pick -x main
+    correct: false
+    explanation: >-
+      `main` points at "Add docs", the tip, so this backports the docs commit
+      instead of the fix.
+tags: [cherry-pick, backport]
+docs_url: https://git-scm.com/docs/git-cherry-pick#Documentation/git-cherry-pick.txt--x
+status: approved

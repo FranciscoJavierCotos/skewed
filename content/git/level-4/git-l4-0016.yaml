@@ -1,0 +1,39 @@
+id: git-l4-0016
+topic: git
+level: 4
+title: Backport two fixes as a single commit
+prompt: |
+  `main` has "Fix A" (`main~2`), "Add feature" (`main~1`) and "Fix B" (`main`).
+  You're on `release/2.0`. Backport **only** the two fixes, together as a single
+  commit "Backport fixes".
+options:
+  - code: |
+      git cherry-pick main~2 main
+      git commit -m "Backport fixes"
+    correct: false
+    explanation: >-
+      Each cherry-pick commits on its own, so you get two commits, and the
+      final `git commit` has nothing left to record.
+  - code: |
+      git cherry-pick -n main~2..main
+      git commit -m "Backport fixes"
+    correct: false
+    explanation: >-
+      The range excludes `main~2` and includes "Add feature", so the wrong pair
+      of commits is applied.
+  - code: |
+      git merge --squash main
+      git commit -m "Backport fixes"
+    correct: false
+    explanation: >-
+      A squash merge brings in everything on `main`, "Add feature" included.
+  - code: |
+      git cherry-pick -n main~2 main
+      git commit -m "Backport fixes"
+    correct: true
+    explanation: >-
+      `-n` applies both fixes to the index without committing, so one commit
+      records them together.
+tags: [cherry-pick, backport]
+docs_url: https://git-scm.com/docs/git-cherry-pick#Documentation/git-cherry-pick.txt--n
+status: approved
