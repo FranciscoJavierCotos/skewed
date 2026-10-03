@@ -1,0 +1,56 @@
+id: sql-l4-0007
+topic: sql
+level: 4
+title: Upsert a price feed that can deliver stale rows
+prompt: |
+  A partner feed sends product prices, but it is replayed after outages, so
+  some rows are **older** than what is already stored. Insert unknown SKUs,
+  and update a stored SKU only when the feed row is newer than the stored one.
+context: |
+  products(sku, price, updated_at timestamp)   -- one row per sku
+  feed(sku, price, updated_at timestamp)       -- one row per sku
+options:
+  - code: |
+      MERGE INTO products t USING feed s ON t.sku = s.sku
+      WHEN MATCHED THEN
+        UPDATE SET price = s.price, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN
+        INSERT (sku, price, updated_at) VALUES (s.sku, s.price, s.updated_at);
+    correct: false
+    explanation: >-
+      Every matched row is updated, so a stale feed row overwrites a newer
+      stored price.
+  - code: |
+      MERGE INTO products t USING feed s ON t.sku = s.sku
+      WHEN MATCHED AND s.updated_at > t.updated_at THEN
+        UPDATE SET price = s.price, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN
+        INSERT (sku, price, updated_at) VALUES (s.sku, s.price, s.updated_at);
+    correct: true
+    explanation: >-
+      The extra condition on WHEN MATCHED skips stale rows, which then do
+      nothing, while unknown SKUs still go to the INSERT branch.
+  - code: |
+      MERGE INTO products t
+      USING feed s ON t.sku = s.sku AND s.updated_at > t.updated_at
+      WHEN MATCHED THEN
+        UPDATE SET price = s.price, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN
+        INSERT (sku, price, updated_at) VALUES (s.sku, s.price, s.updated_at);
+    correct: false
+    explanation: >-
+      With the date test in ON, a stale row for an existing SKU counts as not
+      matched, so it is inserted as a duplicate SKU.
+  - code: |
+      MERGE INTO products t USING feed s ON t.sku = s.sku
+      WHEN MATCHED AND t.updated_at > s.updated_at THEN
+        UPDATE SET price = s.price, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN
+        INSERT (sku, price, updated_at) VALUES (s.sku, s.price, s.updated_at);
+    correct: false
+    explanation: >-
+      The comparison is reversed, so only stale feed rows are applied, and
+      genuinely newer prices are skipped.
+tags: [merge, upsert, dml]
+docs_url: https://www.postgresql.org/docs/17/sql-merge.html
+status: approved

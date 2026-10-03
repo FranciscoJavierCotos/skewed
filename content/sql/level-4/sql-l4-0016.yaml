@@ -1,0 +1,47 @@
+id: sql-l4-0016
+topic: sql
+level: 4
+title: Load a stock count with INSERT ... ON CONFLICT
+prompt: |
+  After the weekly stock count, `inventory.qty` must equal the **counted**
+  quantity for every SKU in `stock_count`. SKUs not yet in `inventory` are
+  inserted. SKUs that weren't counted keep their current quantity.
+context: |
+  inventory(sku PRIMARY KEY, qty)
+  stock_count(sku, counted_qty)   -- one row per sku
+options:
+  - code: |
+      INSERT INTO inventory (sku, qty)
+      SELECT sku, counted_qty FROM stock_count
+      ON CONFLICT ON CONSTRAINT inventory_pkey DO NOTHING;
+    correct: false
+    explanation: >-
+      DO NOTHING skips every SKU that already exists, so only new SKUs are
+      loaded and existing quantities are never corrected.
+  - code: |
+      INSERT INTO inventory (sku, qty)
+      SELECT sku, counted_qty FROM stock_count
+      ON CONFLICT (sku) DO UPDATE SET qty = inventory.qty;
+    correct: false
+    explanation: >-
+      inventory.qty is the row's existing value, so the update writes the old
+      quantity back and nothing changes.
+  - code: |
+      INSERT INTO inventory (sku, qty)
+      SELECT sku, counted_qty FROM stock_count
+      ON CONFLICT (sku) DO UPDATE SET qty = inventory.qty + EXCLUDED.qty;
+    correct: false
+    explanation: >-
+      Adding the counted quantity to the stored one treats the count as a
+      delivery, so existing SKUs end up with the sum instead of the count.
+  - code: |
+      INSERT INTO inventory (sku, qty)
+      SELECT sku, counted_qty FROM stock_count
+      ON CONFLICT (sku) DO UPDATE SET qty = EXCLUDED.qty;
+    correct: true
+    explanation: >-
+      EXCLUDED holds the row that failed to insert, so existing SKUs are set
+      to the counted quantity and new SKUs are inserted normally.
+tags: [upsert, on-conflict, dml]
+docs_url: https://www.postgresql.org/docs/17/sql-insert.html#SQL-ON-CONFLICT
+status: approved

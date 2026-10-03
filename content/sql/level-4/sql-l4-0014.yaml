@@ -1,0 +1,50 @@
+id: sql-l4-0014
+topic: sql
+level: 4
+title: Latest known email per customer from partial updates
+prompt: |
+  Profile updates are stored as rows where untouched fields are `NULL`. An
+  update that didn't change the email has `email = NULL`. Return each
+  customer's **most recent non-NULL** email.
+context: |
+  customer_updates(customer_id, email, updated_at timestamp)
+
+  A customer never has two updates with the same `updated_at`, and every
+  customer has at least one row with an email.
+options:
+  - code: |
+      SELECT DISTINCT ON (customer_id) customer_id, email
+      FROM customer_updates
+      ORDER BY customer_id, updated_at DESC;
+    correct: false
+    explanation: >-
+      This keeps each customer's latest update even when that update left the
+      email NULL.
+  - code: |
+      SELECT DISTINCT ON (customer_id) customer_id, email
+      FROM customer_updates
+      WHERE email IS NOT NULL
+      ORDER BY customer_id, updated_at DESC;
+    correct: true
+    explanation: >-
+      Filtering out rows without an email first means DISTINCT ON picks the
+      newest update that actually set one.
+  - code: |
+      SELECT DISTINCT ON (customer_id) customer_id, email
+      FROM customer_updates
+      ORDER BY customer_id, email DESC NULLS LAST;
+    correct: false
+    explanation: >-
+      This sorts by the email text, so it keeps the alphabetically last email,
+      not the most recent one.
+  - code: |
+      SELECT DISTINCT ON (customer_id) customer_id, email
+      FROM customer_updates
+      ORDER BY customer_id, updated_at DESC NULLS LAST;
+    correct: false
+    explanation: >-
+      NULLS LAST applies to updated_at, which is never NULL, so a NULL email on
+      the latest update is still picked.
+tags: [distinct-on, null-handling, dedup]
+docs_url: https://www.postgresql.org/docs/17/sql-select.html#SQL-DISTINCT
+status: approved

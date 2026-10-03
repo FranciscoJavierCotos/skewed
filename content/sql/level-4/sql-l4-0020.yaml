@@ -1,0 +1,50 @@
+id: sql-l4-0020
+topic: sql
+level: 4
+title: Remove exact duplicate rows from a keyless log table
+prompt: |
+  A buggy loader inserted some rows of `event_log` several times. The table
+  has no key, and any column can be `NULL`. Delete the extra copies in place
+  so that each distinct row remains **exactly once**.
+context: |
+  event_log(user_id, event, ts timestamp)   -- no primary key
+options:
+  - code: |
+      DELETE FROM event_log a USING event_log b
+      WHERE a.ctid > b.ctid
+        AND COALESCE(a.user_id, 0) = COALESCE(b.user_id, 0)
+        AND a.event = b.event AND a.ts = b.ts;
+    correct: false
+    explanation: >-
+      Only user_id is protected from NULL. When ts is NULL, a.ts = b.ts is NULL,
+      so copies with a missing ts are never seen as equal and all remain.
+  - code: |
+      DELETE FROM event_log a USING event_log b
+      WHERE a.ctid <> b.ctid
+        AND a.user_id IS NOT DISTINCT FROM b.user_id
+        AND a.event IS NOT DISTINCT FROM b.event AND a.ts IS NOT DISTINCT FROM b.ts;
+    correct: false
+    explanation: >-
+      With <> every copy has another copy to match, so all copies are deleted
+      and no instance of a duplicated row survives.
+  - code: |
+      DELETE FROM event_log a USING event_log b
+      WHERE a.ctid > b.ctid
+        AND a.user_id IS NOT DISTINCT FROM b.user_id
+        AND a.event IS NOT DISTINCT FROM b.event;
+    correct: false
+    explanation: >-
+      ts is not compared, so rows from the same user and event at different
+      times count as duplicates and are deleted.
+  - code: |
+      DELETE FROM event_log a USING event_log b
+      WHERE a.ctid > b.ctid
+        AND a.user_id IS NOT DISTINCT FROM b.user_id
+        AND a.event IS NOT DISTINCT FROM b.event AND a.ts IS NOT DISTINCT FROM b.ts;
+    correct: true
+    explanation: >-
+      The ctid tells the physical copies apart, keeping the lowest one, and IS
+      NOT DISTINCT FROM treats NULLs as equal, so every column is compared.
+tags: [dedup, ctid, null-semantics]
+docs_url: https://www.postgresql.org/docs/17/ddl-system-columns.html
+status: approved

@@ -1,0 +1,67 @@
+id: sql-l4-0003
+topic: sql
+level: 4
+title: Longest daily login streak per user
+prompt: |
+  Gamification awards a badge for long login streaks. For each user, return
+  the length of their **longest run of consecutive calendar days** with a
+  login.
+context: |
+  logins(user_id, login_date date)
+
+  There is at most one row per user per day.
+options:
+  - code: |
+      WITH g AS (
+        SELECT user_id,
+               login_date - ROW_NUMBER() OVER (ORDER BY login_date)::int AS grp
+        FROM logins),
+      runs AS (SELECT user_id, grp, COUNT(*) AS len FROM g GROUP BY user_id, grp)
+      SELECT user_id, MAX(len) AS longest_streak
+      FROM runs GROUP BY user_id ORDER BY user_id;
+    correct: false
+    explanation: >-
+      The row number isn't partitioned by user, so other users' logins on the
+      same days shift the numbering and break each user's runs apart.
+  - code: |
+      WITH g AS (
+        SELECT user_id,
+               login_date - ROW_NUMBER() OVER (PARTITION BY user_id
+                                               ORDER BY login_date)::int AS grp
+        FROM logins),
+      runs AS (SELECT user_id, grp, COUNT(*) AS len FROM g GROUP BY user_id, grp)
+      SELECT user_id, MAX(len) AS longest_streak
+      FROM runs GROUP BY user_id ORDER BY user_id;
+    correct: true
+    explanation: >-
+      Within a run of consecutive days, the date and the per-user row number
+      both rise by one, so their difference is constant and identifies the run.
+  - code: |
+      WITH g AS (
+        SELECT user_id,
+               login_date - ROW_NUMBER() OVER (PARTITION BY user_id
+                                               ORDER BY login_date DESC)::int AS grp
+        FROM logins),
+      runs AS (SELECT user_id, grp, COUNT(*) AS len FROM g GROUP BY user_id, grp)
+      SELECT user_id, MAX(len) AS longest_streak
+      FROM runs GROUP BY user_id ORDER BY user_id;
+    correct: false
+    explanation: >-
+      Numbering newest first makes the row number fall as the date rises, so
+      the difference changes on every row and each day is its own run of 1.
+  - code: |
+      WITH g AS (
+        SELECT user_id,
+               login_date - ROW_NUMBER() OVER (PARTITION BY user_id
+                                               ORDER BY login_date)::int AS grp
+        FROM logins),
+      runs AS (SELECT user_id, grp, COUNT(*) AS len FROM g GROUP BY user_id, grp)
+      SELECT user_id, COUNT(DISTINCT grp) AS longest_streak
+      FROM runs GROUP BY user_id ORDER BY user_id;
+    correct: false
+    explanation: >-
+      The islands are right, but COUNT(DISTINCT grp) counts how many streaks
+      each user had instead of measuring the longest one.
+tags: [gaps-and-islands, window-functions, streaks]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

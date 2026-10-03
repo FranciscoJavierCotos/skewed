@@ -1,0 +1,48 @@
+id: sql-l4-0019
+topic: sql
+level: 4
+title: Keep the most complete lead per email
+prompt: |
+  The CRM holds duplicate leads per `email`. Keep one lead per email: the
+  one with the **most filled-in fields** among `phone` and `company`. If
+  several are equally complete, keep the **earliest** `created_at`.
+context: |
+  leads(lead_id, email, phone, company, created_at timestamp)
+
+  Leads with the same email never share a `created_at`.
+options:
+  - code: |
+      SELECT DISTINCT ON (email) lead_id, email, phone, company
+      FROM leads
+      ORDER BY email, phone DESC NULLS LAST, company DESC NULLS LAST, created_at;
+    correct: false
+    explanation: >-
+      This sorts by the phone text first, so a lead with the larger phone
+      number wins even when it has no company.
+  - code: |
+      SELECT DISTINCT ON (email) lead_id, email, phone, company
+      FROM leads
+      ORDER BY email, num_nonnulls(phone, company), created_at;
+    correct: false
+    explanation: >-
+      The completeness score is sorted ascending, so the least complete lead
+      is kept.
+  - code: |
+      SELECT DISTINCT ON (email) lead_id, email, phone, company
+      FROM leads
+      ORDER BY email, num_nonnulls(phone, company) DESC, created_at;
+    correct: true
+    explanation: >-
+      num_nonnulls counts the filled fields, sorting it descending puts the most
+      complete lead first, and created_at breaks ties toward the oldest.
+  - code: |
+      SELECT DISTINCT ON (email) lead_id, email, phone, company
+      FROM leads
+      ORDER BY email, num_nonnulls(phone, company) DESC, created_at DESC;
+    correct: false
+    explanation: >-
+      The tiebreaker is descending, so among equally complete leads the newest
+      one is kept instead of the earliest.
+tags: [distinct-on, dedup, data-quality]
+docs_url: https://www.postgresql.org/docs/17/functions-comparison.html#FUNCTIONS-COMPARISON-FUNC-TABLE
+status: approved
