@@ -1,0 +1,37 @@
+id: git-l1-0005
+topic: git
+level: 1
+title: Take one file out of the next commit but keep the edit
+prompt: |
+  You ran `git add .` after editing `etl.py` and `config.yaml`. The `config.yaml`
+  change has local credentials for testing, so it must **not** go into the next
+  commit, but you want to keep the edit in your working tree. `etl.py` should stay
+  staged.
+options:
+  - code: |
+      git restore --worktree config.yaml
+    correct: false
+    explanation: >-
+      `--worktree` copies the staged version over the working file. The edit is
+      already staged, so nothing changes and it stays staged.
+  - code: |
+      git restore --staged config.yaml
+    correct: true
+    explanation: >-
+      `--staged` resets the index entry to `HEAD`, so `config.yaml` is unstaged
+      while the working file keeps the edit.
+  - code: |
+      git rm --cached -- config.yaml
+    correct: false
+    explanation: >-
+      `rm --cached` stages the **deletion** of `config.yaml`, so the next commit
+      would stop tracking the file altogether.
+  - code: |
+      git restore --source=HEAD config.yaml
+    correct: false
+    explanation: >-
+      Without `--staged`, this overwrites the working file with the committed
+      version, which loses the edit, and the staged change stays staged.
+tags: [staging, restore]
+docs_url: https://git-scm.com/docs/git-restore
+status: approved

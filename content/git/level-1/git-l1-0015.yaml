@@ -1,0 +1,41 @@
+id: git-l1-0015
+topic: git
+level: 1
+title: Commit changes to tracked files but not scratch files
+prompt: |
+  You edited `a.py` and `b.py` and deleted `old.py`, all of them tracked. You
+  also have untracked scratch files (`scratch.ipynb`, `notes.txt`). Commit all the
+  changes to tracked files, **including** the deletion of `old.py`, while the
+  scratch files stay untracked.
+options:
+  - code: |
+      git add -A
+      git commit -m "Refactor loaders"
+    correct: false
+    explanation: >-
+      `-A` stages everything, including the untracked scratch files, so they end
+      up committed.
+  - code: |
+      git add *.py
+      git commit -m "Refactor loaders"
+    correct: false
+    explanation: >-
+      The shell expands `*.py` to the files that still exist, so the deletion
+      of `old.py` is never staged.
+  - code: |
+      git add -u
+      git commit -m "Refactor loaders"
+    correct: true
+    explanation: >-
+      `-u` stages modifications and deletions of tracked files only, so the
+      scratch files stay untracked.
+  - code: |
+      git status
+      git commit -m "Refactor loaders"
+    correct: false
+    explanation: >-
+      `git status` only reports changes. Nothing is staged, so the commit has
+      nothing to record.
+tags: [staging, add, commit]
+docs_url: https://git-scm.com/docs/git-add#Documentation/git-add.txt--u
+status: approved

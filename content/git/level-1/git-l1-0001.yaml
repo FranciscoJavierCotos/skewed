@@ -1,0 +1,45 @@
+id: git-l1-0001
+topic: git
+level: 1
+title: Put an existing project under version control
+prompt: |
+  You've been handed a folder with a working ETL project (`etl.py`, `README.md` and a
+  `sql/` directory) that has never been under version control. Make it a Git
+  repository and record **every** current file in a first commit.
+context: |
+  You are in the project folder. `git init` has not been run yet.
+options:
+  - code: |
+      git init
+      git add *.py
+      git commit -m "Initial import"
+    correct: false
+    explanation: >-
+      The shell expands `*.py` to `etl.py` only, so `README.md` and the `sql/`
+      directory are left out of the first commit.
+  - code: |
+      git init
+      git add .
+      git commit -m "Initial import"
+    correct: true
+    explanation: >-
+      `git add .` stages every file under the current directory, so the first
+      commit records the whole project.
+  - code: |
+      git init
+      git commit --all -m "Initial import"
+    correct: false
+    explanation: >-
+      `--all` only stages files Git already tracks. In a brand-new repository
+      nothing is tracked yet, so there is nothing to commit.
+  - code: |
+      git init
+      git add -u
+      git commit -m "Initial import"
+    correct: false
+    explanation: >-
+      `git add -u` only updates files that are already tracked. None are in a new
+      repository, so nothing is staged and the commit fails.
+tags: [init, staging, commit]
+docs_url: https://git-scm.com/docs/git-add
+status: approved

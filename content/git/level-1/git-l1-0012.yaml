@@ -1,0 +1,50 @@
+id: git-l1-0012
+topic: git
+level: 1
+title: Create a repository whose only branch is main
+prompt: |
+  Your Git is configured to name the first branch `master`, but the team
+  standard is `main`. Turn the current project folder into a repository whose
+  **only** branch is `main`, with the current files in its first commit.
+context: |
+  `git config --global init.defaultBranch` returns `master`. The folder isn't a
+  repository yet.
+options:
+  - code: |
+      git init
+      git config init.defaultBranch main
+      git add .
+      git commit -m "Initial commit"
+    correct: false
+    explanation: >-
+      `init.defaultBranch` is only read when a repository is created. Setting it
+      after `git init` changes nothing, so the branch is still `master`.
+  - code: |
+      git init
+      git add .
+      git commit -m "Initial commit"
+      git switch -c main
+    correct: false
+    explanation: >-
+      The commit lands on `master`, and `switch -c` creates `main` as a
+      **second** branch, so `master` is still there.
+  - code: |
+      git init --initial-branch=main
+      git add .
+      git commit -m "Initial commit"
+    correct: true
+    explanation: >-
+      `--initial-branch` overrides the configured default for this repository,
+      so the first commit creates `main` and no `master` ever exists.
+  - code: |
+      git init
+      git add .
+      git commit -m "Initial commit"
+      git push -u origin HEAD:main
+    correct: false
+    explanation: >-
+      `HEAD:main` only names a branch on a remote (and this repository has no
+      remote yet). The local branch is still `master`.
+tags: [init, branch]
+docs_url: https://git-scm.com/docs/git-init#Documentation/git-init.txt---initial-branchbranch-name
+status: approved

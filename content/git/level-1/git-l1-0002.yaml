@@ -1,0 +1,39 @@
+id: git-l1-0002
+topic: git
+level: 1
+title: Commit one file and leave another change for later
+prompt: |
+  You've edited two tracked files. The change to `etl.py` is a finished bug fix;
+  the change to `utils.py` is half-done refactoring. Commit **only** the `etl.py`
+  fix, and leave the `utils.py` edit uncommitted in your working tree.
+options:
+  - code: |
+      git commit --all -m "Fix null handling in etl"
+    correct: false
+    explanation: >-
+      `--all` stages every modified tracked file, so the half-done `utils.py`
+      change goes into the commit too.
+  - code: |
+      git add -A
+      git commit -m "Fix null handling in etl"
+    correct: false
+    explanation: >-
+      `git add -A` stages all changes in the repository, including the
+      `utils.py` edit.
+  - code: |
+      git add etl.py
+      git commit -am "Fix null handling in etl"
+    correct: false
+    explanation: >-
+      Staging only `etl.py` doesn't help: `-a` on the commit stages every
+      modified tracked file again, `utils.py` included.
+  - code: |
+      git add etl.py
+      git commit -m "Fix null handling in etl"
+    correct: true
+    explanation: >-
+      Only `etl.py` is staged, and a plain `git commit` records just the staged
+      changes. `utils.py` stays modified and unstaged.
+tags: [staging, commit]
+docs_url: https://git-scm.com/docs/git-commit
+status: approved

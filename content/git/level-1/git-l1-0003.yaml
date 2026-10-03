@@ -1,0 +1,36 @@
+id: git-l1-0003
+topic: git
+level: 1
+title: Start a feature branch from main
+prompt: |
+  You're on `main` with a clean working tree. You're about to start work on a new
+  ingestion job. Create a branch named `feature/ingest` from the current commit
+  and switch to it, so your next commits land there and not on `main`.
+options:
+  - code: |
+      git switch -c feature/ingest
+    correct: true
+    explanation: >-
+      `switch -c` creates the branch at the current commit and checks it out in
+      one step.
+  - code: |
+      git branch feature/ingest
+    correct: false
+    explanation: >-
+      `git branch <name>` creates the branch but leaves you on `main`, so the
+      next commit still lands on `main`.
+  - code: |
+      git switch feature/ingest
+    correct: false
+    explanation: >-
+      Without `-c`, `git switch` only moves to an existing branch. The branch
+      doesn't exist yet, so the command fails.
+  - code: |
+      git checkout feature/ingest
+    correct: false
+    explanation: >-
+      Without `-b`, `git checkout` expects an existing branch or path. Neither
+      exists, so it fails and you stay on `main`.
+tags: [branch, switch]
+docs_url: https://git-scm.com/docs/git-switch
+status: approved

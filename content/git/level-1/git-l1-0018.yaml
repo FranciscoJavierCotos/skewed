@@ -1,0 +1,39 @@
+id: git-l1-0018
+topic: git
+level: 1
+title: Delete a file from the project
+prompt: |
+  `legacy_export.py` is no longer used. Remove it from the project, from both
+  your disk and the repository, in a new commit.
+options:
+  - code: |
+      rm legacy_export.py
+      git commit -m "Remove legacy export"
+    correct: false
+    explanation: >-
+      Deleting the file with `rm` doesn't stage the removal, so the commit has
+      nothing to record.
+  - code: |
+      git rm legacy_export.py
+      git commit -m "Remove legacy export"
+    correct: true
+    explanation: >-
+      `git rm` deletes the file from disk and stages the deletion, so the commit
+      removes it from the repository.
+  - code: |
+      git rm --cached legacy_export.py
+      git commit -m "Remove legacy export"
+    correct: false
+    explanation: >-
+      `--cached` removes the file from the repository only. It stays on disk as
+      an untracked file.
+  - code: |
+      git rm -n legacy_export.py
+      git commit -m "Remove legacy export"
+    correct: false
+    explanation: >-
+      `-n` is `--dry-run`: Git only lists what it would remove, so nothing is
+      deleted or staged and the commit has nothing to record.
+tags: [rm, commit]
+docs_url: https://git-scm.com/docs/git-rm
+status: approved

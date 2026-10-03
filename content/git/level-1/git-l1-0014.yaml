@@ -1,0 +1,36 @@
+id: git-l1-0014
+topic: git
+level: 1
+title: Fix a typo in the current branch name
+prompt: |
+  You created and committed on `feature/order`, but the team convention says it
+  should be `feature/orders`. Rename the branch you're on so that only
+  `feature/orders` exists afterwards. It hasn't been pushed.
+options:
+  - code: |
+      git switch -c feature/orders
+    correct: false
+    explanation: >-
+      This creates a second branch at the same commit and switches to it, but
+      `feature/order` still exists.
+  - code: |
+      git branch feature/orders
+    correct: false
+    explanation: >-
+      This only adds a new branch name. You stay on `feature/order`, which
+      still exists.
+  - code: |
+      git branch -c feature/orders
+    correct: false
+    explanation: >-
+      `-c` **copies** the current branch to the new name, so the old name is kept
+      alongside it.
+  - code: |
+      git branch -m feature/orders
+    correct: true
+    explanation: >-
+      `-m` with one name renames the current branch, so `feature/order` is gone
+      and you're on `feature/orders`.
+tags: [branch, rename]
+docs_url: https://git-scm.com/docs/git-branch#Documentation/git-branch.txt--m
+status: approved

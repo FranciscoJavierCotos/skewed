@@ -1,0 +1,39 @@
+id: git-l1-0013
+topic: git
+level: 1
+title: Delete an abandoned experiment branch
+prompt: |
+  You're on `spike/arrow`, an experiment that was abandoned and never merged.
+  Delete the branch (its commits can go) and finish on `main`.
+options:
+  - code: |
+      git switch main
+      git branch -d spike/arrow
+    correct: false
+    explanation: >-
+      `-d` only deletes branches that are fully merged. The spike was never
+      merged, so Git refuses and the branch stays.
+  - code: |
+      git switch main
+      git branch -D spike/arrow
+    correct: true
+    explanation: >-
+      After leaving the branch, `-D` force-deletes it even though its commits
+      were never merged.
+  - code: |
+      git branch -D spike/arrow
+      git switch main
+    correct: false
+    explanation: >-
+      Git won't delete the branch you're currently on, so the delete fails before
+      you switch to `main`.
+  - code: |
+      git switch main
+      git branch -dr spike/arrow
+    correct: false
+    explanation: >-
+      `-r` deletes a remote-tracking branch. There is no `spike/arrow`
+      remote-tracking ref, so the local branch is untouched.
+tags: [branch, delete]
+docs_url: https://git-scm.com/docs/git-branch
+status: approved

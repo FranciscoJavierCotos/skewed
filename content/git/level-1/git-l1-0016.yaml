@@ -1,0 +1,41 @@
+id: git-l1-0016
+topic: git
+level: 1
+title: Take one file's version from main
+prompt: |
+  On `feature/x`, your `config.yaml` has drifted. You want it exactly as it is on
+  `main`, while every other file keeps its `feature/x` version (`main` has other
+  changes you don't want yet). Commit the result and finish with a clean working
+  tree.
+options:
+  - code: |
+      git restore --source=main config.yaml
+      git commit -am "Sync config with main"
+    correct: true
+    explanation: >-
+      `--source=main` writes `main`'s version of just that file into the working
+      tree, and `commit -a` stages and commits it.
+  - code: |
+      git merge -X theirs main --no-edit
+      git commit -am "Sync config with main"
+    correct: false
+    explanation: >-
+      `-X theirs` settles the `config.yaml` conflict, but a merge still brings in
+      **all** of `main`'s other changes, which the prompt rules out.
+  - code: |
+      git restore config.yaml
+      git commit -am "Sync config with main"
+    correct: false
+    explanation: >-
+      Without `--source`, `restore` takes the file from the index, which is
+      `feature/x`'s version, so nothing changes and there's nothing to commit.
+  - code: |
+      git reset main -- config.yaml
+      git commit -m "Sync config with main"
+    correct: false
+    explanation: >-
+      `reset` with a path only updates the index. The commit records `main`'s
+      version, but the working file keeps the old one, so the tree isn't clean.
+tags: [restore, branch]
+docs_url: https://git-scm.com/docs/git-restore#Documentation/git-restore.txt---sourcetree
+status: approved
