@@ -36,4 +36,4 @@ options:
       100 leaves the count at 100.
 tags: [partitioning, coalesce, shuffle]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.coalesce.html
-status: draft
+status: approved

@@ -47,4 +47,4 @@ options:
       summing the partial sums per customer gives the exact total.
 tags: [skew, salting, aggregation]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.rand.html
-status: draft
+status: approved

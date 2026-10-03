@@ -12,11 +12,12 @@ context: |
   `d=1` and `d=2`.
 options:
   - code: |
+      spark.conf.set("spark.sql.sources.partitionOverwriteMode", "static")
       (df.write.mode("overwrite")
          .partitionBy("d").parquet(out_path))
     correct: false
     explanation: >-
-      With the default `static` overwrite mode, Spark deletes the whole table
+      `static` is the default overwrite mode: Spark deletes the whole table
       first, so partition `d=1` is lost.
   - code: |
       spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
@@ -27,12 +28,14 @@ options:
       In `dynamic` mode, overwrite only replaces the partitions that appear in
       the incoming data, so `d=2` is replaced, `d=3` is added and `d=1` stays.
   - code: |
+      spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
       (df.write.mode("append")
          .partitionBy("d").parquet(out_path))
     correct: false
     explanation: >-
-      `append` adds the corrected rows next to the old ones, so partition `d=2`
-      ends up with both versions.
+      The overwrite mode only matters for `overwrite` writes. `append` adds the
+      corrected rows next to the old ones, so partition `d=2` ends up with both
+      versions.
   - code: |
       (df.write.mode("overwrite").option("replaceWhere", "d >= 2")
          .partitionBy("d").parquet(out_path))
@@ -42,4 +45,4 @@ options:
       performs a full static overwrite, deleting `d=1`.
 tags: [partitioning, write, overwrite-modes]
 docs_url: https://spark.apache.org/docs/latest/configuration.html#runtime-sql-configuration
-status: draft
+status: approved

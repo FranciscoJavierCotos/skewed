@@ -37,4 +37,4 @@ options:
       With the threshold disabled, Spark still plans a shuffled sort-merge join.
 tags: [broadcast-join, join-strategies]
 docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#join-strategy-hints-for-sql-queries
-status: draft
+status: approved

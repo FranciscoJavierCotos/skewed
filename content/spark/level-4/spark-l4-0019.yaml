@@ -47,4 +47,4 @@ options:
       instead of the single `small` row, which defeats the point.
 tags: [skew, broadcast-join, joins]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.broadcast.html
-status: draft
+status: approved

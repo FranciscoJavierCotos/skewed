@@ -11,19 +11,21 @@ context: |
   and `ts` (timestamp). `F` is `pyspark.sql.functions`.
 options:
   - code: |
-      df.write.partitionBy("user_id").parquet(out_path)
+      df.withColumn("event_date", F.to_date("ts")).write.partitionBy("user_id").parquet(out_path)
     correct: false
     explanation: >-
-      Partitioning by a high-cardinality user id creates tens of millions of
-      tiny folders, and day-range queries can't prune any of them.
+      The date column is derived but not used for the layout. Partitioning by a
+      high-cardinality user id creates tens of millions of tiny folders, and
+      day-range queries can't prune any of them.
   - code: |
-      df.write.partitionBy("ts").parquet(out_path)
+      df.withColumn("event_date", F.col("ts")).write.partitionBy("event_date").parquet(out_path)
     correct: false
     explanation: >-
-      The raw timestamp has a distinct value almost every second, so this
-      creates one folder per timestamp instead of one per day.
+      `event_date` is just a copy of the raw timestamp, which has a distinct
+      value almost every second, so this creates one folder per timestamp
+      instead of one per day.
   - code: |
-      df.write.bucketBy(30, "ts").parquet(out_path)
+      df.withColumn("event_date", F.to_date("ts")).write.bucketBy(30, "event_date").parquet(out_path)
     correct: false
     explanation: >-
       Bucketing is only supported with `saveAsTable`. A path-based Parquet write
@@ -36,4 +38,4 @@ options:
       folder per day that day-range filters can prune.
 tags: [partitioning, write, data-layout]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.partitionBy.html
-status: draft
+status: approved

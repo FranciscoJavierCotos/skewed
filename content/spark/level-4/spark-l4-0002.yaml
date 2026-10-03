@@ -43,4 +43,4 @@ options:
       folder still receives many files.
 tags: [partitioning, small-files, write]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.repartition.html
-status: draft
+status: approved

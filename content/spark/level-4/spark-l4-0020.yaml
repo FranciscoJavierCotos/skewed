@@ -46,4 +46,4 @@ options:
       bucketing metadata, so Spark can't rely on it and shuffles both sides.
 tags: [bucketing, shuffle, joins]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.bucketBy.html
-status: draft
+status: approved

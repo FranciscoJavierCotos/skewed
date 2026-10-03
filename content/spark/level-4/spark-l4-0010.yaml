@@ -45,4 +45,4 @@ options:
       matches exactly one copy, and the hot key is spread over 4 join keys.
 tags: [skew, salting, joins]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.crossJoin.html
-status: draft
+status: approved

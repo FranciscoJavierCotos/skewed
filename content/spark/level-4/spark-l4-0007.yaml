@@ -38,4 +38,4 @@ options:
       folders and has to scan every day's files.
 tags: [partitioning, partition-pruning, read]
 docs_url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#partition-discovery
-status: draft
+status: approved

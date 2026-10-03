@@ -39,4 +39,4 @@ options:
       every row group is read and the regex runs in Spark.
 tags: [predicate-pushdown, udf, parquet]
 docs_url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#configuration
-status: draft
+status: approved

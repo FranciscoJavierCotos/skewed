@@ -62,4 +62,4 @@ options:
       run the UDF, and `n` is 0.
 tags: [udf, accumulators, lazy-evaluation]
 docs_url: https://spark.apache.org/docs/latest/rdd-programming-guide.html#accumulators
-status: draft
+status: approved

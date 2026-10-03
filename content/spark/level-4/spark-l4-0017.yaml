@@ -41,4 +41,4 @@ options:
       `dims`, so Spark plans broadcast hash joins with `dims` as the build side.
 tags: [broadcast-join, configuration]
 docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#other-configuration-options
-status: draft
+status: approved

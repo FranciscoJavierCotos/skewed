@@ -40,4 +40,4 @@ options:
       integer, and they run in the JVM with no Python serialisation cost.
 tags: [udf, null-semantics]
 docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
-status: draft
+status: approved

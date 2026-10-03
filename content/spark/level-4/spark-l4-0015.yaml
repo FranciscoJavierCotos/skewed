@@ -35,8 +35,8 @@ options:
       df.withColumn("attrs_map", parse("attrs"))
     correct: false
     explanation: >-
-      The UDF returns a list of pairs while declaring a map type, and Spark
-      can't convert a list into a map, so the conversion fails.
+      The UDF returns a list of pairs while declaring a map type. Spark doesn't
+      convert a list into a map; it silently returns null for every row.
 tags: [udf, maps, built-in-functions]
 docs_url: https://spark.apache.org/docs/latest/api/sql/index.html#str_to_map
-status: draft
+status: approved
