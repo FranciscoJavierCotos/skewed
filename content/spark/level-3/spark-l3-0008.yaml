@@ -1,0 +1,39 @@
+id: spark-l3-0008
+topic: spark
+level: 3
+title: Match unassigned sales to the unassigned target
+prompt: |
+  Sales without a region (`region` is null) roll up to an "unassigned" bucket,
+  and the targets table has a row with a null `region` for that bucket. Join
+  each sale to its target so that null matches null, like regular regions do.
+context: |
+  `sales(sale_id, region, amount)` and `targets(region, target)`. Both `region`
+  columns contain nulls.
+options:
+  - code: |
+      sales.join(targets, "region")
+    correct: false
+    explanation: >-
+      An equality join never matches null to null, because `null = null` is
+      null, so the unassigned sales are dropped.
+  - code: |
+      sales.join(targets, sales.region.eqNullSafe(targets.region))
+    correct: true
+    explanation: >-
+      `eqNullSafe` (`<=>`) treats two nulls as equal, so unassigned sales match
+      the unassigned target and other regions match as usual.
+  - code: |
+      sales.fillna({"region": "unassigned"}).join(targets, "region")
+    correct: false
+    explanation: >-
+      Only the sales side is filled. The target row still has a null region, so
+      `unassigned` finds no match.
+  - code: |
+      sales.join(targets, sales.region == targets.region, "left")
+    correct: false
+    explanation: >-
+      The left join keeps the unassigned sales, but `==` still doesn't match
+      nulls, so their `target` stays null.
+tags: [null-semantics, joins]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.eqNullSafe.html
+status: approved

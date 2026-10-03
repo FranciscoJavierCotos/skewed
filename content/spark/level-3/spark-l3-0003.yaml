@@ -1,0 +1,43 @@
+id: spark-l3-0003
+topic: spark
+level: 3
+title: Badge the top two revenue tiers in each category
+prompt: |
+  Merchandising awards a badge to every product whose revenue is among the
+  **two highest distinct revenue values in its category**. Products that tie
+  share the badge, and a tie must not push the next revenue value out.
+context: |
+  `df` has columns `category`, `product_id` and `revenue`.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      w = Window.partitionBy("category").orderBy(F.desc("revenue"))
+      df.withColumn("rk", F.dense_rank().over(w)).filter("rk <= 2")
+    correct: true
+    explanation: >-
+      `dense_rank` gives tied products the same rank without leaving gaps, so
+      ranks 1 and 2 cover exactly the two highest distinct revenue values.
+  - code: |
+      w = Window.partitionBy("category").orderBy(F.desc("revenue"))
+      df.withColumn("rk", F.rank().over(w)).filter("rk <= 2")
+    correct: false
+    explanation: >-
+      `rank` leaves a gap after ties: two products tied at the top take ranks 1
+      and 1, the next value gets rank 3, and it loses its badge.
+  - code: |
+      w = Window.partitionBy("category").orderBy(F.desc("revenue"))
+      df.withColumn("rk", F.row_number().over(w)).filter("rk <= 2")
+    correct: false
+    explanation: >-
+      `row_number` numbers tied products differently, so it keeps exactly two
+      products per category and arbitrarily drops ties.
+  - code: |
+      w = Window.orderBy(F.desc("revenue"))
+      df.withColumn("rk", F.dense_rank().over(w)).filter("rk <= 2")
+    correct: false
+    explanation: >-
+      Without `partitionBy`, products are ranked across all categories, so only
+      the two highest revenue values overall get badges.
+tags: [window-functions, ranking]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.dense_rank.html
+status: approved

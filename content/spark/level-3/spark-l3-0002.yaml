@@ -1,0 +1,44 @@
+id: spark-l3-0002
+topic: spark
+level: 3
+title: Days since the customer's previous order
+prompt: |
+  For churn modelling, add `days_since_prev`: the number of days between each
+  order and the **same customer's previous** order. A customer's first order
+  must get null.
+context: |
+  `df` has columns `customer_id`, `order_id` and `order_date` (date). A customer
+  places at most one order per day.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy("order_date")
+      df.withColumn("days_since_prev", F.datediff("order_date", F.lead("order_date").over(w)))
+    correct: false
+    explanation: >-
+      `lead` looks at the next order, not the previous one, so the values are
+      negative and the last order (not the first) is null.
+  - code: |
+      w = Window.orderBy("order_date")
+      df.withColumn("days_since_prev", F.datediff("order_date", F.lag("order_date").over(w)))
+    correct: false
+    explanation: >-
+      Without `partitionBy`, the previous row can belong to another customer, so
+      gaps are measured across customers.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy("order_date")
+      df.withColumn("days_since_prev", F.datediff("order_date", F.first("order_date").over(w)))
+    correct: false
+    explanation: >-
+      `first` returns the customer's first order date, so this measures days since
+      the first order, and the first order gets 0 instead of null.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy("order_date")
+      df.withColumn("days_since_prev", F.datediff("order_date", F.lag("order_date").over(w)))
+    correct: true
+    explanation: >-
+      `lag` returns the previous row's date within the customer's ordered
+      partition, and null for the first order, so `datediff` gives the gap.
+tags: [window-functions, lag-lead, dates]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.lag.html
+status: approved

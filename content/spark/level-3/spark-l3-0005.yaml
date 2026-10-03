@@ -1,0 +1,39 @@
+id: spark-l3-0005
+topic: spark
+level: 3
+title: Count invalid sensor readings
+prompt: |
+  An IoT feed writes `value` as a double. A reading is **invalid** when the
+  value is missing (null) **or** is NaN, which the firmware emits on a sensor
+  fault. Return all invalid readings.
+context: |
+  `df` has columns `sensor_id`, `ts` and `value` (double, may be null or NaN).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("value").isNull())
+    correct: false
+    explanation: >-
+      NaN is a real double value, not null, so `isNull` misses the readings the
+      firmware marked as NaN.
+  - code: |
+      df.filter(F.isnan("value"))
+    correct: false
+    explanation: >-
+      `isnan` returns false for null, so readings with no value at all are
+      missed.
+  - code: |
+      df.filter(F.col("value").isNull() | F.isnan("value"))
+    correct: true
+    explanation: >-
+      Null and NaN are different states in Spark, so the filter tests both and
+      keeps a reading that is either.
+  - code: |
+      df.filter(F.col("value").isNull() & F.isnan("value"))
+    correct: false
+    explanation: >-
+      A value can't be both null and NaN at once, since `isnan(null)` is false,
+      so `&` matches nothing.
+tags: [null-semantics, nan, data-quality]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.isnan.html
+status: approved

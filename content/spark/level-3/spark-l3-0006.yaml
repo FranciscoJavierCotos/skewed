@@ -1,0 +1,45 @@
+id: spark-l3-0006
+topic: spark
+level: 3
+title: Stamp every event with the customer's latest channel
+prompt: |
+  Attribution wants every event row to carry `last_channel`: the `channel` of
+  that customer's **most recent** event, the same value on all of the customer's
+  rows.
+context: |
+  `df` has columns `customer_id`, `event_ts` (unique per customer) and `channel`.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      w = (Window.partitionBy("customer_id").orderBy("event_ts")
+           .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing))
+      df.withColumn("last_channel", F.last("channel").over(w))
+    correct: true
+    explanation: >-
+      The frame spans the whole partition, so `last` returns the channel of the
+      latest event on every row.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy("event_ts")
+      df.withColumn("last_channel", F.last("channel").over(w))
+    correct: false
+    explanation: >-
+      With `orderBy`, the default frame ends at the current row, so `last`
+      returns each row's own channel instead of the latest one.
+  - code: |
+      w = (Window.partitionBy("customer_id").orderBy("event_ts")
+           .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing))
+      df.withColumn("last_channel", F.first("channel").over(w))
+    correct: false
+    explanation: >-
+      The frame covers the whole partition, but `first` returns the channel of
+      the earliest event, not the latest.
+  - code: |
+      w = Window.partitionBy("customer_id")
+      df.withColumn("last_channel", F.max("channel").over(w))
+    correct: false
+    explanation: >-
+      `max` on a string returns the alphabetically largest channel, which has
+      nothing to do with which event was most recent.
+tags: [window-functions, window-frames]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.last.html
+status: approved
