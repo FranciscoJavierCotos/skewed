@@ -1,0 +1,48 @@
+id: sql-l5-0018
+topic: sql
+level: 5
+title: Latest activity across three nullable timestamps
+prompt: |
+  Each user has three activity timestamps, and any of them can be `NULL` if
+  that activity never happened. The churn model needs `last_activity`, the
+  latest of the non-NULL timestamps, which is `NULL` only when all three are
+  `NULL`.
+context: |
+  users(id, last_login timestamptz, last_purchase timestamptz, last_ticket timestamptz)
+options:
+  - code: |
+      SELECT id,
+             GREATEST(last_login, last_purchase, last_ticket) AS last_activity
+      FROM users;
+    correct: true
+    explanation: >-
+      In PostgreSQL, GREATEST ignores NULL arguments and returns NULL only when
+      all of them are NULL. (Some other databases return NULL as soon as any
+      argument is NULL.)
+  - code: |
+      SELECT id,
+             LEAST(last_login, last_purchase, last_ticket) AS last_activity
+      FROM users;
+    correct: false
+    explanation: >-
+      LEAST returns the earliest of the timestamps, which is the user's oldest
+      activity, not the latest.
+  - code: |
+      SELECT id,
+             GREATEST(last_login, last_purchase, last_ticket, '-infinity') AS last_activity
+      FROM users;
+    correct: false
+    explanation: >-
+      The extra '-infinity' argument means the result is never NULL, so users
+      with no activity at all get -infinity instead of NULL.
+  - code: |
+      SELECT id,
+             COALESCE(last_login, last_purchase, last_ticket) AS last_activity
+      FROM users;
+    correct: false
+    explanation: >-
+      COALESCE returns the first non-NULL argument in list order, not the
+      latest one, so a newer purchase is ignored when a login exists.
+tags: [null-semantics, greatest, postgres-specific]
+docs_url: https://www.postgresql.org/docs/17/functions-conditional.html#FUNCTIONS-GREATEST-LEAST
+status: approved

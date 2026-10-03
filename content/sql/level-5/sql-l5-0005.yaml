@@ -1,0 +1,43 @@
+id: sql-l5-0005
+topic: sql
+level: 5
+title: Covering index for an index-only scan
+prompt: |
+  A hot endpoint runs `SELECT order_id, qty FROM order_lines WHERE
+  product_id = $1`. The rows are wide (a long `note` column), so the goal is
+  an **Index Only Scan** that looks rows up by `product_id` and never needs
+  to visit the table for these columns.
+context: |
+  order_lines(order_id, product_id, qty, price, note text)
+options:
+  - code: |
+      CREATE INDEX order_lines_product_idx
+      ON order_lines USING hash (product_id);
+    correct: false
+    explanation: >-
+      A hash index stores only hash codes, not column values, so it can never
+      return order_id or qty and every match needs a heap visit.
+  - code: |
+      CREATE INDEX order_lines_product_idx
+      ON order_lines (product_id, qty);
+    correct: false
+    explanation: >-
+      qty is now in the index, but order_id isn't, so the query can't be
+      answered from the index alone.
+  - code: |
+      CREATE INDEX order_lines_product_idx
+      ON order_lines (product_id) INCLUDE (order_id, qty);
+    correct: true
+    explanation: >-
+      product_id is the search key, and INCLUDE stores order_id and qty in the
+      index leaves, so every selected column comes from the index.
+  - code: |
+      CREATE INDEX order_lines_product_idx
+      ON order_lines (order_id, qty) INCLUDE (product_id);
+    correct: false
+    explanation: >-
+      product_id is only an INCLUDE column, so it can't be searched on. The
+      whole index must be scanned with product_id as a filter.
+tags: [indexes, covering-index, index-only-scan]
+docs_url: https://www.postgresql.org/docs/17/indexes-index-only-scans.html
+status: approved

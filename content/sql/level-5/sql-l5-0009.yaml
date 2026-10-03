@@ -1,0 +1,46 @@
+id: sql-l5-0009
+topic: sql
+level: 5
+title: Top three scores, including ties for third
+prompt: |
+  The leaderboard shows the 3 best scores. If other players tie with the
+  player in 3rd place, they must be shown too, so the board can have more
+  than 3 rows. Players below 3rd place must not appear.
+context: |
+  scores(player, score)
+options:
+  - code: |
+      SELECT player, score FROM scores
+      ORDER BY score DESC
+      FETCH FIRST 3 ROWS ONLY;
+    correct: false
+    explanation: >-
+      ROWS ONLY (like LIMIT) cuts after exactly 3 rows, so a player tied with
+      3rd place is dropped arbitrarily.
+  - code: |
+      SELECT player, score FROM scores
+      ORDER BY score DESC, player
+      FETCH FIRST 3 ROWS WITH TIES;
+    correct: false
+    explanation: >-
+      WITH TIES compares every ORDER BY key, and adding player makes each row
+      unique, so no ties remain and only 3 rows come back.
+  - code: |
+      SELECT player, score
+      FROM (SELECT *, DENSE_RANK() OVER (ORDER BY score DESC) AS r FROM scores) t
+      WHERE r <= 3;
+    correct: false
+    explanation: >-
+      DENSE_RANK counts distinct scores, so this returns the top 3 score
+      levels, including players below 3rd place.
+  - code: |
+      SELECT player, score FROM scores
+      ORDER BY score DESC
+      FETCH FIRST 3 ROWS WITH TIES;
+    correct: true
+    explanation: >-
+      WITH TIES returns the first 3 rows plus any further rows that tie with
+      the 3rd on the ORDER BY key.
+tags: [top-n, with-ties, ranking]
+docs_url: https://www.postgresql.org/docs/17/sql-select.html#SQL-LIMIT
+status: approved

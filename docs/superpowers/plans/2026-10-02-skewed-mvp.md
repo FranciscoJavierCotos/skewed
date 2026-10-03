@@ -3143,12 +3143,12 @@ Expected: 4 passed.
 
 **Files:** `content/sql/level-{1..5}/sql-l{n}-00{01..20}.yaml`
 
-- [ ] For each level n = 1…5, as a separate PR per level:
-  - [ ] Draft 20 questions (topic `sql`). All SQL is PostgreSQL 17.
-  - [ ] Run `pnpm content:validate` → 0 errors.
-  - [ ] Execute every option in PostgreSQL 17 (`psql` against a scratch database) with a tiny dataset from `context`.
-  - [ ] Go through the review checklist, approve and merge.
-- [ ] Done when: ≥ 100 approved `sql` questions, ≥ 20 per level.
+- [x] For each level n = 1…5, as a separate PR per level (L1–L5: PRs #56–#60):
+  - [x] Draft 20 questions (topic `sql`). All SQL is PostgreSQL 17.
+  - [x] Run `pnpm content:validate` → 0 errors.
+  - [x] Execute every option in PostgreSQL 17 (`psql` against a scratch database) with a tiny dataset from `context`. *Done with the Supabase MCP `execute_sql` against the prod project instead: one schema per question, all inside `begin … rollback`. EXPLAIN/index questions compared plans, and DML questions compared table snapshots.*
+  - [x] Go through the review checklist, approve and merge.
+- [x] Done when: ≥ 100 approved `sql` questions, ≥ 20 per level.
 
 ### Task 20: Content bank — Git L1–L5 (100 questions) and the content quality report
 

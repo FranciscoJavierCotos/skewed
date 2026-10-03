@@ -1,0 +1,57 @@
+id: sql-l5-0015
+topic: sql
+level: 5
+title: Accounts reachable through transfers that can loop
+prompt: |
+  Compliance needs every account that money from account 1 can reach by
+  following one or more transfers. Transfers can form **cycles** (1 → 2 →
+  3 → 1), so the query must terminate. List each reachable account other
+  than account 1 exactly once.
+context: |
+  transfers(src, dst)   -- may contain cycles
+options:
+  - code: |
+      WITH RECURSIVE r AS (
+        SELECT dst, ARRAY[1, dst] AS path FROM transfers WHERE src = 1
+        UNION ALL
+        SELECT t.dst, r.path || t.dst FROM transfers t JOIN r ON t.src = r.dst)
+      SELECT DISTINCT dst FROM r WHERE dst <> 1 ORDER BY dst;
+    correct: false
+    explanation: >-
+      The path is collected but never checked, so the recursion goes round the
+      cycle forever and the query runs until it is cancelled.
+  - code: |
+      WITH RECURSIVE r AS (
+        SELECT dst, ARRAY[1, dst] AS path FROM transfers WHERE src = 1
+        UNION ALL
+        SELECT t.dst, r.path || t.dst FROM transfers t JOIN r ON t.src = r.dst
+        WHERE t.dst <> ALL (r.path))
+      SELECT DISTINCT dst FROM r WHERE dst <> 1 ORDER BY dst;
+    correct: true
+    explanation: >-
+      Each row carries the path it took, and a step that would revisit an
+      account already on its path is cut, so every branch ends.
+  - code: |
+      WITH RECURSIVE r AS (
+        SELECT dst, 1 AS hops FROM transfers WHERE src = 1
+        UNION
+        SELECT t.dst, r.hops + 1 FROM transfers t JOIN r ON t.src = r.dst)
+      SELECT DISTINCT dst FROM r WHERE dst <> 1 ORDER BY dst;
+    correct: false
+    explanation: >-
+      UNION only stops on rows that are exact duplicates, and the growing hops
+      counter makes every lap of a cycle a new row, so it never terminates.
+  - code: |
+      WITH RECURSIVE r AS (
+        SELECT dst, ARRAY[1, dst] AS path FROM transfers WHERE src = 1
+        UNION ALL
+        SELECT t.dst, r.path || t.dst FROM transfers t JOIN r ON t.src = r.dst
+        WHERE t.src <> ALL (r.path))
+      SELECT DISTINCT dst FROM r WHERE dst <> 1 ORDER BY dst;
+    correct: false
+    explanation: >-
+      t.src always equals the last account on the path, so the guard rejects
+      every step and only accounts one transfer away are found.
+tags: [recursive-cte, graph-traversal, cycles]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-CYCLE
+status: approved

@@ -1,0 +1,51 @@
+id: sql-l5-0001
+topic: sql
+level: 5
+title: Index for a per-tenant recent-events feed
+prompt: |
+  The tenant activity feed runs this query thousands of times a minute:
+
+  ```sql
+  SELECT id, created_at FROM events
+  WHERE tenant_id = $1 AND created_at >= $2
+  ORDER BY created_at LIMIT 100;
+  ```
+
+  Add the one index that lets PostgreSQL find the rows with **both**
+  predicates as index conditions and return them already in `created_at`
+  order, with no Sort node and no Filter in the plan.
+context: |
+  events(id, tenant_id, created_at timestamptz, payload)   -- millions of rows, 500 tenants
+options:
+  - code: |
+      CREATE INDEX events_feed_idx
+      ON events (created_at DESC);
+    correct: false
+    explanation: >-
+      The scan can follow created_at order (backwards), but tenant_id isn't in
+      the index, so every other tenant's recent rows are read and discarded by
+      a Filter.
+  - code: |
+      CREATE INDEX events_feed_idx
+      ON events (tenant_id, created_at);
+    correct: true
+    explanation: >-
+      The equality column comes first, so within one tenant the entries are
+      sorted by created_at: the range is an index condition and no Sort is needed.
+  - code: |
+      CREATE INDEX events_feed_idx
+      ON events USING hash (tenant_id);
+    correct: false
+    explanation: >-
+      The hash index finds the tenant's rows, but in no particular order, so the
+      date range becomes a Filter and the rows must be sorted.
+  - code: |
+      CREATE INDEX events_feed_idx
+      ON events (tenant_id) INCLUDE (created_at);
+    correct: false
+    explanation: >-
+      INCLUDE columns are stored but aren't part of the key order, so they can't
+      serve the range or the ORDER BY, and a Sort is still needed.
+tags: [indexes, explain, composite-index]
+docs_url: https://www.postgresql.org/docs/17/indexes-multicolumn.html
+status: approved

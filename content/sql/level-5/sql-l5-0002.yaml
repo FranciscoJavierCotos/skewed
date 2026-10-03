@@ -1,0 +1,47 @@
+id: sql-l5-0002
+topic: sql
+level: 5
+title: Index for a case-insensitive email login
+prompt: |
+  Login looks users up with:
+
+  ```sql
+  SELECT id FROM users WHERE lower(email) = lower($1);
+  ```
+
+  `EXPLAIN` shows a sequential scan on a table of 10 million users. Add the
+  index that this exact query can use.
+context: |
+  users(id, email text, created_at)
+options:
+  - code: |
+      CREATE INDEX users_email_idx
+      ON users (email COLLATE "C");
+    correct: false
+    explanation: >-
+      The collation only changes how email is compared. The index still stores
+      email, not lower(email), so it can't match the query's expression.
+  - code: |
+      CREATE INDEX users_email_idx
+      ON users (email text_pattern_ops);
+    correct: false
+    explanation: >-
+      text_pattern_ops only changes how the plain column is compared, for LIKE
+      prefixes. It still indexes email, not lower(email).
+  - code: |
+      CREATE INDEX users_email_idx
+      ON users USING hash (email);
+    correct: false
+    explanation: >-
+      A hash index supports equality on the indexed value itself, and that value
+      is email, not lower(email).
+  - code: |
+      CREATE INDEX users_email_idx
+      ON users (lower(email));
+    correct: true
+    explanation: >-
+      An expression index stores lower(email), so the planner can match the
+      query's lower(email) = ... predicate to it exactly.
+tags: [indexes, expression-index, explain]
+docs_url: https://www.postgresql.org/docs/17/indexes-expressional.html
+status: approved

@@ -1,0 +1,58 @@
+id: sql-l5-0013
+topic: sql
+level: 5
+title: Everyone in a manager's reporting line
+prompt: |
+  For an access review, list every employee who reports to employee 2
+  **directly or indirectly**, at any depth, with `depth` = 1 for direct
+  reports, 2 for their reports, and so on. Employee 2 must not be listed.
+context: |
+  employees(emp_id, name, manager_id)   -- manager_id is NULL for the CEO
+options:
+  - code: |
+      WITH RECURSIVE sub AS (
+        SELECT emp_id, manager_id, 1 AS depth FROM employees WHERE manager_id = 2
+        UNION ALL
+        SELECT e.emp_id, e.manager_id, s.depth + 1
+        FROM employees e JOIN sub s ON e.manager_id = s.emp_id)
+      SELECT emp_id, depth FROM sub ORDER BY emp_id;
+    correct: true
+    explanation: >-
+      The anchor takes the direct reports, and each recursive step adds the
+      employees whose manager is already in the result, one level deeper.
+  - code: |
+      WITH RECURSIVE sub AS (
+        SELECT emp_id, manager_id, 1 AS depth FROM employees WHERE manager_id = 2
+        UNION ALL
+        SELECT e.emp_id, e.manager_id, s.depth + 1
+        FROM employees e JOIN sub s ON e.emp_id = s.manager_id)
+      SELECT emp_id, depth FROM sub ORDER BY emp_id;
+    correct: false
+    explanation: >-
+      Joining e.emp_id to s.manager_id walks up the hierarchy, so it adds
+      employee 2 and the managers above them instead of deeper reports.
+  - code: |
+      WITH RECURSIVE sub AS (
+        SELECT emp_id, manager_id, 1 AS depth FROM employees WHERE emp_id = 2
+        UNION ALL
+        SELECT e.emp_id, e.manager_id, s.depth + 1
+        FROM employees e JOIN sub s ON e.manager_id = s.emp_id)
+      SELECT emp_id, depth FROM sub ORDER BY emp_id;
+    correct: false
+    explanation: >-
+      The anchor is employee 2 rather than their reports, so employee 2 is
+      listed and every real report's depth is one too high.
+  - code: |
+      WITH RECURSIVE sub AS (
+        SELECT emp_id, manager_id, 1 AS depth FROM employees WHERE manager_id = 2
+        UNION ALL
+        SELECT e.emp_id, e.manager_id, s.depth + 1
+        FROM employees e JOIN sub s ON e.manager_id = s.emp_id WHERE s.depth < 2)
+      SELECT emp_id, depth FROM sub ORDER BY emp_id;
+    correct: false
+    explanation: >-
+      The depth guard stops the recursion after two levels, so employees three
+      or more levels below employee 2 are missed.
+tags: [recursive-cte, hierarchies]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-RECURSIVE
+status: approved

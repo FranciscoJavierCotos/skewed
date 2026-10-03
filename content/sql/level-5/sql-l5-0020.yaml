@@ -1,0 +1,60 @@
+id: sql-l5-0020
+topic: sql
+level: 5
+title: Management chain from an employee up to the CEO
+prompt: |
+  An approval workflow needs employee 7's chain of managers, from their
+  direct manager (`level` 1) up to the CEO. Return `emp_id` and `level` for
+  each manager. Employee 7 must not be listed, and no row may have a `NULL`
+  `emp_id`.
+context: |
+  employees(emp_id, name, manager_id)   -- manager_id is NULL for the CEO
+options:
+  - code: |
+      WITH RECURSIVE chain AS (
+        SELECT emp_id, 1 AS level FROM employees WHERE manager_id = 7
+        UNION ALL
+        SELECT e.emp_id, c.level + 1
+        FROM employees e JOIN chain c ON e.manager_id = c.emp_id)
+      SELECT emp_id, level FROM chain ORDER BY level;
+    correct: false
+    explanation: >-
+      This starts from the people who report to employee 7 and walks down,
+      which returns their subordinates, not their managers.
+  - code: |
+      WITH RECURSIVE chain AS (
+        SELECT manager_id AS emp_id, 1 AS level FROM employees WHERE emp_id = 7
+        UNION ALL
+        SELECT e.manager_id, c.level + 1
+        FROM employees e JOIN chain c ON e.emp_id = c.emp_id
+        WHERE e.manager_id IS NOT NULL)
+      SELECT emp_id, level FROM chain ORDER BY level;
+    correct: true
+    explanation: >-
+      Each step looks up the current manager's own manager, and the IS NOT
+      NULL check stops at the CEO without adding a NULL row.
+  - code: |
+      WITH RECURSIVE chain AS (
+        SELECT manager_id AS emp_id, 1 AS level FROM employees WHERE emp_id = 7
+        UNION ALL
+        SELECT e.manager_id, c.level + 1
+        FROM employees e JOIN chain c ON e.emp_id = c.emp_id)
+      SELECT emp_id, level FROM chain ORDER BY level;
+    correct: false
+    explanation: >-
+      At the CEO the step still emits their manager_id, which is NULL, so the
+      chain ends with an extra row whose emp_id is NULL.
+  - code: |
+      WITH RECURSIVE chain AS (
+        SELECT emp_id, manager_id, 1 AS level FROM employees WHERE emp_id = 7
+        UNION ALL
+        SELECT e.emp_id, e.manager_id, c.level + 1
+        FROM employees e JOIN chain c ON e.emp_id = c.manager_id)
+      SELECT emp_id, level FROM chain ORDER BY level;
+    correct: false
+    explanation: >-
+      The anchor is employee 7 themself, so they are listed at level 1 and
+      every manager is one level too deep.
+tags: [recursive-cte, hierarchies]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-RECURSIVE
+status: approved

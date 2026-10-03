@@ -1,0 +1,59 @@
+id: sql-l5-0016
+topic: sql
+level: 5
+title: Breadcrumb paths for a category tree
+prompt: |
+  The storefront shows each category's breadcrumb from its root, such as
+  `Home > Garden > Tools`. Return every category with its full `path`. The
+  tree has more than one root, and `name` is `varchar(50)`.
+context: |
+  categories(id, parent_id, name varchar(50))   -- parent_id is NULL for roots
+options:
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, name::text AS path FROM categories WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.name || ' > ' || t.path
+        FROM categories c JOIN t ON c.parent_id = t.id)
+      SELECT id, path FROM t ORDER BY id;
+    correct: false
+    explanation: >-
+      The new name is put in front of the parent's path, so breadcrumbs come
+      out leaf-first, like Tools > Garden > Home.
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, name AS path FROM categories WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, t.path || ' > ' || c.name
+        FROM categories c JOIN t ON c.parent_id = t.id)
+      SELECT id, path FROM t ORDER BY id;
+    correct: false
+    explanation: >-
+      The anchor's path is varchar(50), but the concatenation isn't limited to
+      50 characters, and a recursive CTE column must have one exact type, so
+      PostgreSQL rejects the query.
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, name::text AS path FROM categories WHERE id = 1
+        UNION ALL
+        SELECT c.id, t.path || ' > ' || c.name
+        FROM categories c JOIN t ON c.parent_id = t.id)
+      SELECT id, path FROM t ORDER BY id;
+    correct: false
+    explanation: >-
+      The anchor starts from category 1 only, so the other roots and their
+      subtrees get no breadcrumb.
+  - code: |
+      WITH RECURSIVE t AS (
+        SELECT id, name::text AS path FROM categories WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, t.path || ' > ' || c.name
+        FROM categories c JOIN t ON c.parent_id = t.id)
+      SELECT id, path FROM t ORDER BY id;
+    correct: true
+    explanation: >-
+      Every root starts a path cast to text, and each level appends the child's
+      name after its parent's path.
+tags: [recursive-cte, hierarchies, data-types]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-RECURSIVE
+status: approved
