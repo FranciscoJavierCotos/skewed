@@ -1,0 +1,43 @@
+id: git-l1-0019
+topic: git
+level: 1
+title: Bring back a file deleted in the last commit
+prompt: |
+  The last commit, "Clean up repo", is already pushed. Along with some valid
+  changes to `etl.py`, it deleted `schema.sql` by mistake. Bring `schema.sql`
+  back in a **new** commit, keep the `etl.py` changes, and finish with a clean
+  working tree.
+options:
+  - code: |
+      git restore schema.sql
+      git add schema.sql
+      git commit -m "Restore schema.sql"
+    correct: false
+    explanation: >-
+      Without `--source`, `restore` reads the index, which no longer has
+      `schema.sql`, so it fails with "did not match any file".
+  - code: |
+      git revert --no-edit HEAD
+      git commit --amend -m "Restore schema.sql"
+    correct: false
+    explanation: >-
+      Reverting the whole commit also undoes the valid `etl.py` changes, not just
+      the deletion.
+  - code: |
+      git restore --staged --source=HEAD~1 schema.sql
+      git commit -m "Restore schema.sql"
+    correct: false
+    explanation: >-
+      `--staged` only puts the file in the index. The commit has it, but it's
+      still missing from disk, so the working tree shows it as deleted.
+  - code: |
+      git checkout HEAD~1 -- schema.sql
+      git commit -m "Restore schema.sql"
+    correct: true
+    explanation: >-
+      `checkout <commit> -- <path>` copies the file from `HEAD~1` into both the
+      index and the working tree, so the new commit adds it back without
+      touching `etl.py`.
+tags: [restore, recovery]
+docs_url: https://git-scm.com/docs/git-checkout#Documentation/git-checkout.txt-gitcheckouttree-ish--pathspec
+status: approved

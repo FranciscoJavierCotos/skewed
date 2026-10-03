@@ -1,0 +1,40 @@
+id: git-l1-0017
+topic: git
+level: 1
+title: Move uncommitted work off main onto a new branch
+prompt: |
+  You started editing `etl.py` while on `main` by mistake; nothing is committed
+  yet. Commit the change on a new branch named `feature/retry` and stay on it.
+  `main` must stay at its current commit.
+options:
+  - code: |
+      git commit -am "Add retry"
+      git switch -c feature/retry
+    correct: false
+    explanation: >-
+      Committing first puts the change on `main`, and the new branch is created
+      afterwards from that commit, so `main` moved.
+  - code: |
+      git branch feature/retry
+      git commit -am "Add retry"
+    correct: false
+    explanation: >-
+      `git branch` doesn't switch, so the commit still lands on `main`.
+  - code: |
+      git switch -c feature/retry
+      git commit -am "Add retry"
+    correct: true
+    explanation: >-
+      Uncommitted changes travel with you when you switch, so they are committed
+      on the new branch and `main` stays where it was.
+  - code: |
+      git stash
+      git switch -c feature/retry
+      git commit -am "Add retry"
+    correct: false
+    explanation: >-
+      `git stash` puts the edits away and leaves a clean tree, so there is
+      nothing to commit on the new branch.
+tags: [switch, branch, commit]
+docs_url: https://git-scm.com/docs/git-switch
+status: approved

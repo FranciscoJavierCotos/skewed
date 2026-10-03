@@ -1,0 +1,39 @@
+id: git-l1-0008
+topic: git
+level: 1
+title: Add a forgotten file to the last commit
+prompt: |
+  You just committed "Add dedup step" (not pushed yet), then noticed the new test
+  file `tests/test_dedup.py` is still untracked. Include it in that same commit,
+  keeping its message, instead of making a second commit.
+options:
+  - code: |
+      git commit --amend --no-edit tests/test_dedup.py
+    correct: false
+    explanation: >-
+      A path given to `git commit` must already be known to Git. The test file is
+      untracked, so the command fails.
+  - code: |
+      git add tests/test_dedup.py
+      git commit -m "Add dedup step"
+    correct: false
+    explanation: >-
+      This creates a second commit with the same message instead of including
+      the file in the existing commit.
+  - code: |
+      git add tests/test_dedup.py
+      git commit --amend --no-edit
+    correct: true
+    explanation: >-
+      The file is staged first, then `--amend` replaces the last commit with one
+      that includes it, and `--no-edit` keeps the message.
+  - code: |
+      git add -u
+      git commit --amend -m "Add dedup step"
+    correct: false
+    explanation: >-
+      `git add -u` only stages files Git already tracks, so the untracked test
+      file isn't added and the amended commit still lacks it.
+tags: [commit, amend, staging]
+docs_url: https://git-scm.com/docs/git-commit#Documentation/git-commit.txt---amend
+status: approved

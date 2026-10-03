@@ -1,0 +1,36 @@
+id: git-l1-0009
+topic: git
+level: 1
+title: Throw away the edits to one file only
+prompt: |
+  You have unstaged edits in `pipeline.py` and `schema.sql`. The `pipeline.py`
+  experiment was a dead end: put that file back to how it is in the last commit.
+  Keep your `schema.sql` edits.
+options:
+  - code: |
+      git restore --staged pipeline.py
+    correct: false
+    explanation: >-
+      `--staged` only resets the index. The edits were never staged, so the
+      working file keeps the experiment.
+  - code: |
+      git restore --source=HEAD .
+    correct: false
+    explanation: >-
+      The `.` pathspec restores every file, so the `schema.sql` edits are thrown
+      away as well.
+  - code: |
+      git rm --cached pipeline.py
+    correct: false
+    explanation: >-
+      This stages the deletion of `pipeline.py` from the repository and leaves
+      the edited file on disk.
+  - code: |
+      git restore --worktree pipeline.py
+    correct: true
+    explanation: >-
+      Restoring the working tree copies the index version, which matches the
+      last commit, over `pipeline.py` and leaves `schema.sql` alone.
+tags: [restore, discard]
+docs_url: https://git-scm.com/docs/git-restore
+status: approved

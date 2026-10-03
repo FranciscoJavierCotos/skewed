@@ -1,0 +1,41 @@
+id: git-l1-0011
+topic: git
+level: 1
+title: Keep a commit made in detached HEAD
+prompt: |
+  To try an idea, you checked out an older commit of `main` and committed
+  "Try new parser" on top of it. Git warns that you're in a detached HEAD. Keep
+  that commit on a new branch named `experiment` and be on that branch. `main`
+  must not change.
+options:
+  - code: |
+      git branch experiment
+      git switch experiment
+    correct: true
+    explanation: >-
+      `git branch` with no start point points `experiment` at the current
+      commit, "Try new parser", and switching to it ends the detached HEAD.
+  - code: |
+      git switch main
+      git switch -c experiment
+    correct: false
+    explanation: >-
+      Leaving the detached HEAD first means the new branch starts at `main`, and
+      the "Try new parser" commit is left behind on no branch.
+  - code: |
+      git branch experiment main
+      git switch experiment
+    correct: false
+    explanation: >-
+      The start point `main` puts the branch at `main`'s tip, so it doesn't
+      contain the commit you made.
+  - code: |
+      git tag experiment
+      git switch experiment
+    correct: false
+    explanation: >-
+      A tag does keep the commit, but `git switch` only accepts branches, so it
+      refuses the tag and you stay detached.
+tags: [detached-head, branch, switch]
+docs_url: https://git-scm.com/docs/git-checkout#_detached_head
+status: approved

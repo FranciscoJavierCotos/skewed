@@ -1,0 +1,36 @@
+id: git-l1-0010
+topic: git
+level: 1
+title: Review exactly what the next commit will contain
+prompt: |
+  You've staged a change to `a.py`. You also have an unstaged edit to `b.py` that
+  you don't plan to commit yet. Before committing, show the line-by-line changes
+  that will go into the next commit, and nothing else.
+options:
+  - code: |
+      git diff --word-diff
+    correct: false
+    explanation: >-
+      Plain `git diff` compares the working tree with the index, so it shows the
+      unstaged `b.py` edit and not the staged `a.py` change.
+  - code: |
+      git diff --staged
+    correct: true
+    explanation: >-
+      `--staged` compares the index with `HEAD`, which is exactly what the next
+      commit will record.
+  - code: |
+      git log -p -1 HEAD
+    correct: false
+    explanation: >-
+      This shows the patch of the last commit that already exists, not the
+      changes that are staged for the next one.
+  - code: |
+      git status --short
+    correct: false
+    explanation: >-
+      `status` lists which files are staged or modified, but it doesn't show the
+      line-by-line changes.
+tags: [diff, staging]
+docs_url: https://git-scm.com/docs/git-diff
+status: approved

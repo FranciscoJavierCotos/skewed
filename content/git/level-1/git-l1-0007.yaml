@@ -1,0 +1,42 @@
+id: git-l1-0007
+topic: git
+level: 1
+title: Rename a module in a single commit
+prompt: |
+  Rename `src/load.py` to `src/loader.py` and record the rename as one **new**
+  commit, leaving nothing uncommitted.
+context: |
+  The working tree is clean.
+options:
+  - code: |
+      git mv src/load.py src/loader.py
+      git commit -m "Rename load to loader"
+    correct: true
+    explanation: >-
+      `git mv` renames the file and stages both the removal and the new path, so
+      the commit records the whole rename.
+  - code: |
+      mv src/load.py src/loader.py
+      git commit -am "Rename load to loader"
+    correct: false
+    explanation: >-
+      `-a` stages the removal of the tracked `load.py`, but `loader.py` is a new
+      untracked file, so the commit only deletes the module.
+  - code: |
+      cp src/load.py src/loader.py
+      git add src
+      git commit -m "Rename load to loader"
+    correct: false
+    explanation: >-
+      Copying leaves `src/load.py` in place, so the commit adds a duplicate
+      instead of renaming.
+  - code: |
+      git mv src/load.py src/loader.py
+      git commit --amend -m "Rename load to loader"
+    correct: false
+    explanation: >-
+      `--amend` rewrites the previous commit and replaces its message instead of
+      adding a new commit for the rename.
+tags: [mv, commit]
+docs_url: https://git-scm.com/docs/git-mv
+status: approved

@@ -1,0 +1,38 @@
+id: git-l1-0004
+topic: git
+level: 1
+title: Branch a hotfix from main while on a feature branch
+prompt: |
+  You're on `feature/report`, which has two commits that aren't on `main` yet. A
+  login bug needs an urgent fix. Create `hotfix/login` starting from `main` (it
+  must **not** include your report work) and switch to it.
+context: |
+  The working tree is clean.
+options:
+  - code: |
+      git switch -c hotfix/login
+    correct: false
+    explanation: >-
+      With no start point, the new branch starts at the current commit, so it
+      carries the two unfinished report commits.
+  - code: |
+      git branch hotfix/login main
+    correct: false
+    explanation: >-
+      The branch starts at `main`, but `git branch` doesn't switch to it, so you
+      are still on `feature/report`.
+  - code: |
+      git switch -c hotfix/login main
+    correct: true
+    explanation: >-
+      The second argument is the start point, so the branch is created at
+      `main`'s commit and checked out in one step.
+  - code: |
+      git switch --orphan hotfix/login
+    correct: false
+    explanation: >-
+      `--orphan` creates a branch with no history at all and empties the working
+      tree, so the fix wouldn't be based on `main`.
+tags: [branch, switch]
+docs_url: https://git-scm.com/docs/git-switch
+status: approved

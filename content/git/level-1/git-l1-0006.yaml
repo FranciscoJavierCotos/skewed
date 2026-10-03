@@ -1,0 +1,47 @@
+id: git-l1-0006
+topic: git
+level: 1
+title: Stop tracking a committed .env file but keep it locally
+prompt: |
+  A teammate committed `.env`, which holds local secrets. In a new commit, stop
+  tracking it so it leaves the repository, keep your local copy of the file, and
+  make sure Git won't pick it up again.
+options:
+  - code: |
+      echo ".env" >> .gitignore
+      git add .gitignore .env
+      git commit -m "Stop tracking .env"
+    correct: false
+    explanation: >-
+      `.gitignore` only applies to untracked files. `.env` is already tracked, so
+      it stays in the repository.
+  - code: |
+      echo ".env" >> .gitignore
+      git rm .env
+      git add .gitignore
+      git commit -m "Stop tracking .env"
+    correct: false
+    explanation: >-
+      `git rm` without `--cached` also deletes the file from your disk, so your
+      local copy of the secrets is gone.
+  - code: |
+      echo ".env" >> .gitignore
+      git restore --staged .env
+      git add .gitignore
+      git commit -m "Stop tracking .env"
+    correct: false
+    explanation: >-
+      `.env` has no staged changes, so `restore --staged` does nothing and the
+      file stays tracked.
+  - code: |
+      echo ".env" >> .gitignore
+      git rm --cached .env
+      git add .gitignore
+      git commit -m "Stop tracking .env"
+    correct: true
+    explanation: >-
+      `rm --cached` removes `.env` from the index only, so the commit drops it
+      from the repository while the file stays on disk, now ignored.
+tags: [gitignore, rm, untrack]
+docs_url: https://git-scm.com/docs/git-rm
+status: approved

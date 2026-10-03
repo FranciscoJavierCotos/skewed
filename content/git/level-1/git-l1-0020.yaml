@@ -1,0 +1,46 @@
+id: git-l1-0020
+topic: git
+level: 1
+title: Ignore a data folder except one shared file
+prompt: |
+  `data/` holds local extracts (`.csv`, `.parquet`, ...) that must never be
+  committed, except `data/schema.json`, which the team shares. Write the
+  `.gitignore`, then commit it together with `data/schema.json`.
+context: |
+  `data/` is untracked: `schema.json`, `orders.csv`, `orders.parquet`.
+options:
+  - code: |
+      printf 'data/*\n!data/schema.json\n' > .gitignore
+      git add .
+      git commit -m "Ignore local data"
+    correct: true
+    explanation: >-
+      `data/*` ignores the files inside the folder, and the later negation
+      re-includes `schema.json`. That works because the folder itself isn't
+      excluded.
+  - code: |
+      printf 'data/\n!data/schema.json\n' > .gitignore
+      git add .
+      git commit -m "Ignore local data"
+    correct: false
+    explanation: >-
+      `data/` excludes the whole directory, and Git can't re-include a file
+      whose parent directory is excluded, so `schema.json` is ignored too.
+  - code: |
+      printf '!data/schema.json\ndata/*\n' > .gitignore
+      git add .
+      git commit -m "Ignore local data"
+    correct: false
+    explanation: >-
+      The last matching pattern wins. `data/*` comes after the negation, so it
+      ignores `schema.json` again.
+  - code: |
+      printf 'data/*.csv\n!data/schema.json\n' > .gitignore
+      git add .
+      git commit -m "Ignore local data"
+    correct: false
+    explanation: >-
+      Only `.csv` files are ignored, so `orders.parquet` gets committed.
+tags: [gitignore]
+docs_url: https://git-scm.com/docs/gitignore#_pattern_format
+status: approved
