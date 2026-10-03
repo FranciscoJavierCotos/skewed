@@ -1,0 +1,42 @@
+id: spark-l4-0012
+topic: spark
+level: 4
+title: Keep the country filter pushed down to Parquet
+prompt: |
+  `df` is read from a large Parquet dataset. Keep only Spanish rows (`country`
+  is stored in upper case, such as `ES`) in a way that lets Spark **push the
+  predicate down to the Parquet reader**, so row groups can be skipped using
+  their min/max statistics.
+context: |
+  `df = spark.read.parquet(path)` with columns `id` and `country`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("country") == "ES")
+    correct: true
+    explanation: >-
+      A plain comparison between a column and a literal becomes an `EqualTo`
+      pushed filter, which the Parquet reader checks against row-group
+      statistics.
+  - code: |
+      is_es = F.udf(lambda c: c == "ES", "boolean")
+      df.filter(is_es("country"))
+    correct: false
+    explanation: >-
+      A Python UDF is opaque to the optimizer, so nothing is pushed down: every
+      row is read and sent to Python to be tested.
+  - code: |
+      df.filter(F.lower("country") == "es")
+    correct: false
+    explanation: >-
+      Wrapping the column in a function means the predicate is no longer a
+      simple column comparison, so it can't be pushed to the Parquet reader.
+  - code: |
+      df.filter(F.col("country").rlike("^ES$"))
+    correct: false
+    explanation: >-
+      Regex matches aren't one of the predicates Parquet pushdown supports, so
+      every row group is read and the regex runs in Spark.
+tags: [predicate-pushdown, udf, parquet]
+docs_url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#configuration
+status: approved

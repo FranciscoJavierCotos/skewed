@@ -1,0 +1,44 @@
+id: spark-l4-0017
+topic: spark
+level: 4
+title: Raise the auto-broadcast threshold for a 40 MB dimension
+prompt: |
+  `dims` is about 40 MB on disk and is joined to `facts` in dozens of queries.
+  The cluster runs with the default `spark.sql.autoBroadcastJoinThreshold`
+  (10 MB), so every join is a sort-merge join. Change the session so that Spark
+  **automatically** broadcasts `dims`, without hints in each query.
+context: |
+  `facts` and `dims` are Parquet tables joined on `product_id`.
+  Adaptive Query Execution is disabled.
+options:
+  - code: |
+      spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "64")
+      facts.join(dims, "product_id")
+    correct: false
+    explanation: >-
+      The threshold is in bytes, not megabytes, so 64 bytes is far below 40 MB
+      and nothing is broadcast.
+  - code: |
+      spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "-1")
+      facts.join(dims, "product_id")
+    correct: false
+    explanation: >-
+      `-1` disables automatic broadcasting entirely, so the join stays a
+      sort-merge join.
+  - code: |
+      spark.conf.set("spark.sql.broadcastTimeout", "600")
+      facts.join(dims, "product_id")
+    correct: false
+    explanation: >-
+      `broadcastTimeout` only controls how long a broadcast may take. It doesn't
+      decide which tables are small enough to broadcast.
+  - code: |
+      spark.conf.set("spark.sql.autoBroadcastJoinThreshold", str(64 * 1024 * 1024))
+      facts.join(dims, "product_id")
+    correct: true
+    explanation: >-
+      A 64 MB threshold, expressed in bytes, is above the size estimate for
+      `dims`, so Spark plans broadcast hash joins with `dims` as the build side.
+tags: [broadcast-join, configuration]
+docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#other-configuration-options
+status: approved

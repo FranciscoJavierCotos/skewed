@@ -1,0 +1,48 @@
+id: spark-l4-0010
+topic: spark
+level: 4
+title: Salt a skewed join with a small dimension
+prompt: |
+  Joining `big` to `small` on `k` stalls on one hot key. Spread the hot key over
+  **4 salt values**: salt `big` randomly and make sure every salted `big` row
+  still finds its `small` match. The result must equal the unsalted inner join:
+  columns `k`, `v`, `name`, with no lost or duplicated rows.
+context: |
+  `big(k, v)` is large and skewed. `small(k, name)` has one row per `k`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      big_s = big.withColumn("salt", (F.rand() * 4).cast("int"))
+      small_s = small.withColumn("salt", (F.rand() * 4).cast("int"))
+      big_s.join(small_s, ["k", "salt"]).drop("salt")
+    correct: false
+    explanation: >-
+      Each `small` row gets only one random salt, so a `big` row matches only
+      when both random salts happen to agree, and most matches are lost.
+  - code: |
+      big_s = big.withColumn("salt", (F.rand() * 4).cast("int"))
+      small_s = small.crossJoin(spark.range(4).withColumnRenamed("id", "salt"))
+      big_s.join(small_s, "k").drop("salt")
+    correct: false
+    explanation: >-
+      `small` is replicated once per salt, but the join ignores the salt, so each
+      `big` row matches all 4 copies and is duplicated four times.
+  - code: |
+      big_s = big.withColumn("salt", (F.rand() * 4).cast("int"))
+      small_s = small.withColumn("salt", F.lit(0))
+      big_s.join(small_s, ["k", "salt"]).drop("salt")
+    correct: false
+    explanation: >-
+      `small` only exists with salt 0, so the roughly three quarters of `big`
+      rows that drew salts 1 to 3 find no match.
+  - code: |
+      big_s = big.withColumn("salt", (F.rand() * 4).cast("int"))
+      small_s = small.crossJoin(spark.range(4).withColumnRenamed("id", "salt"))
+      big_s.join(small_s, ["k", "salt"]).drop("salt")
+    correct: true
+    explanation: >-
+      `small` is replicated for every salt value, so each salted `big` row
+      matches exactly one copy, and the hot key is spread over 4 join keys.
+tags: [skew, salting, joins]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.crossJoin.html
+status: approved

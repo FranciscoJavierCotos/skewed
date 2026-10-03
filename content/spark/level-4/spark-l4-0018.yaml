@@ -1,0 +1,65 @@
+id: spark-l4-0018
+topic: spark
+level: 4
+title: Count bad records seen inside a UDF
+prompt: |
+  While a Python UDF cleans `raw`, the team wants to report how many null
+  values it encountered. The final expression must evaluate to that count on
+  the driver after the job has run.
+context: |
+  `df` has a column `raw` (nullable string). `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      bad = spark.sparkContext.accumulator(0)
+      def clean(v):
+          if v is None:
+              bad.add(1)
+          return v
+      df.select(F.udf(clean, "string")("raw")).collect()
+      bad.value
+    correct: true
+    explanation: >-
+      An accumulator is the supported way to send counters from executors back
+      to the driver, and its value is read after the action has run.
+  - code: |
+      bad = 0
+      def clean(v):
+          global bad
+          if v is None:
+              bad += 1
+          return v
+      df.select(F.udf(clean, "string")("raw")).collect()
+      bad
+    correct: false
+    explanation: >-
+      The function is serialised to the executors with its own copy of `bad`.
+      Their increments never reach the driver, whose `bad` stays 0.
+  - code: |
+      bad = []
+      def clean(v):
+          if v is None:
+              bad.append(v)
+          return v
+      df.select(F.udf(clean, "string")("raw")).collect()
+      len(bad)
+    correct: false
+    explanation: >-
+      Each executor appends to its own deserialised copy of the list, so the
+      driver's list stays empty.
+  - code: |
+      bad = spark.sparkContext.accumulator(0)
+      def clean(v):
+          if v is None:
+              bad.add(1)
+          return v
+      out = df.select(F.udf(clean, "string")("raw"))
+      n = bad.value
+      out.collect()
+      n
+    correct: false
+    explanation: >-
+      Transformations are lazy, so the accumulator is read before any action has
+      run the UDF, and `n` is 0.
+tags: [udf, accumulators, lazy-evaluation]
+docs_url: https://spark.apache.org/docs/latest/rdd-programming-guide.html#accumulators
+status: approved

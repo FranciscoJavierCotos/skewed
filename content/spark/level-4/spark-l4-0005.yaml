@@ -1,0 +1,43 @@
+id: spark-l4-0005
+topic: spark
+level: 4
+title: Length of a trimmed code without UDF pitfalls
+prompt: |
+  Add `code_len`, an **integer** column holding the length of `code` after
+  trimming surrounding spaces. Rows with a null `code` must get a null
+  `code_len`, and the job must not fail.
+context: |
+  `df` has columns `id` and `code` (nullable string).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      code_len = F.udf(lambda s: len(s.strip()), "int")
+      df.withColumn("code_len", code_len("code"))
+    correct: false
+    explanation: >-
+      The UDF receives `None` for null codes, and `None.strip()` raises an
+      AttributeError that fails the whole job.
+  - code: |
+      code_len = F.udf(lambda s: len(s.strip()) if s is not None else None)
+      df.withColumn("code_len", code_len("code"))
+    correct: false
+    explanation: >-
+      Without a return type, `F.udf` defaults to StringType, so `code_len` comes
+      back as strings such as `"3"` instead of integers.
+  - code: |
+      code_len = F.udf(lambda s: float(len(s.strip())) if s is not None else None, "int")
+      df.withColumn("code_len", code_len("code"))
+    correct: false
+    explanation: >-
+      The UDF returns Python floats for a column declared as int. Spark
+      doesn't convert them; it silently returns null for every row.
+  - code: |
+      trimmed = F.trim("code")
+      df.withColumn("code_len", F.length(trimmed))
+    correct: true
+    explanation: >-
+      Built-in `trim` and `length` return null for null input and produce an
+      integer, and they run in the JVM with no Python serialisation cost.
+tags: [udf, null-semantics]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
+status: approved

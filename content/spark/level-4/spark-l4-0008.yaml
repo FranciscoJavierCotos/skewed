@@ -1,0 +1,40 @@
+id: spark-l4-0008
+topic: spark
+level: 4
+title: Unique row ids at scale
+prompt: |
+  Every row of a multi-billion-row DataFrame needs a `row_id` that is
+  **unique**. The ids don't need to be consecutive, and the job must not funnel
+  the data through a single task. Some rows are exact duplicates of each other.
+context: |
+  `df` has columns `user_id` and `event`. `F` is `pyspark.sql.functions` and
+  `Window` is `pyspark.sql.Window`. Adaptive Query Execution is disabled.
+options:
+  - code: |
+      df.withColumn("row_id", F.row_number().over(Window.orderBy(F.lit(1))))
+    correct: false
+    explanation: >-
+      A window with no `partitionBy` moves every row into a single partition, so
+      one task numbers the whole dataset.
+  - code: |
+      df.withColumn("row_id", F.spark_partition_id())
+    correct: false
+    explanation: >-
+      `spark_partition_id` returns the partition number, which every row in that
+      partition shares, so the ids aren't unique.
+  - code: |
+      df.withColumn("row_id", F.monotonically_increasing_id())
+    correct: true
+    explanation: >-
+      The id combines the partition index and the row's position within the
+      partition, so ids are unique and are generated in parallel with no
+      shuffle.
+  - code: |
+      df.withColumn("row_id", F.hash(*df.columns))
+    correct: false
+    explanation: >-
+      A hash of the row contents is identical for duplicate rows, and different
+      rows can collide too, so the ids aren't unique.
+tags: [partitioning, unique-ids, window-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.monotonically_increasing_id.html
+status: approved
