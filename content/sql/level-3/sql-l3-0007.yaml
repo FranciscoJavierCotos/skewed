@@ -1,0 +1,50 @@
+id: sql-l3-0007
+topic: sql
+level: 3
+title: Each category's share of total revenue
+prompt: |
+  The revenue report lists each category with its revenue and its share of
+  the grand total as a percentage, e.g. `44.55` for 44.55%. Keep the
+  decimals; don't round to whole percentages.
+context: |
+  sales(sale_id, category, amount integer)
+options:
+  - code: |
+      SELECT category, SUM(amount) AS revenue,
+             100.0 * SUM(amount) / SUM(amount) OVER () AS pct
+      FROM sales
+      GROUP BY category;
+    correct: false
+    explanation: >-
+      Window functions run after GROUP BY, so the window can only see grouped
+      values. A bare amount isn't one, and PostgreSQL rejects the query.
+  - code: |
+      SELECT category, SUM(amount) AS revenue,
+             100 * SUM(amount) / (SELECT SUM(amount) FROM sales) AS pct
+      FROM sales
+      GROUP BY category;
+    correct: false
+    explanation: >-
+      SUM of an integer column returns bigint, so every operand is an integer
+      and the division truncates the percentage to a whole number.
+  - code: |
+      SELECT category, SUM(amount) AS revenue,
+             100.0 * SUM(amount) / SUM(SUM(amount)) OVER () AS pct
+      FROM sales
+      GROUP BY category;
+    correct: true
+    explanation: >-
+      SUM(SUM(amount)) OVER () adds up the grouped totals across all
+      categories, and the 100.0 literal keeps the division in numeric.
+  - code: |
+      SELECT category, SUM(amount) AS revenue,
+             100.0 * SUM(amount) / SUM(SUM(amount)) OVER (PARTITION BY category) AS pct
+      FROM sales
+      GROUP BY category;
+    correct: false
+    explanation: >-
+      Partitioning by category makes each window hold only that category's own
+      total, so every share comes out as 100.
+tags: [window-functions, aggregates, percent-of-total]
+docs_url: https://www.postgresql.org/docs/17/tutorial-window.html
+status: approved

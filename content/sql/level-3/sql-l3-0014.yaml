@@ -1,0 +1,50 @@
+id: sql-l3-0014
+topic: sql
+level: 3
+title: Employees on the second-highest salary
+prompt: |
+  Compensation is reviewing the pay band just below the top. Return **every**
+  employee whose salary equals the second-highest **distinct** salary in the
+  company. Several people can share the top salary.
+context: |
+  employees(emp_id, name, salary)
+options:
+  - code: |
+      SELECT emp_id, name, salary FROM (
+        SELECT e.*, DENSE_RANK() OVER (ORDER BY salary DESC) AS rk
+        FROM employees e) t
+      WHERE rk = 2;
+    correct: true
+    explanation: >-
+      DENSE_RANK numbers distinct salaries without gaps, so rank 2 is exactly
+      the second-highest salary and includes everyone who earns it.
+  - code: |
+      SELECT emp_id, name, salary FROM (
+        SELECT e.*, RANK() OVER (ORDER BY salary DESC) AS rk
+        FROM employees e) t
+      WHERE rk = 2;
+    correct: false
+    explanation: >-
+      RANK leaves gaps after ties, so when two people share the top salary the
+      next salary is ranked 3 and rank 2 doesn't exist.
+  - code: |
+      SELECT emp_id, name, salary FROM (
+        SELECT e.*, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rk
+        FROM employees e) t
+      WHERE rk = 2;
+    correct: false
+    explanation: >-
+      ROW_NUMBER numbers rows, not salaries, so row 2 is a single employee who
+      may still be on the top salary.
+  - code: |
+      SELECT emp_id, name, salary FROM (
+        SELECT e.* FROM employees e
+        ORDER BY salary DESC OFFSET 1) t
+      LIMIT 1;
+    correct: false
+    explanation: >-
+      Skipping one row skips one employee, not one salary level, and LIMIT 1
+      keeps a single person even when several share the salary.
+tags: [window-functions, ranking, dense-rank]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

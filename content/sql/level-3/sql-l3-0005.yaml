@@ -1,0 +1,52 @@
+id: sql-l3-0005
+topic: sql
+level: 3
+title: Days since the customer's previous order
+prompt: |
+  The churn model needs, for every order, the number of days since the
+  **same customer's** previous order. A customer's first order must show
+  `NULL`.
+context: |
+  orders(order_id, customer_id, ordered_at date)
+
+  A customer never places two orders on the same day.
+options:
+  - code: |
+      SELECT order_id, customer_id,
+             ordered_at - LAG(ordered_at) OVER (PARTITION BY customer_id
+                                                ORDER BY ordered_at) AS gap_days
+      FROM orders;
+    correct: true
+    explanation: >-
+      LAG returns the previous row's date within the customer's partition, or
+      NULL on the first order, and subtracting two dates gives whole days.
+  - code: |
+      SELECT order_id, customer_id,
+             ordered_at - LEAD(ordered_at) OVER (PARTITION BY customer_id
+                                                 ORDER BY ordered_at) AS gap_days
+      FROM orders;
+    correct: false
+    explanation: >-
+      LEAD looks at the next order, so this gives a negative gap to the
+      following order and NULL on the last order instead of the first.
+  - code: |
+      SELECT order_id, customer_id,
+             ordered_at - LAG(ordered_at) OVER (ORDER BY customer_id,
+                                                         ordered_at) AS gap_days
+      FROM orders;
+    correct: false
+    explanation: >-
+      Sorting by customer_id doesn't partition the window, so a customer's first
+      order is compared with the previous customer's last order instead of NULL.
+  - code: |
+      SELECT order_id, customer_id,
+             ordered_at - FIRST_VALUE(ordered_at) OVER (PARTITION BY customer_id
+                                                        ORDER BY ordered_at) AS gap_days
+      FROM orders;
+    correct: false
+    explanation: >-
+      FIRST_VALUE is the customer's first order, so this measures days since the
+      first order, and the first order shows 0, not NULL.
+tags: [window-functions, lag-lead, dates]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

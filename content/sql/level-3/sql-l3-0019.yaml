@@ -1,0 +1,52 @@
+id: sql-l3-0019
+topic: sql
+level: 3
+title: Month-over-month revenue change
+prompt: |
+  The finance summary lists revenue per calendar month together with the
+  change from the **previous** month (`this month - previous month`). The
+  earliest month has no previous month, so its change must be `NULL`.
+context: |
+  orders(order_id, ordered_at timestamp, amount)
+
+  Every month in the range has at least one order.
+options:
+  - code: |
+      SELECT date_trunc('month', ordered_at) AS month, SUM(amount) AS revenue,
+             SUM(amount) - LAG(SUM(amount)) OVER (ORDER BY date_trunc('month', ordered_at)) AS change
+      FROM orders
+      GROUP BY date_trunc('month', ordered_at) ORDER BY month;
+    correct: true
+    explanation: >-
+      The window runs over the grouped rows, so LAG(SUM(amount)) is the
+      previous month's total, which is NULL for the first month.
+  - code: |
+      SELECT date_trunc('month', ordered_at) AS month, SUM(amount) AS revenue,
+             SUM(amount) - LAG(amount) OVER (ORDER BY date_trunc('month', ordered_at)) AS change
+      FROM orders
+      GROUP BY date_trunc('month', ordered_at) ORDER BY month;
+    correct: false
+    explanation: >-
+      After GROUP BY a window can only use grouped values or aggregates, and the
+      raw amount is neither, so the query fails.
+  - code: |
+      SELECT date_trunc('month', ordered_at) AS month, SUM(amount) AS revenue,
+             SUM(amount) - LAG(SUM(amount)) OVER (ORDER BY date_trunc('month', ordered_at) DESC) AS change
+      FROM orders
+      GROUP BY date_trunc('month', ordered_at) ORDER BY month;
+    correct: false
+    explanation: >-
+      With the window sorted newest first, LAG returns the following month, so
+      each change is measured against the next month.
+  - code: |
+      SELECT date_trunc('month', ordered_at) AS month, SUM(amount) AS revenue,
+             SUM(amount) - LAG(SUM(amount), 1, 0) OVER (ORDER BY date_trunc('month', ordered_at)) AS change
+      FROM orders
+      GROUP BY date_trunc('month', ordered_at) ORDER BY month;
+    correct: false
+    explanation: >-
+      The default of 0 replaces the missing previous month, so the first month
+      shows its full revenue as the change instead of NULL.
+tags: [window-functions, lag-lead, aggregates]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

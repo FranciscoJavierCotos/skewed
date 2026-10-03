@@ -1,0 +1,54 @@
+id: sql-l3-0006
+topic: sql
+level: 3
+title: Assign loyalty tiers from total spend
+prompt: |
+  Each customer gets a loyalty tier from their lifetime spend: `gold` for 1000
+  or more, `silver` for 100 or more, and `bronze` for everything else. The
+  thresholds are inclusive, so a spend of exactly 1000 is gold.
+context: |
+  customer_spend(customer_id, spend numeric)   -- spend is never NULL
+options:
+  - code: |
+      SELECT customer_id,
+             CASE WHEN spend >= 100  THEN 'silver'
+                  WHEN spend >= 1000 THEN 'gold'
+                  ELSE 'bronze' END AS tier
+      FROM customer_spend;
+    correct: false
+    explanation: >-
+      CASE returns the first branch that matches, and every gold spend also
+      passes the silver test, so nobody is ever classed as gold.
+  - code: |
+      SELECT customer_id,
+             CASE WHEN spend >= 1000 THEN 'gold'
+                  WHEN spend >= 100  THEN 'silver'
+             END AS tier
+      FROM customer_spend;
+    correct: false
+    explanation: >-
+      With no ELSE branch, CASE returns NULL when nothing matches, so bronze
+      customers get no tier at all.
+  - code: |
+      SELECT customer_id,
+             CASE WHEN spend > 1000 THEN 'gold'
+                  WHEN spend > 100  THEN 'silver'
+                  ELSE 'bronze' END AS tier
+      FROM customer_spend;
+    correct: false
+    explanation: >-
+      The strict > comparisons make the thresholds exclusive, so a spend of
+      exactly 1000 is silver and exactly 100 is bronze.
+  - code: |
+      SELECT customer_id,
+             CASE WHEN spend >= 1000 THEN 'gold'
+                  WHEN spend >= 100  THEN 'silver'
+                  ELSE 'bronze' END AS tier
+      FROM customer_spend;
+    correct: true
+    explanation: >-
+      The branches go from the highest threshold down, so each spend stops at
+      the first tier it qualifies for, and ELSE covers the rest.
+tags: [case, conditional-logic]
+docs_url: https://www.postgresql.org/docs/17/functions-conditional.html#FUNCTIONS-CASE
+status: approved
