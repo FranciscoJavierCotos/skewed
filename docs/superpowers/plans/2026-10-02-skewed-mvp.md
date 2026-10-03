@@ -3206,12 +3206,14 @@ Manual check: seed the fixtures, answer a fixture question wrong 20 times via pr
 ### Task 21: Production deploy — Supabase project, Vercel and the deploy workflow
 
 **Files:**
-- Create: `.github/workflows/deploy.yml`
-- Modify: `README.md` (deploy section)
+- Create: `.github/workflows/deploy.yml`, `scripts/ci-pooler-url.sh`
+- Modify: `README.md` (deploy section), `.github/workflows/ci.yml` (uses the shared pooler script)
 
-- [ ] **Step 1: Create the Supabase project** (region close to your users, e.g. `eu-west-1`). Record the project ref, `SUPABASE_URL`, the publishable key and the secret key.
-- [ ] **Step 2: Add GitHub secrets.** `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`.
-- [ ] **Step 3: Write the deploy workflow.** `.github/workflows/deploy.yml`:
+*Done in PR #67 (2026-10-03).*
+
+- [x] **Step 1: Create the Supabase project** (region close to your users, e.g. `eu-west-1`). Record the project ref, `SUPABASE_URL`, the publishable key and the secret key. *Project `skewed`, `ukneqhxwnwftsmsrgodo`, eu-west-3.*
+- [x] **Step 2: Add GitHub secrets.** `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`. *Deviation: the workflow runs `supabase db push --db-url "$SUPABASE_DB_URL"`, reusing the existing `SUPABASE_DB_URL` secret through the session pooler, with no `supabase link`. So the only secrets are `SUPABASE_DB_URL`, `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, and no personal access token is needed.*
+- [x] **Step 3: Write the deploy workflow.** `.github/workflows/deploy.yml`. *What shipped differs from the sketch below in four ways: `--db-url` instead of `link`; a path filter (migrations, content, seed code); `workflow_dispatch`; and a PR trigger that runs `db push --dry-run` and skips the seed.*
 
 ```yaml
 name: Deploy DB & content
@@ -3240,14 +3242,14 @@ jobs:
         env: { SUPABASE_URL: "${{ secrets.SUPABASE_URL }}", SUPABASE_SECRET_KEY: "${{ secrets.SUPABASE_SECRET_KEY }}" }
 ```
 
-- [ ] **Step 4: Vercel.** Import the GitHub repo in Vercel (framework: Next.js, install `pnpm install`). Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for Production and Preview. Previews point at the production Supabase project in the MVP: reads are harmless, and telemetry from previews is tagged by session only. A staging project can come later.
-- [ ] **Step 5: Verify.**
+- [x] **Step 4: Vercel.** Import the GitHub repo in Vercel (framework: Next.js, install `pnpm install`). Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for Production and Preview. Previews point at the production Supabase project in the MVP: reads are harmless, and telemetry from previews is tagged by session only. A staging project can come later. *Project `skewed`, live at https://skewed-quiz.vercel.app.*
+- [x] **Step 5: Verify.** *The first deploy run on `main` reported "Remote database is up to date" and "Seeded 300 questions (300 active)". The security advisor shows no RLS or `search_path` findings. The remaining notices (deny-all RLS; `anon` can execute the `SECURITY DEFINER` RPCs) are by design. `get_questions` returns no answer fields.*
   - Merge to `main` → the deploy workflow is green.
   - The Supabase dashboard shows the migrations and about 300 active questions.
   - The Vercel production URL plays all 3 modes.
   - Supabase → Advisors (security) shows no RLS or `search_path` warnings.
   - In the browser devtools network tab, the `get_questions` response contains no `is_correct` or explanation fields.
-- [ ] **Step 6: README.** Add a "Deploy" section (secrets list, Vercel env vars) and a link to the live URL. **Commit:** `git commit -m "ci: production deploy of migrations and content"`
+- [x] **Step 6: README.** Add a "Deploy" section (secrets list, Vercel env vars) and a link to the live URL. **Commit:** `git commit -m "ci: production deploy of migrations and content"`
 
 ---
 
