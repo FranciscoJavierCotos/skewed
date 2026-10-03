@@ -1,0 +1,42 @@
+id: sql-l1-0010
+topic: sql
+level: 1
+title: Users who are not on the free plan
+prompt: |
+  Sales wants to contact every user who is **not** on the `free` plan. Users
+  who signed up before plans existed have `plan` set to `NULL`, and they must
+  be included in the list as well.
+context: |
+  users(user_id, email, plan)
+options:
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE plan <> 'free' OR plan = NULL;
+    correct: false
+    explanation: >-
+      plan = NULL is NULL, never true, so it adds nothing, and for a NULL plan
+      plan <> 'free' is NULL too, so those users are filtered out.
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE COALESCE(plan, 'free') <> 'free';
+    correct: false
+    explanation: >-
+      COALESCE turns a missing plan into 'free' before comparing, so the NULL
+      plan users are treated as free and excluded.
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE plan IS DISTINCT FROM 'free';
+    correct: true
+    explanation: >-
+      IS DISTINCT FROM treats NULL as an ordinary value, so a NULL plan counts
+      as different from 'free' and is kept.
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE plan <> 'free' AND plan IS NULL;
+    correct: false
+    explanation: >-
+      Rows with a plan fail IS NULL, and for rows without one plan <> 'free' is
+      NULL, so the AND is never true and nothing is returned.
+tags: [null-handling, is-distinct-from]
+docs_url: https://www.postgresql.org/docs/17/functions-comparison.html
+status: approved

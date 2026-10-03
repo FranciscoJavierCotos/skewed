@@ -1,0 +1,42 @@
+id: sql-l1-0011
+topic: sql
+level: 1
+title: Products in the media categories
+prompt: |
+  The media team runs a promotion on three categories: `books`, `music` and
+  `games`. Return every product in any of those three categories and no
+  others.
+context: |
+  products(product_id, name, category)
+options:
+  - code: |
+      SELECT product_id, name FROM products
+      WHERE category = 'books' OR 'music' OR 'games';
+    correct: false
+    explanation: >-
+      OR joins boolean conditions, not values. PostgreSQL tries to read 'music'
+      as a boolean and raises an invalid input error.
+  - code: |
+      SELECT product_id, name FROM products
+      WHERE category IN ('books', 'music', 'games');
+    correct: true
+    explanation: >-
+      IN compares the category with each value in the list and keeps the row
+      when any of them matches.
+  - code: |
+      SELECT product_id, name FROM products
+      WHERE category IN ('books, music, games');
+    correct: false
+    explanation: >-
+      The list holds a single string 'books, music, games', which no category
+      equals, so nothing is returned.
+  - code: |
+      SELECT product_id, name FROM products
+      WHERE category BETWEEN 'books' AND 'music';
+    correct: false
+    explanation: >-
+      BETWEEN on text is an alphabetical range, so any category sorting between
+      'books' and 'music', such as electronics, is included.
+tags: [where, in-list]
+docs_url: https://www.postgresql.org/docs/17/functions-comparisons.html#FUNCTIONS-COMPARISONS-IN-SCALAR
+status: approved

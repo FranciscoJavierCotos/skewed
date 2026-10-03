@@ -1,0 +1,48 @@
+id: sql-l1-0005
+topic: sql
+level: 1
+title: Three most expensive priced products
+prompt: |
+  The homepage shows a "premium picks" strip with the three most expensive
+  products. Some products are still being set up and have no price yet
+  (`price` is `NULL`); they must never appear in the strip.
+context: |
+  products(product_id, name, price numeric)
+options:
+  - code: |
+      SELECT product_id, name, price FROM products
+      ORDER BY price DESC, product_id
+      LIMIT 3;
+    correct: false
+    explanation: >-
+      PostgreSQL sorts NULLs first in descending order, so unpriced products
+      take the top places in the strip.
+  - code: |
+      SELECT product_id, name, price FROM products
+      WHERE price IS NOT NULL
+      ORDER BY price
+      LIMIT 3;
+    correct: false
+    explanation: >-
+      The default sort is ascending, so this returns the three cheapest priced
+      products instead of the most expensive ones.
+  - code: |
+      SELECT product_id, name, price FROM products
+      WHERE price IS NOT NULL
+      ORDER BY price DESC
+      LIMIT 3;
+    correct: true
+    explanation: >-
+      Unpriced rows are filtered out first, then the descending sort puts the
+      highest prices at the top of the three rows kept.
+  - code: |
+      SELECT product_id, name, price FROM products
+      WHERE price IS NOT NULL
+      LIMIT 3;
+    correct: false
+    explanation: >-
+      Without ORDER BY the row order is unspecified, so LIMIT keeps three
+      arbitrary priced products, not the most expensive.
+tags: [order-by, limit, null-handling]
+docs_url: https://www.postgresql.org/docs/17/queries-order.html
+status: approved

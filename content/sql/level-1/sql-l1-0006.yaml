@@ -1,0 +1,45 @@
+id: sql-l1-0006
+topic: sql
+level: 1
+title: Countries where we have customers
+prompt: |
+  Legal needs to know which countries the company has customers in, to check
+  local privacy rules. Return each country **once**, as a list sorted
+  alphabetically.
+context: |
+  customers(customer_id, name, country)
+options:
+  - code: |
+      SELECT DISTINCT country
+      FROM customers
+      ORDER BY country;
+    correct: true
+    explanation: >-
+      DISTINCT removes duplicate countries from the output, and ORDER BY sorts
+      the remaining list alphabetically.
+  - code: |
+      SELECT country
+      FROM customers
+      ORDER BY country, name;
+    correct: false
+    explanation: >-
+      Without DISTINCT every customer row produces a country, so countries with
+      several customers are listed several times.
+  - code: |
+      SELECT DISTINCT name, country
+      FROM customers
+      ORDER BY country;
+    correct: false
+    explanation: >-
+      DISTINCT applies to the whole selected row, and each customer has a
+      different name, so no duplicates are removed and countries repeat.
+  - code: |
+      SELECT COUNT(DISTINCT country) AS countries
+      FROM customers;
+    correct: false
+    explanation: >-
+      COUNT(DISTINCT ...) returns how many countries there are as a single
+      number, not the list of countries.
+tags: [distinct, order-by]
+docs_url: https://www.postgresql.org/docs/17/sql-select.html#SQL-DISTINCT
+status: approved

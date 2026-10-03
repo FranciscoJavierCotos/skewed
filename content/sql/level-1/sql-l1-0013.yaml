@@ -1,0 +1,45 @@
+id: sql-l1-0013
+topic: sql
+level: 1
+title: Order lines worth more than 100
+prompt: |
+  Fraud review wants every order line whose line total (`qty * unit_price`)
+  is **greater than** 100. Return `order_id` and the line total as a column
+  named `line_total`.
+context: |
+  order_lines(order_id, qty integer, unit_price numeric)
+options:
+  - code: |
+      SELECT order_id, qty * unit_price AS line_total
+      FROM order_lines
+      WHERE line_total > 100;
+    correct: false
+    explanation: >-
+      WHERE is evaluated before the select list, so the alias line_total doesn't
+      exist yet and PostgreSQL raises a column-not-found error.
+  - code: |
+      SELECT order_id, qty * unit_price AS line_total
+      FROM order_lines
+      WHERE qty * unit_price >= 100;
+    correct: false
+    explanation: >-
+      >= also keeps lines worth exactly 100, which aren't greater than 100.
+  - code: |
+      SELECT order_id, qty * unit_price AS line_total
+      FROM order_lines
+      WHERE unit_price > 100;
+    correct: false
+    explanation: >-
+      This tests only the unit price, so a line of many cheap units over 100 in
+      total is missed.
+  - code: |
+      SELECT order_id, qty * unit_price AS line_total
+      FROM order_lines
+      WHERE qty * unit_price > 100;
+    correct: true
+    explanation: >-
+      The filter repeats the expression, because a select-list alias can't be
+      referenced in WHERE, and > excludes lines of exactly 100.
+tags: [where, column-alias, expressions]
+docs_url: https://www.postgresql.org/docs/17/queries-select-lists.html#QUERIES-COLUMN-LABELS
+status: approved

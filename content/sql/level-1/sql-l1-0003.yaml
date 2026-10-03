@@ -1,0 +1,42 @@
+id: sql-l1-0003
+topic: sql
+level: 1
+title: Users with a Gmail address in any letter case
+prompt: |
+  Deliverability is reviewing Gmail users. Emails were typed in by users, so
+  the same domain shows up as `gmail.com`, `Gmail.com` or `GMAIL.COM`. Return
+  every user whose email domain is exactly `gmail.com`, ignoring letter case.
+context: |
+  users(user_id, email)
+options:
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE email ILIKE '%@gmail.com';
+    correct: true
+    explanation: >-
+      ILIKE is the case-insensitive LIKE, and anchoring the pattern on
+      '@gmail.com' at the end matches only that domain.
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE email LIKE '%@gmail.com';
+    correct: false
+    explanation: >-
+      LIKE is case-sensitive in PostgreSQL, so addresses typed as Gmail.com or
+      GMAIL.COM are missed.
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE email ILIKE '%gmail%';
+    correct: false
+    explanation: >-
+      The pattern matches 'gmail' anywhere, so other domains that contain it,
+      such as notgmail.com, are included.
+  - code: |
+      SELECT user_id, email FROM users
+      WHERE lower(email) = '%@gmail.com';
+    correct: false
+    explanation: >-
+      The = operator doesn't treat % as a wildcard, so it looks for the literal
+      text '%@gmail.com' and matches nothing.
+tags: [like, pattern-matching, case-sensitivity]
+docs_url: https://www.postgresql.org/docs/17/functions-matching.html#FUNCTIONS-LIKE
+status: approved

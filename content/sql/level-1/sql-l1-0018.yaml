@@ -1,0 +1,42 @@
+id: sql-l1-0018
+topic: sql
+level: 1
+title: Accounts whose status is exactly active
+prompt: |
+  Billing runs only on accounts whose `status` is exactly `active`. Other
+  statuses in the table include `active_pending` and `suspended`, and all
+  values are stored in lowercase. Return the matching accounts.
+context: |
+  accounts(account_id, status)
+options:
+  - code: |
+      SELECT account_id FROM accounts
+      WHERE status = "active";
+    correct: false
+    explanation: >-
+      Double quotes mark an identifier in PostgreSQL, so "active" is read as a
+      column name and the query fails because no such column exists.
+  - code: |
+      SELECT account_id FROM accounts
+      WHERE status = 'Active';
+    correct: false
+    explanation: >-
+      String comparison with = is case-sensitive, and the values are stored in
+      lowercase, so nothing matches 'Active'.
+  - code: |
+      SELECT account_id FROM accounts
+      WHERE status = 'active';
+    correct: true
+    explanation: >-
+      Single quotes make 'active' a string literal, and = matches only the
+      exact lowercase value.
+  - code: |
+      SELECT account_id FROM accounts
+      WHERE status LIKE 'active%';
+    correct: false
+    explanation: >-
+      The % wildcard matches any ending, so active_pending accounts are billed
+      as well.
+tags: [where, string-literals, quoting]
+docs_url: https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+status: approved

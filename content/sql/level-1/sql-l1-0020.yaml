@@ -1,0 +1,54 @@
+id: sql-l1-0020
+topic: sql
+level: 1
+title: Stock below the reorder minimum per warehouse
+prompt: |
+  Each warehouse has its own minimum stock level for each SKU. Purchasing needs
+  every (warehouse, SKU) pair whose `on_hand` quantity is below the minimum
+  set for **that warehouse and that SKU**. Return `warehouse_id`, `sku`,
+  `on_hand` and `min_qty`.
+context: |
+  inventory(warehouse_id, sku, on_hand)
+  reorder_rules(warehouse_id, sku, min_qty)
+
+  Both tables have one row per (warehouse_id, sku).
+options:
+  - code: |
+      SELECT i.warehouse_id, i.sku, i.on_hand, r.min_qty
+      FROM inventory i
+      JOIN reorder_rules r ON r.sku = i.sku
+      WHERE i.on_hand < r.min_qty;
+    correct: false
+    explanation: >-
+      Joining on sku alone compares a warehouse's stock with the minimums of
+      every warehouse, producing false and duplicate alerts.
+  - code: |
+      SELECT i.warehouse_id, i.sku, i.on_hand, r.min_qty
+      FROM inventory i
+      JOIN reorder_rules r ON r.sku = i.sku AND r.warehouse_id = i.warehouse_id
+      WHERE i.on_hand > r.min_qty;
+    correct: false
+    explanation: >-
+      The comparison is reversed, so this lists the pairs that have more stock
+      than the minimum instead of less.
+  - code: |
+      SELECT i.warehouse_id, i.sku, i.on_hand, r.min_qty
+      FROM inventory i
+      JOIN reorder_rules r ON r.warehouse_id = i.warehouse_id
+      WHERE i.on_hand < r.min_qty;
+    correct: false
+    explanation: >-
+      Joining on warehouse alone compares each SKU's stock with the minimums of
+      the other SKUs in that warehouse.
+  - code: |
+      SELECT i.warehouse_id, i.sku, i.on_hand, r.min_qty
+      FROM inventory i
+      JOIN reorder_rules r ON r.sku = i.sku AND r.warehouse_id = i.warehouse_id
+      WHERE i.on_hand < r.min_qty;
+    correct: true
+    explanation: >-
+      The join matches on both key columns, so each stock row meets only its
+      own rule, and < keeps the pairs below that minimum.
+tags: [joins, composite-keys]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

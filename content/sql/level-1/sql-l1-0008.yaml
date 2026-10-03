@@ -1,0 +1,42 @@
+id: sql-l1-0008
+topic: sql
+level: 1
+title: Click-through rate per ad
+prompt: |
+  The ads team wants the click-through rate of each ad as a fraction, for
+  example `0.25` for 50 clicks out of 200 impressions. Return `ad_id` and the
+  rate as `ctr`. Every ad has at least one impression.
+context: |
+  ad_stats(ad_id, impressions integer, clicks integer)
+options:
+  - code: |
+      SELECT ad_id, clicks / impressions AS ctr
+      FROM ad_stats;
+    correct: false
+    explanation: >-
+      Both columns are integers, so / does integer division and truncates every
+      rate below 1 to 0.
+  - code: |
+      SELECT ad_id, clicks::numeric / impressions AS ctr
+      FROM ad_stats;
+    correct: true
+    explanation: >-
+      Casting clicks to numeric before dividing makes the division exact, so
+      50 / 200 gives 0.25.
+  - code: |
+      SELECT ad_id, (clicks / impressions)::numeric AS ctr
+      FROM ad_stats;
+    correct: false
+    explanation: >-
+      The cast is applied after the integer division has already truncated the
+      result, so the rate is still 0.
+  - code: |
+      SELECT ad_id, impressions::numeric / clicks AS ctr
+      FROM ad_stats;
+    correct: false
+    explanation: >-
+      The operands are swapped, so this computes impressions per click (4 for
+      the example) instead of clicks per impression.
+tags: [data-types, integer-division, casting]
+docs_url: https://www.postgresql.org/docs/17/functions-math.html
+status: approved
