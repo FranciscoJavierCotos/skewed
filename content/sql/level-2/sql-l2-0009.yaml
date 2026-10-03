@@ -1,0 +1,51 @@
+id: sql-l2-0009
+topic: sql
+level: 2
+title: Paid and refunded payment counts per day
+prompt: |
+  Payments ops wants **one row per day** with two counts: payments with
+  status `paid` and payments with status `refunded`. A day with no refunds
+  must show `0`, not `NULL`. Other statuses such as `failed` are ignored.
+context: |
+  payments(payment_id, paid_on date, status)
+options:
+  - code: |
+      SELECT paid_on,
+             COUNT(status = 'paid') AS paid,
+             COUNT(status = 'refunded') AS refunded
+      FROM payments GROUP BY paid_on ORDER BY paid_on;
+    correct: false
+    explanation: >-
+      COUNT counts every non-NULL value, and false is not NULL, so both columns
+      count every payment of the day.
+  - code: |
+      SELECT paid_on, status, COUNT(*) AS payments
+      FROM payments
+      WHERE status IN ('paid', 'refunded')
+      GROUP BY paid_on, status
+      ORDER BY paid_on, status;
+    correct: false
+    explanation: >-
+      Grouping by status gives a separate row per status, and a day with no
+      refunds has no refunded row at all instead of a 0.
+  - code: |
+      SELECT paid_on,
+             SUM(CASE WHEN status = 'paid' THEN 1 END) AS paid,
+             SUM(CASE WHEN status = 'refunded' THEN 1 END) AS refunded
+      FROM payments GROUP BY paid_on ORDER BY paid_on;
+    correct: false
+    explanation: >-
+      The CASE has no ELSE, so it yields NULL for other rows, and on a day with
+      no refunds SUM returns NULL instead of 0.
+  - code: |
+      SELECT paid_on,
+             COUNT(*) FILTER (WHERE status = 'paid') AS paid,
+             COUNT(*) FILTER (WHERE status = 'refunded') AS refunded
+      FROM payments GROUP BY paid_on ORDER BY paid_on;
+    correct: true
+    explanation: >-
+      FILTER restricts each COUNT to the matching rows, and COUNT returns 0
+      when no row matches, so each day is a single row with both counts.
+tags: [aggregates, filter-clause, conditional-aggregation]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-AGGREGATES
+status: approved

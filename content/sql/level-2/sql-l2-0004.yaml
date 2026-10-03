@@ -1,0 +1,51 @@
+id: sql-l2-0004
+topic: sql
+level: 2
+title: Average daily revenue
+prompt: |
+  Finance wants one number: the **average daily revenue**, meaning the
+  average of each day's total revenue, over the days that had at least one
+  order. A day can have many orders.
+context: |
+  orders(order_id, order_date date, amount numeric)
+options:
+  - code: |
+      WITH daily AS (
+        SELECT order_date, amount AS revenue
+        FROM orders ORDER BY order_date)
+      SELECT AVG(revenue) AS avg_daily_revenue FROM daily;
+    correct: false
+    explanation: >-
+      The CTE doesn't group, so it still has one row per order, and averaging
+      it gives the average order value, not the average day.
+  - code: |
+      WITH daily AS (
+        SELECT order_date, SUM(amount) AS revenue
+        FROM orders GROUP BY order_date)
+      SELECT AVG(revenue) AS avg_daily_revenue FROM daily;
+    correct: true
+    explanation: >-
+      The CTE first totals revenue per day, and the outer AVG then averages
+      those daily totals.
+  - code: |
+      WITH daily AS (
+        SELECT order_date, AVG(amount) AS revenue
+        FROM orders GROUP BY order_date)
+      SELECT AVG(revenue) AS avg_daily_revenue FROM daily;
+    correct: false
+    explanation: >-
+      The CTE computes each day's average order instead of its total, so the
+      result is an average of averages, not of daily revenue.
+  - code: |
+      WITH daily AS (
+        SELECT order_date, SUM(amount) AS revenue
+        FROM orders GROUP BY order_date)
+      SELECT AVG(revenue) AS avg_daily_revenue FROM daily
+      GROUP BY order_date;
+    correct: false
+    explanation: >-
+      The outer GROUP BY splits the result back into one row per day, so each
+      row is just that day's total instead of one overall average.
+tags: [cte, aggregates, group-by]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html
+status: approved

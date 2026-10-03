@@ -1,0 +1,54 @@
+id: sql-l2-0002
+topic: sql
+level: 2
+title: Order count per customer, including customers with none
+prompt: |
+  The CRM dashboard shows how many orders each customer has placed. **Every**
+  customer must appear, and customers who have never ordered must show `0`.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id)
+options:
+  - code: |
+      SELECT c.customer_id, COUNT(o.order_id) AS orders
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id
+      ORDER BY c.customer_id;
+    correct: true
+    explanation: >-
+      The LEFT JOIN keeps customers without orders, and COUNT(o.order_id)
+      ignores the NULL that the join fills in, giving them 0.
+  - code: |
+      SELECT c.customer_id, COUNT(*) AS orders
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      A customer with no orders still has one joined row (with NULL order
+      columns), and COUNT(*) counts it, so they show 1 instead of 0.
+  - code: |
+      SELECT c.customer_id, COUNT(o.order_id) AS orders
+      FROM customers c
+      JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The inner join drops customers who have no matching orders, so they never
+      reach the GROUP BY and don't appear with 0.
+  - code: |
+      SELECT c.customer_id, COUNT(DISTINCT c.customer_id) AS orders
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      Each group holds a single customer, so counting distinct customer ids
+      gives 1 for everyone instead of the number of orders.
+tags: [outer-joins, count, group-by]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

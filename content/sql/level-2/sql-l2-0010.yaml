@@ -1,0 +1,46 @@
+id: sql-l2-0010
+topic: sql
+level: 2
+title: Average quiz score with skipped quizzes as zero
+prompt: |
+  A course grades students on the average of all quizzes they were assigned.
+  A skipped quiz has `score = NULL` and must count as `0`. Return each
+  student's average.
+context: |
+  quiz_results(student_id, quiz_id, score integer)
+options:
+  - code: |
+      SELECT student_id, AVG(COALESCE(score, 0)) AS avg_score
+      FROM quiz_results
+      GROUP BY student_id ORDER BY student_id;
+    correct: true
+    explanation: >-
+      COALESCE turns each skipped score into 0 before averaging, so every
+      assigned quiz counts in the average.
+  - code: |
+      SELECT student_id, AVG(score) AS avg_score
+      FROM quiz_results
+      GROUP BY student_id ORDER BY student_id;
+    correct: false
+    explanation: >-
+      AVG ignores NULLs, so skipped quizzes are left out of the average
+      instead of counting as 0.
+  - code: |
+      SELECT student_id, COALESCE(AVG(score), 0) AS avg_score
+      FROM quiz_results
+      GROUP BY student_id ORDER BY student_id;
+    correct: false
+    explanation: >-
+      COALESCE is applied after AVG has already ignored the NULLs, so it only
+      helps students who skipped every quiz.
+  - code: |
+      SELECT student_id, SUM(score) / COUNT(*) AS avg_score
+      FROM quiz_results
+      GROUP BY student_id ORDER BY student_id;
+    correct: false
+    explanation: >-
+      SUM and COUNT both return integers here, so the division truncates the
+      fraction, and a student who skipped everything gets NULL.
+tags: [aggregates, null-handling, coalesce]
+docs_url: https://www.postgresql.org/docs/17/functions-aggregate.html
+status: approved

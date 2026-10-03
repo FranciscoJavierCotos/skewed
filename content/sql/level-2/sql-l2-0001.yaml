@@ -1,0 +1,50 @@
+id: sql-l2-0001
+topic: sql
+level: 2
+title: Customers whose total spend exceeds 1000
+prompt: |
+  The loyalty team upgrades every customer whose **total** spend across all of
+  their orders is greater than 1000. Return `customer_id` and the total as
+  `total_spend` for those customers only.
+context: |
+  orders(order_id, customer_id, amount)
+options:
+  - code: |
+      SELECT customer_id, SUM(amount) AS total_spend
+      FROM orders
+      WHERE SUM(amount) > 1000
+      GROUP BY customer_id;
+    correct: false
+    explanation: >-
+      WHERE filters rows before they are grouped, so it can't contain an
+      aggregate, and PostgreSQL rejects the query.
+  - code: |
+      SELECT customer_id, SUM(amount) AS total_spend
+      FROM orders
+      WHERE amount > 1000
+      GROUP BY customer_id;
+    correct: false
+    explanation: >-
+      This filters single orders before grouping, so a customer with several
+      smaller orders adding up to more than 1000 is missed.
+  - code: |
+      SELECT customer_id, SUM(amount) AS total_spend
+      FROM orders
+      GROUP BY customer_id
+      HAVING SUM(amount) > 1000;
+    correct: true
+    explanation: >-
+      HAVING filters after grouping, so it tests each customer's summed spend
+      rather than individual orders.
+  - code: |
+      SELECT customer_id, SUM(amount) AS total_spend
+      FROM orders
+      GROUP BY customer_id
+      HAVING total_spend > 1000;
+    correct: false
+    explanation: >-
+      PostgreSQL doesn't let HAVING reference a select-list alias, so
+      total_spend is an unknown column and the query fails.
+tags: [group-by, having, aggregates]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-GROUP
+status: approved

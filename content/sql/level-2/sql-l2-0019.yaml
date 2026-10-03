@@ -1,0 +1,57 @@
+id: sql-l2-0019
+topic: sql
+level: 2
+title: Spend per customer when names are not unique
+prompt: |
+  Billing wants each customer's total spend next to their name. Names are not
+  unique: two different customers can both be called "Alex". Return one row
+  per customer with `customer_id`, `name` and `total`.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, amount)
+
+  Every customer has at least one order.
+options:
+  - code: |
+      SELECT MIN(c.customer_id) AS customer_id, c.name, SUM(o.amount) AS total
+      FROM customers c
+      JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.name
+      ORDER BY customer_id;
+    correct: false
+    explanation: >-
+      Grouping by name merges every customer who shares a name into one row,
+      adding their spend together.
+  - code: |
+      SELECT c.customer_id, c.name, SUM(o.amount) AS total
+      FROM customers c
+      JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id, c.name
+      ORDER BY c.customer_id;
+    correct: true
+    explanation: >-
+      Grouping by the customer key keeps namesakes apart, and the name is
+      carried along in the group key for display.
+  - code: |
+      SELECT c.customer_id, c.name, SUM(o.amount) AS total
+      FROM customers c
+      JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id, c.name, o.order_id
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      Adding order_id to GROUP BY makes every order its own group, so a
+      customer with several orders gets several rows.
+  - code: |
+      SELECT c.customer_id, c.name, SUM(DISTINCT o.amount) AS total
+      FROM customers c
+      JOIN orders o ON o.customer_id = c.customer_id
+      GROUP BY c.customer_id, c.name
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      SUM(DISTINCT ...) adds each different amount once, so two orders of the
+      same value are counted as one.
+tags: [group-by, grouping-keys, joins]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-GROUP
+status: approved

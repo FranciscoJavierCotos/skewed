@@ -1,0 +1,55 @@
+id: sql-l2-0016
+topic: sql
+level: 2
+title: Alphabetical product list per order
+prompt: |
+  Packing slips show, for each order, the names of its products as one text
+  value, **sorted alphabetically** and separated by `, ` (for example
+  `apple, kiwi, pen`). Return one row per order.
+context: |
+  order_items(order_id, product_name)
+options:
+  - code: |
+      SELECT order_id,
+             string_agg(product_name, ', ') AS products
+      FROM order_items
+      GROUP BY order_id
+      ORDER BY order_id;
+    correct: false
+    explanation: >-
+      Without an ORDER BY inside the aggregate, string_agg concatenates in
+      whatever order the rows arrive, which is not guaranteed to be
+      alphabetical.
+  - code: |
+      SELECT order_id,
+             string_agg(product_name, ', ' ORDER BY product_name) AS products
+      FROM order_items
+      GROUP BY order_id
+      ORDER BY order_id;
+    correct: true
+    explanation: >-
+      The ORDER BY inside string_agg sorts each order's names before they are
+      joined with ', '.
+  - code: |
+      SELECT order_id,
+             array_agg(product_name ORDER BY product_name) AS products
+      FROM order_items
+      GROUP BY order_id
+      ORDER BY order_id;
+    correct: false
+    explanation: >-
+      array_agg sorts the names but returns an array such as {apple,kiwi,pen},
+      not one text value separated by ', '.
+  - code: |
+      SELECT order_id,
+             string_agg(product_name, ', ') AS products
+      FROM order_items
+      GROUP BY order_id
+      ORDER BY order_id, product_name;
+    correct: false
+    explanation: >-
+      The outer ORDER BY sorts result rows, not the values inside the
+      aggregate, and product_name isn't grouped, so PostgreSQL raises an error.
+tags: [string-agg, ordered-aggregates, group-by]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-AGGREGATES
+status: approved

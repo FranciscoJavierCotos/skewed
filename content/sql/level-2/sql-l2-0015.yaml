@@ -1,0 +1,50 @@
+id: sql-l2-0015
+topic: sql
+level: 2
+title: Revenue by region and country with subtotals
+prompt: |
+  The sales report needs revenue for each (region, country) pair, plus a
+  subtotal row for each region, plus a single grand-total row. No other
+  totals are wanted.
+context: |
+  sales(region, country, amount)
+options:
+  - code: |
+      SELECT region, country, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY region, country
+      ORDER BY region, country;
+    correct: false
+    explanation: >-
+      A plain GROUP BY only produces the (region, country) rows, so the region
+      subtotals and the grand total are missing.
+  - code: |
+      SELECT region, country, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY CUBE (region, country)
+      ORDER BY region, country;
+    correct: false
+    explanation: >-
+      CUBE adds every combination, including a total per country across all
+      regions, which the report doesn't want.
+  - code: |
+      SELECT region, country, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY ROLLUP (region, country)
+      ORDER BY region, country;
+    correct: true
+    explanation: >-
+      ROLLUP (region, country) groups by (region, country), then by (region),
+      then by (), which gives the detail rows, the region subtotals and the grand total.
+  - code: |
+      SELECT region, country, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY GROUPING SETS ((region, country), ())
+      ORDER BY region, country;
+    correct: false
+    explanation: >-
+      The grouping sets list only the detail level and the grand total, so the
+      per-region subtotal rows are missing.
+tags: [rollup, grouping-sets, group-by]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-GROUPING-SETS
+status: approved

@@ -1,0 +1,51 @@
+id: sql-l2-0018
+topic: sql
+level: 2
+title: Orders per coupon code, including orders without one
+prompt: |
+  Marketing wants to know how many orders used each coupon code. Orders
+  without a coupon (`coupon_code` is `NULL`) must also appear, as a single row
+  with a `NULL` code and their order count.
+context: |
+  orders(order_id, coupon_code)
+options:
+  - code: |
+      SELECT coupon_code, COUNT(*) AS orders
+      FROM orders
+      GROUP BY coupon_code
+      ORDER BY coupon_code;
+    correct: true
+    explanation: >-
+      GROUP BY puts all NULL codes into one group, and COUNT(*) counts its rows,
+      so the no-coupon orders get their real count.
+  - code: |
+      SELECT coupon_code, COUNT(coupon_code) AS orders
+      FROM orders
+      GROUP BY coupon_code
+      ORDER BY coupon_code;
+    correct: false
+    explanation: >-
+      COUNT(coupon_code) skips NULL values, so the no-coupon group appears but
+      its count is 0.
+  - code: |
+      SELECT coupon_code, COUNT(*) AS orders
+      FROM orders
+      WHERE coupon_code <> ''
+      GROUP BY coupon_code
+      ORDER BY coupon_code;
+    correct: false
+    explanation: >-
+      The filter is meant to drop blank codes, but for a NULL code <> '' is
+      NULL, so the orders without a coupon are filtered out too.
+  - code: |
+      SELECT coupon_code, COUNT(DISTINCT coupon_code) AS orders
+      FROM orders
+      GROUP BY coupon_code
+      ORDER BY coupon_code;
+    correct: false
+    explanation: >-
+      Each group holds a single code, so this returns 1 for every code (and 0
+      for NULL) instead of the number of orders.
+tags: [group-by, null-handling, count]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-GROUP
+status: approved

@@ -1,0 +1,50 @@
+id: sql-l2-0007
+topic: sql
+level: 2
+title: Products bought by at least three different customers
+prompt: |
+  A product counts as "proven" once **at least three different customers**
+  have bought it. Repeat purchases by the same customer don't count twice.
+  Return the `product_id` of every proven product.
+context: |
+  order_items(order_id, customer_id, product_id)
+options:
+  - code: |
+      SELECT product_id
+      FROM order_items
+      GROUP BY product_id
+      HAVING COUNT(DISTINCT customer_id) >= 3;
+    correct: true
+    explanation: >-
+      COUNT(DISTINCT customer_id) counts each buyer once per product, so the
+      HAVING keeps products with three or more different customers.
+  - code: |
+      SELECT product_id
+      FROM order_items
+      GROUP BY product_id
+      HAVING COUNT(customer_id) >= 3;
+    correct: false
+    explanation: >-
+      COUNT(customer_id) counts purchase rows, so one customer buying the
+      product three times is enough to pass.
+  - code: |
+      SELECT product_id
+      FROM order_items
+      GROUP BY product_id
+      HAVING COUNT(DISTINCT order_id) >= 3;
+    correct: false
+    explanation: >-
+      This counts distinct orders, and the same customer can place several
+      orders, so repeat buyers still inflate the count.
+  - code: |
+      SELECT product_id
+      FROM order_items
+      GROUP BY product_id, customer_id
+      HAVING COUNT(*) >= 3;
+    correct: false
+    explanation: >-
+      Grouping by customer too makes each group one customer's purchases, so
+      this finds products one customer bought at least three times.
+tags: [having, count-distinct, group-by]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-AGGREGATES
+status: approved

@@ -1,0 +1,71 @@
+id: sql-l2-0012
+topic: sql
+level: 2
+title: Item and payment totals per order without double counting
+prompt: |
+  Each order has one or more items and one or more payments (customers can
+  split a payment). Finance wants one row per order with `items_total`, the
+  sum of item prices, and `paid_total`, the sum of payments.
+context: |
+  orders(order_id)
+  order_items(order_id, price)
+  payments(order_id, amount)
+
+  Every order has at least one item and at least one payment.
+options:
+  - code: |
+      WITH joined AS (
+        SELECT o.order_id, i.price, p.amount
+        FROM orders o
+        JOIN order_items i ON i.order_id = o.order_id
+        JOIN payments p ON p.order_id = o.order_id)
+      SELECT order_id, SUM(price) AS items_total, SUM(amount) AS paid_total
+      FROM joined GROUP BY order_id ORDER BY order_id;
+    correct: false
+    explanation: >-
+      Joining items and payments together pairs every item with every payment,
+      so both sums are multiplied by the number of rows on the other side.
+  - code: |
+      WITH items AS (
+        SELECT order_id, SUM(price) AS items_total
+        FROM order_items GROUP BY order_id),
+      paid AS (
+        SELECT order_id, SUM(amount) AS paid_total
+        FROM payments GROUP BY order_id)
+      SELECT o.order_id, i.items_total, p.paid_total
+      FROM orders o JOIN items i USING (order_id) JOIN paid p USING (order_id)
+      ORDER BY o.order_id;
+    correct: true
+    explanation: >-
+      Each CTE reduces its table to one row per order before the join, so the
+      join can't multiply any rows.
+  - code: |
+      WITH joined AS (
+        SELECT o.order_id, i.price, p.amount
+        FROM orders o
+        JOIN order_items i ON i.order_id = o.order_id
+        JOIN payments p ON p.order_id = o.order_id)
+      SELECT order_id, SUM(DISTINCT price) AS items_total,
+             SUM(DISTINCT amount) AS paid_total
+      FROM joined GROUP BY order_id ORDER BY order_id;
+    correct: false
+    explanation: >-
+      DISTINCT removes repeated values, not repeated rows, so two items with
+      the same price or two equal payments are counted only once.
+  - code: |
+      WITH items AS (
+        SELECT order_id, SUM(price) AS items_total
+        FROM order_items GROUP BY order_id),
+      paid AS (
+        SELECT order_id, amount AS paid_total
+        FROM payments)
+      SELECT o.order_id, i.items_total, p.paid_total
+      FROM orders o JOIN items i USING (order_id) JOIN paid p USING (order_id)
+      ORDER BY o.order_id;
+    correct: false
+    explanation: >-
+      The paid CTE isn't aggregated, so an order with a split payment returns
+      one row per payment instead of a single paid total.
+tags: [cte, join-fan-out, aggregates]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html
+status: approved
