@@ -1,0 +1,49 @@
+id: spark-l4-0020
+topic: spark
+level: 4
+title: Bucket two tables to avoid shuffles on repeated joins
+prompt: |
+  `orders` and `payments` are joined on `order_id` many times a day, and every
+  join shuffles both sides. Save them as tables `o` and `p` so that future joins
+  of `spark.table("o")` with `spark.table("p")` on `order_id` need **no
+  shuffle**.
+context: |
+  `orders(order_id, amount)` and `payments(order_id, method)`. Auto-broadcast is
+  disabled and Adaptive Query Execution is disabled.
+options:
+  - code: |
+      orders.write.partitionBy("order_id").saveAsTable("o")
+      payments.write.partitionBy("order_id").saveAsTable("p")
+      spark.table("o").join(spark.table("p"), "order_id")
+    correct: false
+    explanation: >-
+      Partitioning creates one folder per order id but doesn't hash-distribute
+      the data, so the join still shuffles both sides.
+  - code: |
+      orders.write.bucketBy(8, "order_id").sortBy("order_id").saveAsTable("o")
+      payments.write.bucketBy(8, "order_id").sortBy("order_id").saveAsTable("p")
+      spark.table("o").join(spark.table("p"), "order_id")
+    correct: true
+    explanation: >-
+      Both tables are hashed into the same 8 buckets on the join key, so Spark
+      knows matching rows are already co-located and plans the join without an
+      Exchange.
+  - code: |
+      orders.write.bucketBy(8, "order_id").sortBy("order_id").saveAsTable("o")
+      payments.write.bucketBy(16, "order_id").sortBy("order_id").saveAsTable("p")
+      spark.table("o").join(spark.table("p"), "order_id")
+    correct: false
+    explanation: >-
+      The bucket counts differ, so the buckets don't line up, and Spark
+      shuffles one side to match the other.
+  - code: |
+      orders.repartition(8, "order_id").write.saveAsTable("o")
+      payments.repartition(8, "order_id").write.saveAsTable("p")
+      spark.table("o").join(spark.table("p"), "order_id")
+    correct: false
+    explanation: >-
+      The files are hash-distributed when written, but the tables carry no
+      bucketing metadata, so Spark can't rely on it and shuffles both sides.
+tags: [bucketing, shuffle, joins]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.bucketBy.html
+status: approved

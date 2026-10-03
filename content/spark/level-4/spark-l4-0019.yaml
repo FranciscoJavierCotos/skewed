@@ -1,0 +1,50 @@
+id: spark-l4-0019
+topic: spark
+level: 4
+title: Isolate and broadcast a single hot join key
+prompt: |
+  One key, `"h"`, accounts for most of `big`. Split the join so that rows with
+  key `"h"` are joined to a **broadcast** of the matching `small` row, the rest
+  use a normal shuffle join, and the union equals the plain inner join of `big`
+  and `small` on `k`.
+context: |
+  `big(k, v)` and `small(k, name)` with one row per `k`. Auto-broadcast is
+  disabled and Adaptive Query Execution is disabled.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      hot = big.filter(F.col("k") == "h").join(F.broadcast(small.filter(F.col("k") == "h")), "k")
+      rest = big.join(small, "k")
+      hot.unionByName(rest)
+    correct: false
+    explanation: >-
+      `rest` still includes the hot key, so the `h` rows are joined twice and
+      appear twice in the union.
+  - code: |
+      hot = big.filter(F.col("k") == "h").join(F.broadcast(small.filter(F.col("k") == "h")), "k")
+      rest = big.filter(F.col("k") != "h").join(small.filter(F.col("k") == "h"), "k")
+      hot.unionByName(rest)
+    correct: false
+    explanation: >-
+      `rest` is joined to the hot `small` row instead of the other keys, so none
+      of the non-hot rows find a match.
+  - code: |
+      hot = big.filter(F.col("k") == "h").join(F.broadcast(small.filter(F.col("k") == "h")), "k")
+      rest = big.filter(F.col("k") != "h").join(small, "k")
+      hot.unionByName(rest)
+    correct: true
+    explanation: >-
+      The hot rows are joined to a single broadcast row with no shuffle of the
+      skewed key, the other keys use a normal join, and together they form the
+      full inner join.
+  - code: |
+      hot = F.broadcast(big.filter(F.col("k") == "h")).join(small.filter(F.col("k") == "h"), "k")
+      rest = big.filter(F.col("k") != "h").join(small, "k")
+      hot.unionByName(rest)
+    correct: false
+    explanation: >-
+      The rows are right, but the hint broadcasts the huge hot slice of `big`
+      instead of the single `small` row, which defeats the point.
+tags: [skew, broadcast-join, joins]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.broadcast.html
+status: approved

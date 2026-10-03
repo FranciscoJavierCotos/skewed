@@ -1,0 +1,48 @@
+id: spark-l4-0009
+topic: spark
+level: 4
+title: Replace only the partitions present in a late batch
+prompt: |
+  A Parquet table at `out_path` is partitioned by `d`. A late-arriving batch
+  `df` contains corrected rows for `d = 2` and new rows for `d = 3`. Write it so
+  that partition 2 is **replaced**, partition 3 is added, and every other
+  existing partition (such as `d = 1`) is left untouched.
+context: |
+  `df` has columns `id`, `value` and `d`. `out_path` already holds partitions
+  `d=1` and `d=2`.
+options:
+  - code: |
+      spark.conf.set("spark.sql.sources.partitionOverwriteMode", "static")
+      (df.write.mode("overwrite")
+         .partitionBy("d").parquet(out_path))
+    correct: false
+    explanation: >-
+      `static` is the default overwrite mode: Spark deletes the whole table
+      first, so partition `d=1` is lost.
+  - code: |
+      spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+      (df.write.mode("overwrite")
+         .partitionBy("d").parquet(out_path))
+    correct: true
+    explanation: >-
+      In `dynamic` mode, overwrite only replaces the partitions that appear in
+      the incoming data, so `d=2` is replaced, `d=3` is added and `d=1` stays.
+  - code: |
+      spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+      (df.write.mode("append")
+         .partitionBy("d").parquet(out_path))
+    correct: false
+    explanation: >-
+      The overwrite mode only matters for `overwrite` writes. `append` adds the
+      corrected rows next to the old ones, so partition `d=2` ends up with both
+      versions.
+  - code: |
+      (df.write.mode("overwrite").option("replaceWhere", "d >= 2")
+         .partitionBy("d").parquet(out_path))
+    correct: false
+    explanation: >-
+      `replaceWhere` is a Delta Lake option. The Parquet writer ignores it and
+      performs a full static overwrite, deleting `d=1`.
+tags: [partitioning, write, overwrite-modes]
+docs_url: https://spark.apache.org/docs/latest/configuration.html#runtime-sql-configuration
+status: approved
