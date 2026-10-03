@@ -70,6 +70,16 @@ describe("loadContent", () => {
     expect(r.errors.length).toBeGreaterThan(0);
   });
 
+  it.each(["javascript:alert(1)", "data:text/html,x", "http://x.dev"])("rejects non-https docs_url %s", (url) => {
+    const r = loadContent(bank({ "sql/level-1/sql-l1-0001.yaml": valid("sql-l1-0001", { docs_url: url }) }));
+    expect(r.errors[0].message).toMatch(/docs_url/);
+  });
+
+  it("accepts an https docs_url", () => {
+    const r = loadContent(bank({ "sql/level-1/sql-l1-0001.yaml": valid("sql-l1-0001", { docs_url: "https://x.dev/a" }) }));
+    expect(r.errors).toEqual([]);
+  });
+
   it("reports invalid YAML without crashing", () => {
     const r = loadContent(bank({ "sql/level-1/sql-l1-0001.yaml": "id: [unclosed" }));
     expect(r.errors[0].message).toMatch(/invalid YAML/);

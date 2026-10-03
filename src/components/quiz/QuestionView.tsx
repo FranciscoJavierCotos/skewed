@@ -53,7 +53,7 @@ export function QuestionView({ question, options, result, disabled, onSelect }: 
           );
         })}
       </ol>
-      {result?.docsUrl && (
+      {result?.docsUrl?.startsWith("https://") && (
         <a className="text-sky-600 underline" href={result.docsUrl} target="_blank" rel="noreferrer">{en.quiz.docs}</a>
       )}
     </article>

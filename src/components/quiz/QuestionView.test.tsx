@@ -35,6 +35,13 @@ it("in result mode marks correct/chosen and shows every explanation", () => {
   expect(screen.queryByText(/time ran out/i)).not.toBeInTheDocument();
 });
 
+it("renders no docs link for a non-https docsUrl", () => {
+  const result: AnswerResult = { questionId: "q1", chosenOptionId: "q1-a", correct: true, correctOptionId: "q1-a",
+    explanations: {}, docsUrl: "javascript:alert(1)" };
+  render(<QuestionView question={q} options={q.options} result={result} disabled onSelect={() => {}} />);
+  expect(screen.queryByRole("link")).not.toBeInTheDocument();
+});
+
 it("shows a time-ran-out notice when the answer timed out", () => {
   const result: AnswerResult = { questionId: "q1", chosenOptionId: null, correct: false, correctOptionId: "q1-a",
     explanations: {}, docsUrl: null };
