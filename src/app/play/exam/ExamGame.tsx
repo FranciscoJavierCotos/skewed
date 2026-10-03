@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { ErrorRetry } from "@/components/quiz/ErrorRetry";
+import { ErrorRetry, submitErrorMessage } from "@/components/quiz/ErrorRetry";
 import { QuestionView } from "@/components/quiz/QuestionView";
 import { useShuffledOptions } from "@/components/quiz/useShuffledOptions";
 import type { AnswerResult, SessionConfig } from "@/domain/types";
@@ -80,7 +80,7 @@ export function ExamGame({ config }: { config: SessionConfig }) {
       {shortBy > 0 && state.index === 0 && <p className="text-amber-600">{fmt(en.exam.short, { n: state.questions.length })}</p>}
       <QuestionView question={current} options={options} result={null} disabled={submitter.pending}
         onSelect={(id) => submit(current.id, id)} />
-      {submitter.error && <ErrorRetry message={en.game.submitFailed} onRetry={submitter.retry} />}
+      {submitter.error && <ErrorRetry message={submitErrorMessage(submitter.error)} onRetry={submitter.retry} />}
     </div>
   );
 }
