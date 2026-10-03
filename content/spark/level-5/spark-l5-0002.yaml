@@ -1,0 +1,52 @@
+id: spark-l5-0002
+topic: spark
+level: 5
+title: Let AQE split a skewed sort-merge join partition
+prompt: |
+  A sort-merge join of `orders` and `customers` on `customer_id` has one reduce
+  task that runs for an hour, because a single customer owns a third of all
+  orders. The cluster was set up with AQE and its skew-join handling switched
+  off. Change the session so that Spark **splits the skewed partition into
+  smaller tasks at runtime**.
+context: |
+  Cluster settings: `spark.sql.adaptive.enabled=false` and
+  `spark.sql.adaptive.skewJoin.enabled=false`. The skew thresholds are already
+  tuned for this data and automatic broadcasting is disabled.
+  `orders(order_id, customer_id)` and `customers(customer_id, name)`.
+options:
+  - code: |
+      spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+      spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionFactor", "2")
+      orders.join(customers, "customer_id")
+    correct: false
+    explanation: >-
+      Skew-join handling is part of AQE. While `spark.sql.adaptive.enabled` is
+      false, Spark never looks at runtime partition sizes, so nothing is split.
+  - code: |
+      spark.conf.set("spark.sql.adaptive.enabled", "true")
+      spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionFactor", "2")
+      orders.join(customers, "customer_id")
+    correct: false
+    explanation: >-
+      AQE is on, but skew-join handling is still switched off. Tuning its
+      factor changes nothing, so one task still reads the whole hot partition.
+  - code: |
+      spark.conf.set("spark.sql.adaptive.enabled", "true")
+      spark.conf.set("spark.sql.adaptive.optimizeSkewsInRebalancePartitions.enabled", "true")
+      orders.join(customers, "customer_id")
+    correct: false
+    explanation: >-
+      That flag only splits skewed partitions created by a `REBALANCE` hint, not
+      join partitions, and skew-join handling is still switched off.
+  - code: |
+      spark.conf.set("spark.sql.adaptive.enabled", "true")
+      spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+      orders.join(customers, "customer_id")
+    correct: true
+    explanation: >-
+      With both on, AQE detects the oversized shuffle partition from runtime
+      statistics and splits it, replicating the matching `customers` partition.
+      The final plan marks the join `skew=true`.
+tags: [aqe, skew, joins]
+docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#optimizing-skew-join
+status: approved

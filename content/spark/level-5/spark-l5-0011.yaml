@@ -1,0 +1,50 @@
+id: spark-l5-0011
+topic: spark
+level: 5
+title: Emit each event-time window once, when it is final
+prompt: |
+  A streaming job counts events per 10-minute window of `ts`. Events can arrive
+  up to 10 minutes late. The sink must receive **each window exactly once, after
+  it can no longer change**, and old windows must be dropped from the state.
+context: |
+  `events` is a streaming DataFrame with columns `user` and `ts` (timestamp).
+  Each option returns a `DataStreamWriter`; the job then sets the sink and the
+  checkpoint and calls `start()`. `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      counts = events.groupBy(F.window("ts", "10 minutes")).count()
+      counts.writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      Without a watermark, Spark can never decide that a window is final, so it
+      rejects append mode for a streaming aggregation.
+  - code: |
+      counts = (events.withColumn("ingest", F.current_timestamp())
+                .withWatermark("ingest", "10 minutes")
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      The watermark is on the processing-time `ingest` column, which the
+      aggregation doesn't group by, so Spark treats it as having no watermark
+      and rejects append mode.
+  - code: |
+      counts = (events.withWatermark("ts", "10 minutes")
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("append")
+    correct: true
+    explanation: >-
+      A window is emitted once the watermark (max event time minus 10 minutes)
+      passes its end. After that it can't change, so it is written once and its
+      state is dropped.
+  - code: |
+      counts = (events.withWatermark("ts", "10 minutes")
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("complete")
+    correct: false
+    explanation: >-
+      Complete mode rewrites every window, including ones still open, on each
+      trigger, and it keeps all state because the whole result must be output.
+tags: [structured-streaming, watermarks, output-modes]
+docs_url: https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html#handling-late-data-and-watermarking
+status: approved

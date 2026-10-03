@@ -1,0 +1,56 @@
+id: spark-l5-0019
+topic: spark
+level: 5
+title: Apply a CDC batch with deletes, updates and inserts
+prompt: |
+  A CDC batch `src` has an `op` column: `'D'` deletes the row with that `id`,
+  `'U'` upserts it. Apply it to `target` so that deleted ids disappear, updated
+  ids get the new `v`, and new ids are inserted, but **a delete for an unknown
+  id must not insert anything**.
+context: |
+  `target` is a `DeltaTable` with columns `id` and `v`. `src` has columns `id`,
+  `v` and `op`, with one row per `id`.
+options:
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdate(set={"v": "s.v"})
+         .whenMatchedDelete(condition="s.op = 'D'")
+         .whenNotMatchedInsert(condition="s.op = 'U'", values={"id": "s.id", "v": "s.v"})
+         .execute())
+    correct: false
+    explanation: >-
+      MATCHED clauses are checked in order, and only the last one may omit its
+      condition. The unconditional update comes first, so Delta rejects the
+      MERGE.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedDelete(condition="s.op = 'D'")
+         .whenMatchedUpdate(set={"v": "s.v"})
+         .whenNotMatchedInsert(condition="s.op = 'U'", values={"id": "s.id", "v": "s.v"})
+         .execute())
+    correct: true
+    explanation: >-
+      The conditional delete is checked first, other matches are updated, and
+      the insert condition skips delete markers for ids the table doesn't have.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedDelete(condition="s.op = 'D'")
+         .whenMatchedUpdate(set={"v": "s.v"})
+         .whenNotMatchedInsert(values={"id": "s.id", "v": "s.v"})
+         .execute())
+    correct: false
+    explanation: >-
+      The insert has no condition, so a delete for an unknown id inserts that id
+      with a null `v`.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdate(condition="s.op = 'U'", set={"v": "s.v"})
+         .whenNotMatchedInsert(condition="s.op = 'U'", values={"id": "s.id", "v": "s.v"})
+         .execute())
+    correct: false
+    explanation: >-
+      Delete markers for existing ids match no clause, so those rows are left in
+      the table.
+tags: [delta-merge, cdc]
+docs_url: https://docs.delta.io/latest/delta-update.html#upsert-into-a-table-using-merge
+status: approved

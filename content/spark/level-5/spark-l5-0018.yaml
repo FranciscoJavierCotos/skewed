@@ -1,0 +1,48 @@
+id: spark-l5-0018
+topic: spark
+level: 5
+title: Update only rows whose nullable value changed
+prompt: |
+  A daily MERGE from `src` into `target` rewrites every matched row, even when
+  nothing changed, which bloats the change data feed. Update a matched row
+  **only if its `email` actually changed**, including changes **from or to
+  null**.
+context: |
+  `target` is a `DeltaTable` with columns `id` and `email` (nullable); `src` has
+  the same columns and only ids that already exist in `target`.
+options:
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll(condition="s.email <> t.email")
+         .execute())
+    correct: false
+    explanation: >-
+      `<>` returns null when either side is null, and a null condition counts as
+      false, so changes from or to null are silently skipped.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll()
+         .execute())
+    correct: false
+    explanation: >-
+      With no condition every matched row is rewritten, unchanged or not,
+      which is exactly the current problem.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll(condition="NOT (s.email <=> t.email)")
+         .execute())
+    correct: true
+    explanation: >-
+      `<=>` is null-safe equality, so its negation is true exactly when the
+      values differ, including null to value and value to null.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll(condition="s.email <> t.email OR s.email IS NULL")
+         .execute())
+    correct: false
+    explanation: >-
+      This catches changes to null, but a change from null to a value still
+      compares as null and is skipped, and unchanged null rows are rewritten.
+tags: [delta-merge, null-semantics, change-data-feed]
+docs_url: https://docs.delta.io/latest/delta-update.html#upsert-into-a-table-using-merge
+status: approved

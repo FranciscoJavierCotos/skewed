@@ -1,0 +1,51 @@
+id: spark-l5-0016
+topic: spark
+level: 5
+title: MERGE a change feed that repeats keys
+prompt: |
+  A change feed `src` can contain several versions of the same `id`. Upsert it
+  into the Delta table `target` so that each `id` ends up with its **latest
+  version** (highest `ts`). New ids are inserted.
+context: |
+  `target` is a `DeltaTable` and `src` has columns `id`, `v` and `ts`, the same
+  as the table. `F` is `pyspark.sql.functions` and `Window` is
+  `pyspark.sql.Window`.
+options:
+  - code: |
+      w = Window.partitionBy("id").orderBy("ts")
+      latest = src.withColumn("rn", F.row_number().over(w)).filter("rn = 1").drop("rn")
+      (target.alias("t").merge(latest.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll().execute())
+    correct: false
+    explanation: >-
+      The window sorts `ts` ascending, so row number 1 is the oldest version of
+      each id, and the MERGE writes that one instead of the latest.
+  - code: |
+      latest = src.dropDuplicates(["id"])
+      (target.alias("t").merge(latest.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll().execute())
+    correct: false
+    explanation: >-
+      `dropDuplicates` keeps an arbitrary row for each id, not the one with the
+      highest `ts`, so an older version can win.
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll(condition="s.ts > t.ts")
+         .whenNotMatchedInsertAll().execute())
+    correct: false
+    explanation: >-
+      The condition doesn't remove the ambiguity: several source rows still
+      match the same target row, and Delta refuses to apply an ambiguous update,
+      so the MERGE fails.
+  - code: |
+      w = Window.partitionBy("id").orderBy(F.col("ts").desc())
+      latest = src.withColumn("rn", F.row_number().over(w)).filter("rn = 1").drop("rn")
+      (target.alias("t").merge(latest.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll().execute())
+    correct: true
+    explanation: >-
+      Ranking by `ts` first leaves exactly one source row per id, the latest, so
+      each target row has at most one match and the MERGE applies it.
+tags: [delta-merge, deduplication, window-functions]
+docs_url: https://docs.delta.io/latest/delta-update.html#upsert-into-a-table-using-merge
+status: approved

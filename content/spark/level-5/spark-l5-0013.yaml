@@ -1,0 +1,54 @@
+id: spark-l5-0013
+topic: spark
+level: 5
+title: Join impressions to clicks with bounded join state
+prompt: |
+  Join a stream of ad impressions to a stream of clicks. A click counts only if
+  it happens **within one hour after** its impression. Impressions can be up to
+  2 hours late and clicks up to 3 hours late, and the join state must be
+  **cleaned up** instead of growing forever. Keep only matched pairs.
+context: |
+  `impressions(ad_id, imp_ts)` and `clicks(click_ad_id, click_ts)` are streaming
+  DataFrames. Each option returns a `DataStreamWriter` that the job starts.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      i = impressions.withWatermark("imp_ts", "2 hours")
+      c = clicks.withWatermark("click_ts", "3 hours")
+      cond = "click_ad_id = ad_id AND click_ts BETWEEN imp_ts AND imp_ts + interval 1 hour"
+      i.join(c, F.expr(cond)).writeStream.outputMode("append")
+    correct: true
+    explanation: >-
+      Watermarks on both sides plus the time-range condition let Spark work out
+      when a buffered row can no longer match, so old rows are dropped from both
+      sides' state.
+  - code: |
+      i = impressions
+      c = clicks
+      cond = "click_ad_id = ad_id AND click_ts BETWEEN imp_ts AND imp_ts + interval 1 hour"
+      i.join(c, F.expr(cond)).writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      The matches are right, but with no watermarks Spark can never decide a
+      buffered row is too old to match, so the join state grows forever.
+  - code: |
+      i = impressions.withWatermark("imp_ts", "2 hours")
+      c = clicks.withWatermark("click_ts", "3 hours")
+      cond = "click_ad_id = ad_id"
+      i.join(c, F.expr(cond)).writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      Without the time-range condition, a click matches its impression no
+      matter how much later it happens, so clicks outside the hour are joined.
+  - code: |
+      i = impressions.withWatermark("imp_ts", "2 hours")
+      c = clicks.withWatermark("click_ts", "3 hours")
+      cond = "click_ad_id = ad_id AND click_ts BETWEEN imp_ts AND imp_ts + interval 1 hour"
+      i.join(c, F.expr(cond), "left_outer").writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      A left outer join also emits every impression that never got a click,
+      with null click columns, but only matched pairs were requested.
+tags: [structured-streaming, watermarks, stream-stream-joins]
+docs_url: https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html#stream-stream-joins
+status: approved

@@ -1,0 +1,44 @@
+id: spark-l5-0012
+topic: spark
+level: 5
+title: Deduplicate client retries with bounded state
+prompt: |
+  Mobile clients retry failed uploads, and every retry carries the original
+  `event_id` but a new `ts`, up to 10 minutes after the first attempt. Keep
+  **one row per `event_id`** in the stream, and let Spark **drop the
+  deduplication state** once an id can no longer reappear.
+context: |
+  `events` is a streaming DataFrame with columns `event_id` and `ts`
+  (timestamp). Each option returns a `DataStreamWriter` that the job starts.
+options:
+  - code: |
+      deduped = events.dropDuplicatesWithinWatermark(["event_id"])
+      deduped.writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      `dropDuplicatesWithinWatermark` needs a watermark to know when an id can be
+      forgotten, so Spark rejects the query without one.
+  - code: |
+      deduped = events.withWatermark("ts", "10 minutes").dropDuplicates(["event_id", "ts"])
+      deduped.writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      Each retry has a new `ts`, so including it in the key makes every retry a
+      distinct row, and the duplicates get through.
+  - code: |
+      deduped = events.withWatermark("ts", "10 minutes").dropDuplicates(["event_id"])
+      deduped.writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      The rows are right, but the event-time column isn't part of the key, so
+      Spark can't use the watermark to expire ids and the state grows forever.
+  - code: |
+      deduped = events.withWatermark("ts", "10 minutes").dropDuplicatesWithinWatermark(["event_id"])
+      deduped.writeStream.outputMode("append")
+    correct: true
+    explanation: >-
+      Each id is remembered only until the watermark passes, so retries with a
+      new `ts` are dropped and the state for old ids is cleaned up.
+tags: [structured-streaming, watermarks, deduplication]
+docs_url: https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html#streaming-deduplication
+status: approved

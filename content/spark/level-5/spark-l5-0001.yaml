@@ -1,0 +1,46 @@
+id: spark-l5-0001
+topic: spark
+level: 5
+title: Let AQE size post-shuffle partitions at runtime
+prompt: |
+  A daily aggregation runs with the default 200 shuffle partitions. On quiet
+  days almost all of the 200 reduce tasks are nearly empty, but peak days need
+  that many. Make Spark **merge small post-shuffle partitions at runtime**, based
+  on the actual shuffle sizes, instead of hard-coding a partition count.
+context: |
+  `df` has columns `day` and `amount`. The cluster sets
+  `spark.sql.adaptive.enabled=false`; every other setting is the default.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+      df.groupBy("day").agg(F.sum("amount").alias("total"))
+    correct: false
+    explanation: >-
+      Partition coalescing is an AQE feature. While `spark.sql.adaptive.enabled`
+      is false the flag has no effect, and all 200 reduce tasks still run.
+  - code: |
+      spark.conf.set("spark.sql.adaptive.enabled", "true")
+      df.groupBy("day").agg(F.sum("amount").alias("total"))
+    correct: true
+    explanation: >-
+      With AQE on, Spark reads the shuffle statistics after the map stage and
+      coalesces small neighbouring partitions (coalescing is on by default), so
+      quiet days run only a few reduce tasks.
+  - code: |
+      spark.conf.set("spark.sql.files.maxPartitionBytes", "16m")
+      df.groupBy("day").agg(F.sum("amount").alias("total"))
+    correct: false
+    explanation: >-
+      This only controls how input files are split into read partitions. The
+      number of post-shuffle partitions stays at 200.
+  - code: |
+      totals = df.groupBy("day").agg(F.sum("amount").alias("total"))
+      totals.coalesce(10)
+    correct: false
+    explanation: >-
+      This hard-codes 10 partitions for every run, so peak days get too few
+      tasks. Nothing adapts to the shuffle data actually produced.
+tags: [aqe, shuffle, partitioning]
+docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#coalescing-post-shuffle-partitions
+status: approved

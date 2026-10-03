@@ -1,0 +1,44 @@
+id: spark-l5-0006
+topic: spark
+level: 5
+title: Keep column pruning with an unused audit column
+prompt: |
+  `df` is read from a wide Parquet table. The pipeline adds an `audit` column
+  holding the whole row as JSON, which a later step writes out. This report only
+  needs the total `amount` per `user_id`. Pick the version whose Parquet scan
+  **reads only `user_id` and `amount`**.
+context: |
+  `df = spark.read.parquet(path)` with columns `user_id`, `amount` and `c0` to
+  `c9`. `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (df.withColumn("audit", F.to_json(F.struct("*")))
+         .groupBy("user_id").agg(F.sum("amount").alias("total")))
+    correct: true
+    explanation: >-
+      The aggregation never uses `audit`, so the optimizer removes it, and column
+      pruning shrinks the scan's `ReadSchema` to `user_id` and `amount`.
+  - code: |
+      (df.withColumn("audit", F.to_json(F.struct("*"))).cache()
+         .groupBy("user_id").agg(F.sum("amount").alias("total")))
+    correct: false
+    explanation: >-
+      The cache stores the full projection, including `audit`, so the scan has to
+      read every column to fill it.
+  - code: |
+      (df.withColumn("audit", F.to_json(F.struct("*"))).filter("audit IS NOT NULL")
+         .groupBy("user_id").agg(F.sum("amount").alias("total")))
+    correct: false
+    explanation: >-
+      The filter uses `audit`, which is built from every column, so the scan has
+      to read all of them.
+  - code: |
+      (spark.createDataFrame(df.withColumn("audit", F.to_json(F.struct("*"))).rdd)
+         .groupBy("user_id").agg(F.sum("amount").alias("total")))
+    correct: false
+    explanation: >-
+      Going through an RDD hides the plan from the optimizer, so full rows are
+      read and converted before the aggregation.
+tags: [column-pruning, query-plans, parquet]
+docs_url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html
+status: approved
