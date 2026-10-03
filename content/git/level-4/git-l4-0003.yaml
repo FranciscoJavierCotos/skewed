@@ -1,0 +1,42 @@
+id: git-l4-0003
+topic: git
+level: 4
+title: Recover a stash you dropped by mistake
+prompt: |
+  You meant to apply your only stash but typed `git stash drop` instead. Git
+  printed:
+
+  ```
+  Dropped refs/stash@{0} (39b2f0133e064c7075d622205d358481207785dc)
+  ```
+
+  Get those changes back into your working tree as uncommitted changes, without
+  committing anything.
+options:
+  - code: |
+      git stash pop --index
+    correct: false
+    explanation: >-
+      The dropped entry is gone from the stash list, which is now empty, so
+      there's nothing to pop.
+  - code: |
+      git stash apply 39b2f01
+    correct: true
+    explanation: >-
+      A dropped stash commit still exists until it's garbage-collected, and
+      `stash apply` accepts its hash like any stash entry.
+  - code: |
+      git cherry-pick 39b2f01
+    correct: false
+    explanation: >-
+      A stash is stored as a merge commit, so `cherry-pick` refuses it without
+      `-m`, and it would commit the changes anyway.
+  - code: |
+      git reset --hard 39b2f01
+    correct: false
+    explanation: >-
+      This moves your branch onto the stash's internal commit, so the changes
+      end up committed in a strange merge, not left uncommitted.
+tags: [stash, recovery]
+docs_url: https://git-scm.com/docs/git-stash#_examples
+status: approved

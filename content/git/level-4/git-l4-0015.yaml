@@ -1,0 +1,37 @@
+id: git-l4-0015
+topic: git
+level: 4
+title: Undo an accidental amend
+prompt: |
+  You staged a new file meant for its own commit, but ran
+  `git commit --amend --no-edit` by mistake, so it went into "Add CLI"
+  (unpushed). Put "Add CLI" back exactly as it was before the amend, and leave
+  the new file **staged**.
+options:
+  - code: |
+      git reset --soft HEAD~1
+    correct: false
+    explanation: >-
+      `HEAD~1` is the parent of "Add CLI", so this undoes the whole commit and
+      stages its changes along with the new file.
+  - code: |
+      git reset --soft HEAD@{1}
+    correct: true
+    explanation: >-
+      `HEAD@{1}` is the original "Add CLI" from before the amend, and `--soft`
+      keeps the amended-in file staged.
+  - code: |
+      git reset --hard HEAD@{1}
+    correct: false
+    explanation: >-
+      Going back to the original commit is right, but `--hard` also discards the
+      new file instead of leaving it staged.
+  - code: |
+      git reset --mixed HEAD@{1}
+    correct: false
+    explanation: >-
+      `--mixed` restores the commit but resets the index too, so the new file
+      ends up untracked instead of staged.
+tags: [reflog, amend, reset]
+docs_url: https://git-scm.com/docs/git-reflog
+status: approved

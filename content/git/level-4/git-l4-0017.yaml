@@ -1,0 +1,37 @@
+id: git-l4-0017
+topic: git
+level: 4
+title: Backport a commit, taking its side on conflicts
+prompt: |
+  Backport "Bump limits" (`main~1`) to `release/1.4`, where you are now. Both
+  branches changed the same line of `limits.yaml`. Wherever the changes
+  conflict, use the backported commit's version, and let the cherry-pick finish
+  without stopping.
+options:
+  - code: |
+      git cherry-pick -X ours main~1
+    correct: false
+    explanation: >-
+      In a cherry-pick, "ours" is the release branch, so the conflicting line
+      keeps the release value and the change is lost.
+  - code: |
+      git cherry-pick -X theirs main
+    correct: false
+    explanation: >-
+      `main` is the newest commit, not "Bump limits" (`main~1`), so the wrong
+      commit is backported.
+  - code: |
+      git cherry-pick -X theirs main~1
+    correct: true
+    explanation: >-
+      `-X theirs` resolves conflicting hunks in favour of the commit being
+      picked, so it applies cleanly with the new limit.
+  - code: |
+      git cherry-pick --no-commit main~1
+    correct: false
+    explanation: >-
+      `--no-commit` doesn't avoid the conflict. The pick stops with
+      `limits.yaml` unmerged, and nothing is applied cleanly.
+tags: [cherry-pick, conflicts, strategies]
+docs_url: https://git-scm.com/docs/git-cherry-pick#Documentation/git-cherry-pick.txt---strategy-optionoption
+status: approved

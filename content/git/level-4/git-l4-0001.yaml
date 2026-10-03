@@ -1,0 +1,40 @@
+id: git-l4-0001
+topic: git
+level: 4
+title: Recover commits after an accidental hard reset
+prompt: |
+  On your local `feature` branch you made three commits, A, B and C, and never
+  pushed them. You then meant to drop only some staged changes, but ran
+  `git reset --hard HEAD~3` instead. You have run no other commands since. Get
+  `feature` back to pointing at commit C with a clean working tree.
+options:
+  - code: |
+      git reflog
+      git reset --hard HEAD@{1}
+    correct: true
+    explanation: >-
+      HEAD@{1} is where HEAD was right before the reset, which is commit C, so a
+      hard reset to it moves feature back to C.
+  - code: |
+      git reflog
+      git reset --hard HEAD@{3}
+    correct: false
+    explanation: >-
+      Reflog entries count HEAD movements, not commits. HEAD@{3} is commit A,
+      so B and C would still be missing.
+  - code: |
+      git reflog
+      git checkout HEAD@{1}
+    correct: false
+    explanation: >-
+      Checking out the reflog entry detaches HEAD at C, but the feature branch
+      itself still points at the commit before A.
+  - code: |
+      git reset --hard origin/feature
+    correct: false
+    explanation: >-
+      The commits were never pushed, so origin/feature does not contain them and
+      the reset cannot bring them back.
+tags: [reflog, reset, recovery]
+docs_url: https://git-scm.com/docs/git-reflog
+status: approved

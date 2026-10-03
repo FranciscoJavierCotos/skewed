@@ -1,0 +1,41 @@
+id: git-l4-0009
+topic: git
+level: 4
+title: Re-land a feature whose merge was reverted
+prompt: |
+  `feature/x` was merged into the shared `main`, then the merge was reverted
+  (`HEAD` is that revert commit). Since then, `feature/x` got one fix commit.
+  Bring the whole feature, with the fix, back onto `main` without rewriting
+  `main`'s history.
+options:
+  - code: |
+      git switch main
+      git merge --no-edit feature/x
+    correct: false
+    explanation: >-
+      The original feature commits are already in `main`'s history, so the merge
+      brings in only the new fix, and the reverted changes stay undone.
+  - code: |
+      git reset --hard HEAD~1
+      git merge --no-edit feature/x
+    correct: false
+    explanation: >-
+      Dropping the revert with `reset` rewrites the shared `main`, which removes
+      a published commit.
+  - code: |
+      git revert --no-edit HEAD
+      git push origin main
+    correct: false
+    explanation: >-
+      Reverting the revert restores the original feature, but the fix commit on
+      `feature/x` is never merged.
+  - code: |
+      git revert --no-edit HEAD
+      git merge --no-edit feature/x
+    correct: true
+    explanation: >-
+      Reverting the revert brings the original changes back, and merging then
+      adds the commit made since, so the whole feature lands without a rewrite.
+tags: [revert, merge, shared-branches]
+docs_url: https://git-scm.com/docs/git-revert#Documentation/git-revert.txt--mparent-number
+status: approved

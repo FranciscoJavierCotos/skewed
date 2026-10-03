@@ -1,0 +1,36 @@
+id: git-l4-0011
+topic: git
+level: 4
+title: Undo a rebase you just finished
+prompt: |
+  You just ran `git rebase main` on `feature/x`. It finished without
+  conflicts, and you've run nothing since. You now realize you wanted to keep
+  the old base. Put `feature/x` back exactly where it was before the rebase.
+options:
+  - code: |
+      git reset --hard HEAD@{1}
+    correct: false
+    explanation: >-
+      A rebase moves HEAD many times. `HEAD@{1}` is the last replayed commit,
+      the same as now, not the pre-rebase tip.
+  - code: |
+      git reset --hard ORIG_HEAD
+    correct: true
+    explanation: >-
+      `rebase` saves the branch's previous tip in `ORIG_HEAD`, so resetting to
+      it restores the pre-rebase commits.
+  - code: |
+      git revert --no-edit HEAD
+    correct: false
+    explanation: >-
+      This adds a commit undoing the last change. The branch stays rebased onto
+      the new base.
+  - code: |
+      git reset --hard HEAD~2
+    correct: false
+    explanation: >-
+      This just drops your two rebased commits and leaves the branch at `main`'s
+      tip instead of the old history.
+tags: [reflog, rebase, recovery]
+docs_url: https://git-scm.com/docs/gitrevisions#Documentation/gitrevisions.txt-ORIGHEAD
+status: approved

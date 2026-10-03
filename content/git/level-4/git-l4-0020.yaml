@@ -1,0 +1,36 @@
+id: git-l4-0020
+topic: git
+level: 4
+title: Move another branch without checking it out
+prompt: |
+  You're on `main` with uncommitted work. The release manager wants the local
+  `release` branch to point at tag `v2.1`, discarding where it points now.
+  Do it without switching branches and without touching `main`.
+options:
+  - code: |
+      git branch release v2.1
+    correct: false
+    explanation: >-
+      `release` already exists, so `git branch` refuses to create it again.
+  - code: |
+      git branch -f release v2.1
+    correct: true
+    explanation: >-
+      `-f` resets an existing branch to the given start point, without
+      checking it out.
+  - code: |
+      git reset --hard v2.1
+    correct: false
+    explanation: >-
+      `reset` moves the current branch, `main`, and `--hard` throws away your
+      uncommitted work.
+  - code: |
+      git switch -C release v2.1
+    correct: false
+    explanation: >-
+      `-C` resets `release` and **switches** to it, which the prompt rules out.
+      Here the switch is refused anyway, because it would overwrite your
+      uncommitted work.
+tags: [branch, refs]
+docs_url: https://git-scm.com/docs/git-branch#Documentation/git-branch.txt--f
+status: approved

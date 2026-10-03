@@ -1,0 +1,41 @@
+id: git-l4-0005
+topic: git
+level: 4
+title: Finish a cherry-pick that stopped on a conflict
+prompt: |
+  `git cherry-pick -x` of "Raise limit" onto `release/2.0` stopped with a
+  conflict in `limits.py`. You've already edited the file to the right content.
+  Finish so the new commit keeps the original message, **including** the
+  "(cherry picked from commit …)" line.
+options:
+  - code: |
+      git add limits.py
+      git cherry-pick --continue
+    correct: true
+    explanation: >-
+      `git add` marks the conflict resolved, and `--continue` commits with the
+      prepared message, which includes the `-x` line.
+  - code: |
+      git add limits.py
+      git commit -m "Raise limit"
+    correct: false
+    explanation: >-
+      `-m` replaces the prepared message, so the "(cherry picked from commit
+      …)" line is lost.
+  - code: |
+      git add limits.py
+      git cherry-pick --quit
+    correct: false
+    explanation: >-
+      `--quit` forgets the cherry-pick state without committing, so the
+      resolution is left staged and no commit is made.
+  - code: |
+      git add limits.py
+      git cherry-pick --skip
+    correct: false
+    explanation: >-
+      `--skip` drops this commit and your resolution, so "Raise limit" never
+      lands on the release branch.
+tags: [cherry-pick, conflicts]
+docs_url: https://git-scm.com/docs/git-cherry-pick#Documentation/git-cherry-pick.txt---continue
+status: approved

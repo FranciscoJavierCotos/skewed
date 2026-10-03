@@ -1,0 +1,36 @@
+id: git-l4-0006
+topic: git
+level: 4
+title: Cherry-pick the last three commits of a branch
+prompt: |
+  `feature/x` has five commits since it branched from `main`. Only its last
+  three are ready. You're on `main`: copy exactly those three commits onto it,
+  in their original order.
+options:
+  - code: |
+      git cherry-pick feature/x~2..feature/x
+    correct: false
+    explanation: >-
+      `A..B` excludes `A` itself, so starting at `feature/x~2` copies only the
+      last two commits.
+  - code: |
+      git cherry-pick main..feature/x
+    correct: false
+    explanation: >-
+      `main..feature/x` is every commit on the feature since it branched, so all
+      five are copied.
+  - code: |
+      git cherry-pick feature/x~3..feature/x
+    correct: true
+    explanation: >-
+      `feature/x~3` is the commit just before the last three, and the range
+      excludes it, so exactly those three are copied in order.
+  - code: |
+      git cherry-pick feature/x~3 feature/x
+    correct: false
+    explanation: >-
+      Two names without `..` are two single commits: the fourth-newest and the
+      tip. This isn't a range.
+tags: [cherry-pick, ranges]
+docs_url: https://git-scm.com/docs/git-cherry-pick#_examples
+status: approved

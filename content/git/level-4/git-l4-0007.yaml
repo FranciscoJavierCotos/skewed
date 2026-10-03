@@ -1,0 +1,37 @@
+id: git-l4-0007
+topic: git
+level: 4
+title: Backport everything a merge brought in
+prompt: |
+  The tip of `main` is the merge commit "Merge branch 'fix/x'", which brought in
+  two fix commits. Before that merge, `main` also got its own unrelated commit.
+  You're on `release/2.0`: apply what the fix branch brought in as one commit,
+  and nothing else from `main`.
+options:
+  - code: |
+      git cherry-pick main
+    correct: false
+    explanation: >-
+      `main` is a merge commit, and without `-m` Git can't tell which parent to
+      diff against, so it refuses.
+  - code: |
+      git cherry-pick -m 1 main
+    correct: true
+    explanation: >-
+      `-m 1` diffs the merge against its first parent, `main` before the merge,
+      which is exactly what the fix branch added.
+  - code: |
+      git cherry-pick -m 2 main
+    correct: false
+    explanation: >-
+      Against parent 2, the fix branch, the diff is `main`'s own unrelated
+      commit, so the fixes are left out.
+  - code: |
+      git cherry-pick fix/x
+    correct: false
+    explanation: >-
+      `fix/x` names only the branch's tip commit, so the first of the two fixes
+      is missing.
+tags: [cherry-pick, merge]
+docs_url: https://git-scm.com/docs/git-cherry-pick#Documentation/git-cherry-pick.txt--mparent-number
+status: approved
