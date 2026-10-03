@@ -1,0 +1,41 @@
+id: git-l3-0011
+topic: git
+level: 3
+title: Move commits made on main to a feature branch
+prompt: |
+  You made your last two commits on `main` by mistake; they aren't pushed. Move
+  them to a new branch `feature/x`, put `main` back where `origin/main` is, and
+  finish on `feature/x`.
+options:
+  - code: |
+      git switch -c feature/x
+      git push -u origin feature/x
+    correct: false
+    explanation: >-
+      The commits are now on `feature/x`, but `main` still has them too, because
+      creating a branch doesn't move `main`.
+  - code: |
+      git reset --hard origin/main
+      git switch -c feature/x
+    correct: false
+    explanation: >-
+      `main` is reset before any branch points at the two commits, so
+      `feature/x` starts at `origin/main` without them.
+  - code: |
+      git branch feature/x
+      git reset --hard HEAD~2
+      git switch feature/x
+    correct: true
+    explanation: >-
+      `feature/x` keeps the two commits, `main` is reset two commits back to
+      `origin/main`'s position, and then you switch to the feature.
+  - code: |
+      git switch -c feature/x
+      git reset --hard origin/main
+    correct: false
+    explanation: >-
+      `reset` moves the branch you're on, so this empties `feature/x` and leaves
+      `main` with the two commits.
+tags: [reset, branch]
+docs_url: https://git-scm.com/docs/git-reset
+status: approved

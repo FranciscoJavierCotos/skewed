@@ -1,0 +1,59 @@
+id: git-l3-0001
+topic: git
+level: 3
+title: Fold a typo fix into an older commit
+prompt: |
+  Your unpushed feature branch has three commits. The newest one only fixes a
+  typo introduced by "Add loader". Rewrite the branch so the fix lives inside
+  "Add loader", leaving two commits whose messages are exactly "Add loader" and
+  "Add loader tests".
+context: |
+  ```
+  $ git log --oneline main..HEAD
+  c3e81fa Fix typo in loader
+  b72d0c4 Add loader tests
+  a19f5e2 Add loader
+  ```
+options:
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick  a19f5e2 Add loader
+      #   pick  b72d0c4 Add loader tests
+      #   fixup c3e81fa Fix typo in loader
+    correct: false
+    explanation: >-
+      `fixup` melds a commit into the line **above** it, so the fix lands in
+      "Add loader tests", and "Add loader" still has the typo.
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick  a19f5e2 Add loader
+      #   fixup c3e81fa Fix typo in loader
+      #   pick  b72d0c4 Add loader tests
+    correct: true
+    explanation: >-
+      Moving the fix directly under "Add loader" and marking it `fixup` melds
+      it into that commit and discards the fix's own message.
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick   a19f5e2 Add loader
+      #   squash c3e81fa Fix typo in loader
+      #   pick   b72d0c4 Add loader tests
+    correct: false
+    explanation: >-
+      `squash` keeps both messages, so the combined commit's message also
+      contains "Fix typo in loader" and isn't exactly "Add loader".
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick a19f5e2 Add loader
+      #   drop c3e81fa Fix typo in loader
+      #   pick b72d0c4 Add loader tests
+    correct: false
+    explanation: >-
+      `drop` throws the fix away, so the typo stays in "Add loader".
+tags: [interactive-rebase, fixup]
+docs_url: https://git-scm.com/docs/git-rebase#_interactive_mode
+status: approved

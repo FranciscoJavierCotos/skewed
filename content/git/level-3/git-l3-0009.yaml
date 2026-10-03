@@ -1,0 +1,36 @@
+id: git-l3-0009
+topic: git
+level: 3
+title: Revert a merged feature on main
+prompt: |
+  The merge commit at the tip of the shared `main` (`HEAD`) brought in a
+  feature that turns out to be broken. Undo everything the feature introduced
+  without rewriting history, and keep the changes made on `main` itself.
+options:
+  - code: |
+      git revert --no-edit HEAD
+    correct: false
+    explanation: >-
+      A merge commit has two parents. Without `-m`, Git doesn't know which side
+      to keep and refuses to revert it.
+  - code: |
+      git revert --no-edit -m 1 HEAD
+    correct: true
+    explanation: >-
+      `-m 1` treats the first parent, `main`, as the mainline, so the revert
+      undoes exactly what the feature branch brought in.
+  - code: |
+      git revert --no-edit -m 2 HEAD
+    correct: false
+    explanation: >-
+      `-m 2` keeps the feature side as the mainline, so the revert removes
+      `main`'s own changes and keeps the feature.
+  - code: |
+      git reset --hard ORIG_HEAD
+    correct: false
+    explanation: >-
+      Resetting to the pre-merge commit rewrites the shared `main` and drops the
+      merge commit from history.
+tags: [revert, merge]
+docs_url: https://git-scm.com/docs/git-revert#Documentation/git-revert.txt--mparent-number
+status: approved

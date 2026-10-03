@@ -1,0 +1,45 @@
+id: git-l3-0006
+topic: git
+level: 3
+title: Keep your own version of a file during a rebase conflict
+prompt: |
+  While running `git rebase main` on `feature/x`, Git stopped on your commit
+  "Widen id column" with a conflict in `schema.sql`. For this file you want the
+  version from **your** commit, the one being replayed. Resolve the conflict
+  that way and finish the rebase.
+options:
+  - code: |
+      git checkout --theirs schema.sql
+      git add schema.sql
+      git rebase --continue
+    correct: true
+    explanation: >-
+      During a rebase the sides are swapped: "ours" is the branch you're
+      replaying onto, and "theirs" is the commit being replayed, which is your
+      change.
+  - code: |
+      git checkout --ours schema.sql
+      git add schema.sql
+      git rebase --continue
+    correct: false
+    explanation: >-
+      In a rebase, "ours" is `main`, the base being replayed onto, so this keeps
+      `main`'s version and your change disappears.
+  - code: |
+      git checkout --theirs -- schema.sql
+      git rebase --continue
+    correct: false
+    explanation: >-
+      Checking out one side rewrites the file but doesn't mark it resolved, so
+      `--continue` refuses until you `git add` it.
+  - code: |
+      git diff --diff-filter=U
+      git add schema.sql
+      git rebase --continue
+    correct: false
+    explanation: >-
+      `git add` marks the file resolved as it is, so the commit records
+      `schema.sql` with the conflict markers still in it.
+tags: [rebase, conflicts, ours-theirs]
+docs_url: https://git-scm.com/docs/git-checkout#Documentation/git-checkout.txt---ours
+status: approved

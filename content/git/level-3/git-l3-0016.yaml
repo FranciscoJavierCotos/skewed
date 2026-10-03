@@ -1,0 +1,37 @@
+id: git-l3-0016
+topic: git
+level: 3
+title: Show the common ancestor in a conflicted file
+prompt: |
+  A merge left conflict markers in `config.yaml` that show only your side and
+  their side, and it's hard to tell who changed what. Re-create the conflict
+  markers in this file so that they **also** show the common ancestor's
+  version.
+options:
+  - code: |
+      git config --local merge.conflictStyle diff3
+    correct: false
+    explanation: >-
+      The setting affects only conflicts produced from now on. The markers
+      already in `config.yaml` are not rewritten.
+  - code: |
+      git checkout --merge -- config.yaml
+    correct: false
+    explanation: >-
+      `--merge` re-creates the markers, but in the default two-sided style, so
+      the ancestor's version still isn't shown.
+  - code: |
+      git show :1:config.yaml > config.yaml
+    correct: false
+    explanation: >-
+      Stage 1 is the ancestor's version on its own, so this overwrites the file
+      with it and both sides' changes disappear.
+  - code: |
+      git checkout --conflict=diff3 config.yaml
+    correct: true
+    explanation: >-
+      `--conflict=diff3` rebuilds the conflicted file with a `|||||||` section
+      holding the common ancestor between the two sides.
+tags: [conflicts, merge]
+docs_url: https://git-scm.com/docs/git-checkout#Documentation/git-checkout.txt---conflictstyle
+status: approved

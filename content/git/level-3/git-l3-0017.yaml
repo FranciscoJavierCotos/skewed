@@ -1,0 +1,66 @@
+id: git-l3-0017
+topic: git
+level: 3
+title: Add a forgotten file to a commit two back
+prompt: |
+  Your unpushed branch has "Add loader" followed by "Add CLI". The untracked
+  file `loader.yaml` should have been part of "Add loader". Put it in that
+  commit, keeping both commits and their messages.
+context: |
+  ```
+  $ git log --oneline main..HEAD
+  b2f4c90 Add CLI
+  a7d3e18 Add loader
+  ```
+options:
+  - code: |
+      git rebase -i HEAD~2
+      # todo list:
+      #   edit a7d3e18 Add loader
+      #   pick b2f4c90 Add CLI
+      git add loader.yaml
+      git commit --amend --no-edit
+      git rebase --continue
+    correct: true
+    explanation: >-
+      The rebase stops right after replaying "Add loader", so amending there
+      adds the file to that commit before "Add CLI" is replayed on top.
+  - code: |
+      git rebase -i HEAD~2
+      # todo list:
+      #   pick a7d3e18 Add loader
+      #   edit b2f4c90 Add CLI
+      git add loader.yaml
+      git commit --amend --no-edit
+      git rebase --continue
+    correct: false
+    explanation: >-
+      The stop happens after "Add CLI", so the amend adds the file to "Add CLI"
+      instead of "Add loader".
+  - code: |
+      git rebase -i HEAD~2
+      # todo list:
+      #   edit a7d3e18 Add loader
+      #   pick b2f4c90 Add CLI
+      git add loader.yaml
+      git commit --amend --no-edit
+      git rebase --quit
+    correct: false
+    explanation: >-
+      `--quit` stops the rebase where it is: "Add CLI" is never replayed, and
+      the branch isn't updated, so you're left on a detached HEAD.
+  - code: |
+      git rebase -i HEAD~2
+      # todo list:
+      #   edit a7d3e18 Add loader
+      #   pick b2f4c90 Add CLI
+      git add loader.yaml
+      git commit -m "Add loader config"
+      git rebase --continue
+    correct: false
+    explanation: >-
+      A plain commit at the stop adds a **new** commit between the two, and
+      "Add loader" itself stays unchanged.
+tags: [interactive-rebase, edit, amend]
+docs_url: https://git-scm.com/docs/git-rebase#_splitting_commits
+status: approved

@@ -1,0 +1,42 @@
+id: git-l3-0013
+topic: git
+level: 3
+title: Take the incoming version of one conflicted file
+prompt: |
+  Merging `feature/x` into `main` stopped with a conflict in `map.yaml` only.
+  Everything else merged cleanly. For `map.yaml`, keep the `feature/x` version,
+  then complete the merge commit.
+options:
+  - code: |
+      git checkout --theirs map.yaml
+      git add map.yaml
+      git commit --no-edit
+    correct: true
+    explanation: >-
+      In a merge, "theirs" is the branch being merged in. Taking it, marking the
+      file resolved and committing completes the merge.
+  - code: |
+      git checkout --ours map.yaml
+      git add map.yaml
+      git commit --no-edit
+    correct: false
+    explanation: >-
+      In a merge, "ours" is the current branch, `main`, so this keeps `main`'s
+      version of the file.
+  - code: |
+      git merge --abort
+      git merge -s ours --no-edit feature/x
+    correct: false
+    explanation: >-
+      The `ours` **strategy** ignores the other branch's changes entirely, so
+      none of `feature/x`'s changes are merged.
+  - code: |
+      git checkout --theirs -- map.yaml
+      git commit --no-edit
+    correct: false
+    explanation: >-
+      The file was never marked resolved with `git add`, so Git refuses to
+      commit with unmerged paths.
+tags: [merge, conflicts, ours-theirs]
+docs_url: https://git-scm.com/docs/git-checkout#Documentation/git-checkout.txt---theirs
+status: approved

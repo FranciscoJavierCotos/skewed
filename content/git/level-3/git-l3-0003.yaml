@@ -1,0 +1,60 @@
+id: git-l3-0003
+topic: git
+level: 3
+title: Remove a debugging commit from the middle of a branch
+prompt: |
+  Your unpushed branch has a commit full of debug prints sitting between two
+  good commits. Remove it from the history entirely, so that neither its
+  changes nor the commit itself remain, and leave the other two commits as they
+  are.
+context: |
+  ```
+  $ git log --oneline main..HEAD
+  c40e2b9 Add CLI
+  d7a1f03 Debug prints
+  a5b8e61 Add parser
+  ```
+options:
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick a5b8e61 Add parser
+      #   drop d7a1f03 Debug prints
+      #   pick c40e2b9 Add CLI
+    correct: true
+    explanation: >-
+      The todo list runs oldest first, and `drop` removes the debug commit and
+      its changes while the other two are replayed unchanged.
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick  a5b8e61 Add parser
+      #   fixup d7a1f03 Debug prints
+      #   pick  c40e2b9 Add CLI
+    correct: false
+    explanation: >-
+      `fixup` removes the commit but melds its debug prints into "Add parser",
+      so the changes stay in the history.
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick a5b8e61 Add parser
+      #   pick d7a1f03 Debug prints
+      #   drop c40e2b9 Add CLI
+    correct: false
+    explanation: >-
+      The todo list is oldest first, the reverse of `git log`. The last line is
+      "Add CLI", so this drops the wrong commit.
+  - code: |
+      git rebase -i HEAD~3
+      # todo list:
+      #   pick   a5b8e61 Add parser
+      #   pick   c40e2b9 Add CLI
+      #   squash d7a1f03 Debug prints
+    correct: false
+    explanation: >-
+      `squash` folds the debug commit into "Add CLI", so its prints are still in
+      the code and its message is appended.
+tags: [interactive-rebase, drop]
+docs_url: https://git-scm.com/docs/git-rebase#_interactive_mode
+status: approved

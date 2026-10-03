@@ -1,0 +1,36 @@
+id: git-l3-0004
+topic: git
+level: 3
+title: Give up on a rebase halfway through
+prompt: |
+  You ran `git rebase main` on `feature/x` and it stopped on a conflict. You
+  decide not to rebase today. Put `feature/x` back exactly where it was before
+  you started, with no rebase in progress and a clean working tree.
+options:
+  - code: |
+      git rebase --quit
+    correct: false
+    explanation: >-
+      `--quit` forgets the rebase but leaves HEAD where it stopped, detached on
+      `main`'s commits, instead of restoring the branch.
+  - code: |
+      git rebase --skip
+    correct: false
+    explanation: >-
+      `--skip` drops the conflicting commit and carries on, so the rebase
+      finishes with one of your commits missing.
+  - code: |
+      git rebase --abort
+    correct: true
+    explanation: >-
+      `--abort` ends the rebase and resets `feature/x` and the working tree to
+      the state from before the rebase began.
+  - code: |
+      git merge --abort
+    correct: false
+    explanation: >-
+      A conflicted rebase step isn't a merge, so `merge --abort` refuses and the
+      rebase stays in progress.
+tags: [rebase, conflicts, abort]
+docs_url: https://git-scm.com/docs/git-rebase#Documentation/git-rebase.txt---abort
+status: approved
