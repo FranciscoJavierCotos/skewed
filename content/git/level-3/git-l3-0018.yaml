@@ -1,0 +1,52 @@
+id: git-l3-0018
+topic: git
+level: 3
+title: Split the last commit into two
+prompt: |
+  Your last commit, "Update loaders", is unpushed and changes both `a.py` and
+  `b.py`. Replace it with two commits: first "Update loader A" with only the
+  `a.py` change, then "Update loader B" with only the `b.py` change.
+options:
+  - code: |
+      git reset --soft HEAD~1
+      git add a.py
+      git commit -m "Update loader A"
+      git add b.py
+      git commit -m "Update loader B"
+    correct: false
+    explanation: >-
+      `--soft` keeps both changes staged, so the first commit takes `a.py` and
+      `b.py` together and the second has nothing to commit.
+  - code: |
+      git reset HEAD~1
+      git add a.py
+      git commit -m "Update loader A"
+      git add b.py
+      git commit -m "Update loader B"
+    correct: true
+    explanation: >-
+      The default mixed reset undoes the commit and unstages its changes, so
+      each file can be staged and committed separately.
+  - code: |
+      git reset --hard HEAD~1
+      git add a.py
+      git commit -m "Update loader A"
+      git add b.py
+      git commit -m "Update loader B"
+    correct: false
+    explanation: >-
+      `--hard` also discards the working-tree changes, so there's nothing left
+      to commit in either step.
+  - code: |
+      git reset HEAD~1 -- a.py b.py
+      git add a.py
+      git commit -m "Update loader A"
+      git add b.py
+      git commit -m "Update loader B"
+    correct: false
+    explanation: >-
+      With paths, `reset` only rewrites index entries and never moves `HEAD`, so
+      "Update loaders" stays and the later commits have nothing to record.
+tags: [reset, split-commit]
+docs_url: https://git-scm.com/docs/git-reset#_discussion
+status: approved

@@ -1,0 +1,44 @@
+id: git-l3-0002
+topic: git
+level: 3
+title: Fold a staged fix into an older commit with autosquash
+prompt: |
+  Your unpushed branch has "Add loader" (`HEAD~1`) followed by "Add CLI"
+  (`HEAD`). You've staged a fix to `loader.py` that belongs in "Add loader".
+  Fold it into that commit using a fixup commit and autosquash, accepting the
+  generated todo list as is. The branch must end with exactly "Add loader" and
+  "Add CLI".
+options:
+  - code: |
+      git commit --amend --no-edit
+      git rebase -i HEAD~2
+    correct: false
+    explanation: >-
+      `--amend` rewrites the **latest** commit, so the loader fix ends up in
+      "Add CLI". The rebase that follows changes nothing.
+  - code: |
+      git commit --fixup=HEAD~2
+      git rebase -i --autosquash HEAD~3
+    correct: false
+    explanation: >-
+      Before the new commit exists, `HEAD~2` is the commit *below* "Add loader".
+      That target is outside the rebased range, so the fixup stays as its own
+      commit.
+  - code: |
+      git commit --fixup=HEAD~1
+      git rebase -i HEAD~3
+    correct: false
+    explanation: >-
+      Without `--autosquash` (and with `rebase.autoSquash` unset) the todo list
+      keeps the fixup commit as a plain `pick`, so it stays a separate commit.
+  - code: |
+      git commit --fixup=HEAD~1
+      git rebase -i --autosquash HEAD~3
+    correct: true
+    explanation: >-
+      The `fixup! Add loader` commit targets "Add loader", and `--autosquash`
+      moves it under that commit as a `fixup` line, so accepting the list folds
+      it in.
+tags: [interactive-rebase, autosquash, fixup]
+docs_url: https://git-scm.com/docs/git-rebase#Documentation/git-rebase.txt---autosquash
+status: approved

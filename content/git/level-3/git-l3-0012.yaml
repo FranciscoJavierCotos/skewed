@@ -1,0 +1,47 @@
+id: git-l3-0012
+topic: git
+level: 3
+title: Revert three pushed commits as one commit
+prompt: |
+  The last three commits on the shared `main` added a cache layer that's being
+  dropped. Undo all three in a **single** new commit, without rewriting history.
+context: |
+  ```
+  $ git log --oneline -4
+  f3a9c20 (HEAD -> main, origin/main) Cache: add eviction
+  c81d7e4 Cache: add TTL
+  a0b6e15 Cache: add layer
+  77de3b2 Add CLI
+  ```
+options:
+  - code: |
+      git revert --no-edit HEAD~3..HEAD
+      git log --oneline -4
+    correct: false
+    explanation: >-
+      Reverting a range commits one revert per commit, so you end up with three
+      new commits instead of one.
+  - code: |
+      git revert --no-commit HEAD~2..HEAD
+      git commit -m "Remove cache layer"
+    correct: false
+    explanation: >-
+      `HEAD~2..HEAD` excludes `HEAD~2` itself, so only two of the three cache
+      commits are undone.
+  - code: |
+      git revert --no-commit HEAD~2
+      git commit -m "Remove cache layer"
+    correct: false
+    explanation: >-
+      A single revision reverts just that one commit ("add layer"), leaving the
+      TTL and eviction changes in place.
+  - code: |
+      git revert --no-commit HEAD~3..HEAD
+      git commit -m "Remove cache layer"
+    correct: true
+    explanation: >-
+      The range covers all three cache commits, and `--no-commit` stacks their
+      reversals in the index so one commit records them all.
+tags: [revert, ranges]
+docs_url: https://git-scm.com/docs/git-revert#Documentation/git-revert.txt--n
+status: approved

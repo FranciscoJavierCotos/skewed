@@ -1,0 +1,36 @@
+id: git-l3-0020
+topic: git
+level: 3
+title: Drop the last commit but keep an unrelated edit
+prompt: |
+  Your last commit, "Bad experiment", is unpushed and should disappear
+  completely, changes included. You also have an uncommitted edit to
+  `notes.md`, which that commit didn't touch and which you must keep.
+options:
+  - code: |
+      git reset --hard HEAD~1
+    correct: false
+    explanation: >-
+      `--hard` resets the whole working tree, so your uncommitted `notes.md`
+      edit is lost too.
+  - code: |
+      git reset --soft HEAD~1
+    correct: false
+    explanation: >-
+      `--soft` removes the commit but keeps its changes staged, so the
+      experiment is still in your working tree.
+  - code: |
+      git revert --no-edit HEAD
+    correct: false
+    explanation: >-
+      `revert` adds an undo commit instead of removing "Bad experiment" from the
+      history.
+  - code: |
+      git reset --keep HEAD~1
+    correct: true
+    explanation: >-
+      `--keep` resets the commit's files to `HEAD~1` but keeps local changes to
+      files that commit didn't touch, so `notes.md` survives.
+tags: [reset, undo]
+docs_url: https://git-scm.com/docs/git-reset#Documentation/git-reset.txt---keep
+status: approved

@@ -1,0 +1,36 @@
+id: git-l3-0007
+topic: git
+level: 3
+title: Undo the last commit but keep its changes staged
+prompt: |
+  Your last commit, "WIP", is unpushed and shouldn't exist yet. Undo the commit,
+  but keep all of its changes **staged**, ready to commit again after you add
+  one more file.
+options:
+  - code: |
+      git reset --mixed HEAD~1
+    correct: false
+    explanation: >-
+      `--mixed` moves the branch back and also resets the index, so the changes
+      come back unstaged.
+  - code: |
+      git reset --hard HEAD~1
+    correct: false
+    explanation: >-
+      `--hard` resets the index and working tree too, so the commit's changes are
+      thrown away.
+  - code: |
+      git revert --no-edit HEAD
+    correct: false
+    explanation: >-
+      `revert` adds a new commit that undoes "WIP". The "WIP" commit stays and
+      nothing is left staged.
+  - code: |
+      git reset --soft HEAD~1
+    correct: true
+    explanation: >-
+      `--soft` only moves the branch pointer, so the index and working tree still
+      hold the changes, staged.
+tags: [reset, undo]
+docs_url: https://git-scm.com/docs/git-reset#Documentation/git-reset.txt---soft
+status: approved

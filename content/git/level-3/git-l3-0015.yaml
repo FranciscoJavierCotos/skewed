@@ -1,0 +1,41 @@
+id: git-l3-0015
+topic: git
+level: 3
+title: Finish a stash pop that conflicted
+prompt: |
+  `git stash pop` hit a conflict in `config.py`, so Git kept that entry
+  (`stash@{0}`) in the stash list. You've edited `config.py` to the right
+  content. Leave it as an ordinary **unstaged** change and remove that stash
+  entry. An older entry, "wip: docs", must stay in the list.
+options:
+  - code: |
+      git add config.py
+      git stash drop stash@{0}
+    correct: false
+    explanation: >-
+      `git add` resolves the conflict but leaves the change staged, not as the
+      unstaged change the prompt asks for.
+  - code: |
+      git restore --staged config.py
+      git stash drop
+    correct: true
+    explanation: >-
+      `restore --staged` clears the unmerged index entry back to `HEAD`, leaving
+      your edit unstaged, and `drop` removes only the top entry.
+  - code: |
+      git restore --staged config.py
+      git stash pop
+    correct: false
+    explanation: >-
+      Popping again tries to re-apply the same changes over your modified file,
+      which Git refuses, so the entry stays in the list.
+  - code: |
+      git restore --staged config.py
+      git stash clear
+    correct: false
+    explanation: >-
+      `stash clear` deletes **every** entry, including the "wip: docs" stash you
+      had to keep.
+tags: [stash, conflicts]
+docs_url: https://git-scm.com/docs/git-stash#Documentation/git-stash.txt-pop--index-q--quietstash
+status: approved

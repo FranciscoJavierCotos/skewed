@@ -1,0 +1,40 @@
+id: git-l3-0019
+topic: git
+level: 3
+title: Collapse a feature branch into one commit
+prompt: |
+  You're on your unpushed `feature/x`, which has four commits since it branched
+  from `main`. Replace them with a **single** commit "Add exports" on top of
+  `main` that has the same final content.
+options:
+  - code: |
+      git reset --soft HEAD~1
+      git commit -m "Add exports"
+    correct: false
+    explanation: >-
+      `HEAD~1` only goes back one commit, so this squashes just the last commit
+      and the other three remain.
+  - code: |
+      git reset main
+      git commit -m "Add exports"
+    correct: false
+    explanation: >-
+      The default mixed reset unstages everything, so the commit has nothing
+      staged and fails, leaving the work uncommitted.
+  - code: |
+      git reset --soft main
+      git commit -m "Add exports"
+    correct: true
+    explanation: >-
+      `--soft main` moves the branch back to `main` and keeps all four commits'
+      changes staged, so one commit records them.
+  - code: |
+      git reset --hard main
+      git commit -m "Add exports"
+    correct: false
+    explanation: >-
+      `--hard` discards all four commits' changes, so there is nothing left to
+      commit.
+tags: [reset, squash]
+docs_url: https://git-scm.com/docs/git-reset#Documentation/git-reset.txt---soft
+status: approved

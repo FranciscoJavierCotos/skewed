@@ -1,0 +1,40 @@
+id: git-l3-0010
+topic: git
+level: 3
+title: Throw away local commits and match the remote
+prompt: |
+  Your local `main` has two unpushed experimental commits that you no longer
+  want, and a teammate has pushed new work. Make your local `main` exactly match
+  the current `origin/main`, with a clean working tree and still on `main`.
+options:
+  - code: |
+      git fetch origin
+      git reset --hard origin/main
+    correct: true
+    explanation: >-
+      The fetch brings `origin/main` up to date, and `reset --hard` moves `main`
+      there and makes the index and working tree match it.
+  - code: |
+      git fetch origin
+      git reset --soft origin/main
+    correct: false
+    explanation: >-
+      `--soft` moves `main` but keeps the index and working tree, so the
+      experiments come back as staged changes.
+  - code: |
+      git fetch origin
+      git rebase origin/main
+    correct: false
+    explanation: >-
+      Rebasing replays your two experimental commits on top of `origin/main`
+      instead of discarding them.
+  - code: |
+      git fetch origin
+      git checkout origin/main
+    correct: false
+    explanation: >-
+      This detaches HEAD at `origin/main`. Local `main` still points at the
+      experimental commits.
+tags: [reset, remotes]
+docs_url: https://git-scm.com/docs/git-reset#Documentation/git-reset.txt---hard
+status: approved

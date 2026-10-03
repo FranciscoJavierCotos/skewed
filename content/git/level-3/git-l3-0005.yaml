@@ -1,0 +1,41 @@
+id: git-l3-0005
+topic: git
+level: 3
+title: Finish a rebase after resolving a conflict
+prompt: |
+  `git rebase main` stopped on your commit "Add retries" with a conflict in
+  `config.yaml`. You've already edited the file to the correct combined content
+  and removed the markers. Finish the rebase so that "Add retries" keeps its
+  message and contains your resolution.
+options:
+  - code: |
+      git status
+      git rebase --continue
+    correct: false
+    explanation: >-
+      The file is still marked as unmerged until you `git add` it, so
+      `--continue` refuses to go on.
+  - code: |
+      git add config.yaml
+      git rebase --continue
+    correct: true
+    explanation: >-
+      `git add` marks the conflict as resolved, and `--continue` commits the
+      step with the original "Add retries" message.
+  - code: |
+      git add config.yaml
+      git rebase --skip
+    correct: false
+    explanation: >-
+      `--skip` drops the "Add retries" commit, and your resolution with it,
+      instead of committing it.
+  - code: |
+      git add config.yaml
+      git rebase --abort
+    correct: false
+    explanation: >-
+      `--abort` throws away the resolution and the whole rebase, so the branch
+      goes back to how it was before.
+tags: [rebase, conflicts]
+docs_url: https://git-scm.com/docs/git-rebase#Documentation/git-rebase.txt---continue
+status: approved

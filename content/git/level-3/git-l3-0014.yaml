@@ -1,0 +1,36 @@
+id: git-l3-0014
+topic: git
+level: 3
+title: Merge a release branch, favouring main on conflicts
+prompt: |
+  Merge `release/1.4` into `main` with a merge commit. Wherever both branches
+  changed the same lines, keep `main`'s lines, but every non-conflicting change
+  from `release/1.4` must come in.
+options:
+  - code: |
+      git merge -s ours --no-edit release/1.4
+    correct: false
+    explanation: >-
+      The `ours` strategy records the merge but ignores **all** of the release
+      branch's changes, the non-conflicting ones included.
+  - code: |
+      git merge -X theirs --no-edit release/1.4
+    correct: false
+    explanation: >-
+      `-X theirs` settles conflicting hunks in favour of `release/1.4`, the
+      opposite of what's wanted.
+  - code: |
+      git merge -X ours --no-edit release/1.4
+    correct: true
+    explanation: >-
+      The `ours` strategy **option** merges normally but resolves only
+      conflicting hunks with `main`'s side.
+  - code: |
+      git merge --squash -X ours release/1.4
+    correct: false
+    explanation: >-
+      `--squash` stages the merged result without committing it, and the eventual
+      commit wouldn't be a merge commit.
+tags: [merge, strategies, conflicts]
+docs_url: https://git-scm.com/docs/git-merge#Documentation/git-merge.txt-ours
+status: approved

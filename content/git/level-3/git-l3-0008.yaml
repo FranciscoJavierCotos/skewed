@@ -1,0 +1,47 @@
+id: git-l3-0008
+topic: git
+level: 3
+title: Undo a pushed commit that isn't the latest
+prompt: |
+  The commit "Switch to v2 API" on the shared `main` broke production. Two newer
+  commits sit on top of it, and they must stay. Undo **only** that commit's
+  changes without rewriting history, and publish the fix.
+context: |
+  ```
+  $ git log --oneline -3
+  9c2e4d1 (HEAD -> main, origin/main) Update docs
+  5b7a0f3 Add metrics
+  e4d81c6 Switch to v2 API
+  ```
+options:
+  - code: |
+      git reset --hard HEAD~3
+      git push --force
+    correct: false
+    explanation: >-
+      This rewrites shared history and also throws away the two good commits on
+      top.
+  - code: |
+      git revert --no-edit HEAD
+      git push
+    correct: false
+    explanation: >-
+      `HEAD` is "Update docs", so this undoes the docs change and leaves the
+      broken API switch in place.
+  - code: |
+      git revert --no-edit HEAD~2
+      git push
+    correct: true
+    explanation: >-
+      `HEAD~2` is "Switch to v2 API". Reverting it adds a new commit that undoes
+      only its changes, so the push is a fast-forward.
+  - code: |
+      git revert --no-commit HEAD~2
+      git push
+    correct: false
+    explanation: >-
+      `--no-commit` only stages the reverse changes. Nothing is committed, so the
+      push publishes nothing.
+tags: [revert, shared-branches]
+docs_url: https://git-scm.com/docs/git-revert
+status: approved
