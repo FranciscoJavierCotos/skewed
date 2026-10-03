@@ -39,10 +39,18 @@ jobs:
         if: env.SUPABASE_DB_URL != ''
         run: bash scripts/ci-pooler-url.sh
       # pgTAP runs against production inside begin/rollback, so its fixtures never persist. No Docker.
+      # Migrations not yet applied to production (this PR's) run first, inside the same rolled-back transaction.
       - name: pgTAP (production, rolled back)
         if: env.SUPABASE_DB_URL != ''
         run: |
-          out=$(psql "$SUPABASE_DB_URL" -X -At -v ON_ERROR_STOP=1 -f supabase/tests/database/rpc.test.sql)
+          applied=$(psql "$SUPABASE_DB_URL" -X -At -c "select version from supabase_migrations.schema_migrations")
+          pending=()
+          for f in supabase/migrations/*.sql; do
+            grep -qx "$(basename "$f" | cut -d_ -f1)" <<< "$applied" || pending+=("$f")
+          done
+          echo "pending migrations: ${pending[*]:-none}"
+          out=$( { echo 'begin;'; cat "${pending[@]}" /dev/null; sed '1d' supabase/tests/database/rpc.test.sql; } \
+            | psql "$SUPABASE_DB_URL" -X -At -v ON_ERROR_STOP=1 -f -)
           echo "$out"
           if echo "$out" | grep -Eq '^not ok|Looks like'; then exit 1; fi
       - run: pnpm tsx scripts/validate-content.ts fixtures/content
