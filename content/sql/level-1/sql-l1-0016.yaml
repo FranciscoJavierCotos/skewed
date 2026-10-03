@@ -1,0 +1,52 @@
+id: sql-l1-0016
+topic: sql
+level: 1
+title: Large orders from French customers
+prompt: |
+  The French sales office wants every order over 100 placed by a customer
+  based in France (`country = 'FR'`). Return `order_id`, the customer's `name`
+  and `amount`.
+context: |
+  customers(customer_id, name, country)
+  orders(order_id, customer_id, amount)
+options:
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE c.country = 'FR' OR o.amount > 100;
+    correct: false
+    explanation: >-
+      OR keeps a row that meets either condition, so small French orders and
+      large orders from other countries are included.
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE c.country = 'FR' AND o.amount > 100;
+    correct: true
+    explanation: >-
+      The join attaches each order's own customer, and both filters must hold,
+      so only large orders by French customers remain.
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.country = 'FR'
+      WHERE o.amount > 100 AND o.customer_id IS NOT NULL;
+    correct: false
+    explanation: >-
+      The join condition never relates the order to its customer, so every
+      large order is paired with every French customer. The NULL check doesn't
+      link them either.
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE o.amount > 100;
+    correct: false
+    explanation: >-
+      The country filter is missing, so large orders from customers in every
+      country are returned.
+tags: [joins, where, boolean-logic]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

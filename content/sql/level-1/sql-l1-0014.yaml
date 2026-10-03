@@ -1,0 +1,46 @@
+id: sql-l1-0014
+topic: sql
+level: 1
+title: Full names when the middle name is optional
+prompt: |
+  The badge printer needs each person's full name as `first middle last`,
+  separated by single spaces. Many people have no middle name
+  (`middle_name` is `NULL`); for them print `first last` with one space.
+context: |
+  people(person_id, first_name, middle_name, last_name)
+options:
+  - code: |
+      SELECT person_id,
+             concat_ws(' ', first_name, middle_name, last_name) AS full_name
+      FROM people;
+    correct: true
+    explanation: >-
+      concat_ws puts the separator between arguments and skips NULL ones, so a
+      missing middle name leaves a single space.
+  - code: |
+      SELECT person_id,
+             first_name || ' ' || middle_name || ' ' || last_name AS full_name
+      FROM people;
+    correct: false
+    explanation: >-
+      The || operator returns NULL as soon as one operand is NULL, so people
+      without a middle name get no name at all.
+  - code: |
+      SELECT person_id,
+             concat(first_name, ' ', middle_name, ' ', last_name) AS full_name
+      FROM people;
+    correct: false
+    explanation: >-
+      concat ignores the NULL but keeps both literal spaces, so names without a
+      middle name are printed with two spaces.
+  - code: |
+      SELECT person_id,
+             concat_ws(first_name, middle_name, last_name, ' ') AS full_name
+      FROM people;
+    correct: false
+    explanation: >-
+      The first argument of concat_ws is the separator, so first_name is used
+      to glue the other parts together instead of being printed.
+tags: [string-functions, null-handling, concatenation]
+docs_url: https://www.postgresql.org/docs/17/functions-string.html
+status: approved

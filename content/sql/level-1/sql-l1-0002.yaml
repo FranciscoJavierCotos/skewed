@@ -1,0 +1,42 @@
+id: sql-l1-0002
+topic: sql
+level: 1
+title: Orders that have not shipped yet
+prompt: |
+  The warehouse wants a list of orders that are still waiting to ship. An order
+  that hasn't shipped has no shipping timestamp: `shipped_at` is `NULL`. Return
+  the `order_id` and `customer_id` of those orders.
+context: |
+  orders(order_id, customer_id, shipped_at timestamp)
+options:
+  - code: |
+      SELECT order_id, customer_id FROM orders
+      WHERE shipped_at = NULL;
+    correct: false
+    explanation: >-
+      Comparing anything to NULL with = yields NULL, not true, so no row passes
+      the filter and the result is empty.
+  - code: |
+      SELECT order_id, customer_id FROM orders
+      WHERE shipped_at IS NOT NULL;
+    correct: false
+    explanation: >-
+      IS NOT NULL keeps the orders that do have a shipping timestamp, which is
+      the opposite of the waiting orders.
+  - code: |
+      SELECT order_id, customer_id FROM orders
+      WHERE shipped_at IN (NULL);
+    correct: false
+    explanation: >-
+      IN is shorthand for = against each list value, and = NULL is never true,
+      so this also returns no rows.
+  - code: |
+      SELECT order_id, customer_id FROM orders
+      WHERE shipped_at IS NULL;
+    correct: true
+    explanation: >-
+      IS NULL is the predicate that tests for a missing value, so it keeps
+      exactly the orders with no shipping timestamp.
+tags: [null-handling, where]
+docs_url: https://www.postgresql.org/docs/17/functions-comparison.html
+status: approved

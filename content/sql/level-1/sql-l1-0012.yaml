@@ -1,0 +1,52 @@
+id: sql-l1-0012
+topic: sql
+level: 1
+title: Order lines with customer and product names
+prompt: |
+  The monthly sales export needs one row per order with the customer's `name`,
+  the product's `title` and the ordered `qty`. Every order has a valid
+  customer and a valid product.
+context: |
+  orders(order_id, customer_id, product_id, qty)
+  customers(customer_id, name)
+  products(product_id, title)
+options:
+  - code: |
+      SELECT c.name, p.title, o.qty
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      JOIN products p ON p.product_id = o.customer_id;
+    correct: false
+    explanation: >-
+      The product join uses the order's customer_id instead of its product_id,
+      so each order shows an unrelated product or none.
+  - code: |
+      SELECT c.name, p.title, o.qty
+      FROM orders o
+      JOIN products p ON p.product_id = o.product_id
+      WHERE c.customer_id = o.customer_id;
+    correct: false
+    explanation: >-
+      The alias c is used but customers is never added to FROM, so PostgreSQL
+      raises a missing FROM-clause entry error.
+  - code: |
+      SELECT c.name, p.title, o.qty
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id,
+           products p;
+    correct: false
+    explanation: >-
+      products is added with a comma and no join condition, so every order is
+      repeated once for every product.
+  - code: |
+      SELECT c.name, p.title, o.qty
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      JOIN products p ON p.product_id = o.product_id;
+    correct: true
+    explanation: >-
+      Each join links orders to one dimension through its own key, so every
+      order gets exactly its customer and its product.
+tags: [joins, multi-table-join]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

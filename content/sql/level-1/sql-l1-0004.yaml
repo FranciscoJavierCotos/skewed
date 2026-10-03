@@ -1,0 +1,42 @@
+id: sql-l1-0004
+topic: sql
+level: 1
+title: Orders placed in the first quarter of 2026
+prompt: |
+  Finance is closing Q1 2026 and needs every order placed from 1 January 2026
+  through 31 March 2026 inclusive, at any time of day. `ordered_at` is a
+  `timestamp` with a time component.
+context: |
+  orders(order_id, ordered_at timestamp)
+options:
+  - code: |
+      SELECT order_id FROM orders
+      WHERE ordered_at BETWEEN '2026-01-01' AND '2026-03-31';
+    correct: false
+    explanation: >-
+      The upper bound becomes 2026-03-31 00:00, so orders placed later on
+      31 March are left out.
+  - code: |
+      SELECT order_id FROM orders
+      WHERE ordered_at > '2026-01-01' AND ordered_at < '2026-04-01';
+    correct: false
+    explanation: >-
+      The strict > excludes an order placed exactly at midnight on 1 January,
+      which belongs to the quarter.
+  - code: |
+      SELECT order_id FROM orders
+      WHERE ordered_at >= '2026-01-01' AND ordered_at < '2026-04-01';
+    correct: true
+    explanation: >-
+      A half-open range, inclusive at the start and exclusive at 1 April, covers
+      every moment of the quarter and nothing after it.
+  - code: |
+      SELECT order_id FROM orders
+      WHERE ordered_at >= '2026-01-01' AND ordered_at <= '2026-04-01';
+    correct: false
+    explanation: >-
+      The inclusive upper bound also keeps orders placed exactly at midnight on
+      1 April, which belong to Q2.
+tags: [dates, where, ranges]
+docs_url: https://www.postgresql.org/docs/17/functions-comparison.html
+status: approved

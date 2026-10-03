@@ -1,0 +1,42 @@
+id: sql-l1-0001
+topic: sql
+level: 1
+title: Spanish customers on an active or trial plan
+prompt: |
+  Customer success is running an onboarding push in Spain. They need every
+  customer located in Spain (`country = 'ES'`) whose status is either
+  `active` or `trial`. Customers from other countries must not appear.
+context: |
+  customers(customer_id, name, country, status)
+options:
+  - code: |
+      SELECT * FROM customers
+      WHERE country = 'ES' AND status = 'active' OR status = 'trial';
+    correct: false
+    explanation: >-
+      AND binds tighter than OR, so this reads as (Spain AND active) OR trial,
+      and trial customers from every country are returned.
+  - code: |
+      SELECT * FROM customers
+      WHERE country = 'ES' AND status IN ('active', 'trial');
+    correct: true
+    explanation: >-
+      IN tests the status against both values, and AND applies the Spain filter
+      to every row that matches either status.
+  - code: |
+      SELECT * FROM customers
+      WHERE country = 'ES' AND status = 'active' AND status = 'trial';
+    correct: false
+    explanation: >-
+      A single row's status can't equal two different values at once, so the
+      condition is never true and the query returns nothing.
+  - code: |
+      SELECT * FROM customers
+      WHERE country = 'ES' OR status IN ('active', 'trial');
+    correct: false
+    explanation: >-
+      OR keeps a row that meets either condition, so churned Spanish customers
+      and active customers from other countries are included.
+tags: [where, boolean-logic, operator-precedence]
+docs_url: https://www.postgresql.org/docs/17/functions-logical.html
+status: approved

@@ -1,0 +1,43 @@
+id: sql-l1-0019
+topic: sql
+level: 1
+title: Orders from the latest order date in an archive
+prompt: |
+  You are auditing an archived copy of the orders table that stopped
+  receiving data months ago. Return **all** orders placed on the most recent
+  `order_date` in the table. Several orders can share that date.
+context: |
+  orders(order_id, customer_id, order_date date)
+options:
+  - code: |
+      SELECT order_id FROM orders
+      WHERE order_date = (SELECT MAX(order_date) FROM orders);
+    correct: true
+    explanation: >-
+      The scalar subquery finds the latest date in the table once, and the
+      filter keeps every order placed on it.
+  - code: |
+      SELECT order_id FROM orders
+      ORDER BY order_date DESC, order_id
+      LIMIT 1;
+    correct: false
+    explanation: >-
+      LIMIT 1 keeps a single row, so when several orders share the latest date
+      only one of them is returned.
+  - code: |
+      SELECT o.order_id FROM orders o
+      WHERE o.order_date = MAX(o.order_date);
+    correct: false
+    explanation: >-
+      Aggregate functions aren't allowed in WHERE, so PostgreSQL rejects the
+      query with an error.
+  - code: |
+      SELECT order_id FROM orders
+      WHERE order_date >= CURRENT_DATE - INTERVAL '1 day';
+    correct: false
+    explanation: >-
+      This filters relative to today, not to the latest date in the data, so
+      the archive's old orders are all excluded.
+tags: [subqueries, aggregates, where]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SQL-SYNTAX-SCALAR-SUBQUERIES
+status: approved

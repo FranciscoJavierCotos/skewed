@@ -1,0 +1,48 @@
+id: sql-l1-0009
+topic: sql
+level: 1
+title: Employees next to their manager's name
+prompt: |
+  HR is building an org chart. Return each employee's `name` as `employee`
+  together with their manager's `name` as `manager`. Employees without a
+  manager (the CEO) can be left out.
+context: |
+  employees(emp_id, name, manager_id)
+
+  `manager_id` holds the `emp_id` of the employee's manager, or `NULL`.
+options:
+  - code: |
+      SELECT e.name AS employee, m.name AS manager
+      FROM employees e
+      JOIN employees m ON m.emp_id = e.manager_id;
+    correct: true
+    explanation: >-
+      The self-join looks up the row whose emp_id equals the employee's
+      manager_id, which is that employee's manager.
+  - code: |
+      SELECT e.name AS employee, m.name AS manager
+      FROM employees e
+      JOIN employees m ON m.manager_id = e.emp_id;
+    correct: false
+    explanation: >-
+      The direction is reversed: m is now someone who reports to e, so the
+      manager column shows each employee's direct reports.
+  - code: |
+      SELECT e.name AS employee, m.name AS manager
+      FROM employees e
+      JOIN employees m ON m.emp_id = e.emp_id;
+    correct: false
+    explanation: >-
+      Joining on emp_id to itself matches every row with itself, so each
+      employee is listed as their own manager.
+  - code: |
+      SELECT name AS employee, manager_id AS manager
+      FROM employees
+      WHERE manager_id IS NOT NULL;
+    correct: false
+    explanation: >-
+      This returns the manager's id number, not the manager's name, because no
+      join looks the name up.
+tags: [joins, self-join]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

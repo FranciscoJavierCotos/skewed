@@ -1,0 +1,47 @@
+id: sql-l1-0007
+topic: sql
+level: 1
+title: Orders listed with the customer's name
+prompt: |
+  Support agents want an order list that shows who placed each order. Return
+  one row per order with `order_id`, the customer's `name` and the order
+  `amount`. Customers who have never ordered must not appear.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, amount)
+options:
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.order_id;
+    correct: false
+    explanation: >-
+      The join compares customer_id with order_id, two unrelated keys, so
+      orders get matched to the wrong customer or to none.
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.customer_id = c.customer_id;
+    correct: false
+    explanation: >-
+      The condition compares the customer with itself, so it is always true and
+      every order is paired with every customer.
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id;
+    correct: false
+    explanation: >-
+      A LEFT JOIN from customers keeps customers with no orders, adding rows
+      with a NULL order_id and amount.
+  - code: |
+      SELECT o.order_id, c.name, o.amount
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id;
+    correct: true
+    explanation: >-
+      The inner join matches each order to its customer through the shared
+      customer_id key, giving exactly one row per order.
+tags: [joins, inner-join]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

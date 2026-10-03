@@ -1,0 +1,46 @@
+id: sql-l1-0015
+topic: sql
+level: 1
+title: Third page of the newest articles
+prompt: |
+  The blog lists articles newest first, 10 per page. A reader clicks on
+  page 3. Return the articles for that page, which are the 21st to 30th
+  newest articles. No two articles share a `published_at`.
+context: |
+  articles(article_id, title, published_at timestamp)
+options:
+  - code: |
+      SELECT article_id, title FROM articles
+      ORDER BY published_at DESC
+      LIMIT 10 OFFSET 30;
+    correct: false
+    explanation: >-
+      OFFSET 30 skips three full pages, so this returns the 31st to 40th
+      articles, which is page 4.
+  - code: |
+      SELECT article_id, title FROM articles
+      ORDER BY published_at DESC
+      LIMIT 10 OFFSET 3;
+    correct: false
+    explanation: >-
+      OFFSET counts rows, not pages, so this skips only 3 articles and returns
+      the 4th to 13th newest.
+  - code: |
+      SELECT article_id, title FROM articles
+      ORDER BY published_at DESC
+      LIMIT 10 OFFSET 20;
+    correct: true
+    explanation: >-
+      Skipping the 20 rows of pages 1 and 2 and taking the next 10 gives
+      exactly the 21st to 30th newest articles.
+  - code: |
+      SELECT article_id, title FROM articles
+      ORDER BY published_at
+      LIMIT 10 OFFSET 20;
+    correct: false
+    explanation: >-
+      The sort is ascending, so the pages count from the oldest article and
+      this returns the 21st to 30th oldest instead.
+tags: [limit-offset, pagination, order-by]
+docs_url: https://www.postgresql.org/docs/17/queries-limit.html
+status: approved

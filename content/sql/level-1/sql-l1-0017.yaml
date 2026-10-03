@@ -1,0 +1,42 @@
+id: sql-l1-0017
+topic: sql
+level: 1
+title: Survey responses that include a rating
+prompt: |
+  Respondents can skip the rating question, in which case `rating` is `NULL`.
+  Product wants a single number: how many responses actually include a
+  rating.
+context: |
+  survey_responses(response_id, rating integer)
+options:
+  - code: |
+      SELECT COUNT(*) AS rated
+      FROM survey_responses;
+    correct: false
+    explanation: >-
+      COUNT(*) counts rows, so responses that skipped the rating are counted
+      too.
+  - code: |
+      SELECT COUNT(rating) AS rated
+      FROM survey_responses;
+    correct: true
+    explanation: >-
+      COUNT of a column counts only the rows where that column isn't NULL,
+      which is the number of rated responses.
+  - code: |
+      SELECT COUNT(DISTINCT rating) AS rated
+      FROM survey_responses;
+    correct: false
+    explanation: >-
+      DISTINCT counts how many different rating values appear, so two
+      responses that both gave a 5 are counted once.
+  - code: |
+      SELECT SUM(rating) AS rated
+      FROM survey_responses;
+    correct: false
+    explanation: >-
+      SUM adds up the rating values themselves instead of counting the
+      responses that have one.
+tags: [aggregates, count, null-handling]
+docs_url: https://www.postgresql.org/docs/17/functions-aggregate.html
+status: approved
