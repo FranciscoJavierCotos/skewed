@@ -47,7 +47,7 @@
 content/{spark,sql,git}/level-{1..5}/*.yaml      # question bank (Task 17–19)
 fixtures/content/sql/level-{1,2}/*.yaml          # e2e fixture bank (Task 16)
 supabase/migrations/20261002000000_init.sql      # schema, RLS, RPCs (Task 3)
-supabase/migrations/20261002000100_question_stats.sql  # (Task 20)
+supabase/migrations/20261003000000_question_stats.sql  # (Task 20)
 supabase/migrations/20261002230000_drop_question_dialect.sql  # (#47)
 supabase/tests/database/rpc.test.sql             # pgTAP (Task 3)
 scripts/validate-content.ts                      # CLI (Task 2)
@@ -3152,20 +3152,20 @@ Expected: 4 passed.
 
 ### Task 20: Content bank — Git L1–L5 (100 questions) and the content quality report
 
-**Files:** `content/git/level-{1..5}/git-l{n}-00{01..20}.yaml`, `supabase/migrations/20261002000100_question_stats.sql`, `scripts/flagged-questions.ts`
+**Files:** `content/git/level-{1..5}/git-l{n}-00{01..20}.yaml`, `supabase/migrations/20261003000000_question_stats.sql`, `scripts/flagged-questions.ts`
 
 - [ ] **Content.** For each level n = 1…5, as a separate PR per level:
   - draft 20 (topic `git`, options are command sequences);
   - validate;
   - replay each correct option in a throwaway repo (`git init /tmp/g && cd /tmp/g && ...`) to confirm the end state the prompt describes;
   - review, approve, merge.
-- [ ] **Stats view.** Write the failing pgTAP test first: append to `supabase/tests/database/rpc.test.sql` (bump `plan(10)` → `plan(11)`), before the rate-limit block and while still `set local role anon`:
+- [x] **Stats view.** *Shipped as `20261003000000_question_stats.sql` (not `…000100`): `20261002230000` was already applied, and `supabase db push` rejects a version older than the latest remote one. Applied via the Supabase MCP; pgTAP ran via `execute_sql` in `begin … rollback`. The test now also deactivates the real bank inside its transaction so the `get_questions` counts see only fixtures.* Write the failing pgTAP test first: append to `supabase/tests/database/rpc.test.sql` (bump `plan(10)` → `plan(11)`), before the rate-limit block and while still `set local role anon`:
 
 ```sql
 select throws_ok($$ select * from public.question_stats $$, '42501', null, 'anon cannot read question_stats');
 ```
 
-Run `pnpm dlx supabase test db` → FAIL (relation does not exist). Then create the migration `supabase/migrations/20261002000100_question_stats.sql`:
+Run `pnpm dlx supabase test db` → FAIL (relation does not exist). Then create the migration `supabase/migrations/20261003000000_question_stats.sql`:
 
 ```sql
 create view public.question_stats with (security_invoker = true) as
@@ -3181,7 +3181,7 @@ revoke all on public.question_stats from anon, authenticated;
 ```
 
 Run `pnpm dlx supabase db reset && pnpm dlx supabase test db` → 11 pass.
-- [ ] **Flag script.** `scripts/flagged-questions.ts`:
+- [x] **Flag script.** *The flagging rule lives in `src/content/flagged.ts` (unit-tested) and the script applies it to every `question_stats` row.* `scripts/flagged-questions.ts`:
 
 ```ts
 import { createClient } from "@supabase/supabase-js";
