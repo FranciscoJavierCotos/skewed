@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { ErrorRetry } from "@/components/quiz/ErrorRetry";
+import { ErrorRetry, submitErrorMessage } from "@/components/quiz/ErrorRetry";
 import { QuestionView } from "@/components/quiz/QuestionView";
 import { ReportDialog } from "@/components/quiz/ReportDialog";
 import { useShuffledOptions } from "@/components/quiz/useShuffledOptions";
@@ -70,7 +70,7 @@ export function PracticeGame({ config }: { config: SessionConfig }) {
             disabled={state.status !== "answering" || submitter.pending}
             onSelect={(id) => submitter.submit(state.current!.id, id)}
           />
-          {submitter.error && <ErrorRetry message={en.game.submitFailed} onRetry={submitter.retry} />}
+          {submitter.error && <ErrorRetry message={submitErrorMessage(submitter.error)} onRetry={submitter.retry} />}
           {state.status === "feedback" && (
             <div className="flex items-center justify-between">
               <p className={state.lastResult?.correct ? "text-emerald-600" : "text-rose-600"}>{state.lastResult?.correct ? en.game.correct : en.game.wrong}</p>

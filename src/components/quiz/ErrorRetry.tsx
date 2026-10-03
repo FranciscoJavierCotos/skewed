@@ -1,4 +1,9 @@
+import type { ApiError } from "@/api/quiz-api";
 import en from "@/messages/en.json";
+
+export function submitErrorMessage(error: ApiError): string {
+  return error.kind === "rate_limited" ? en.game.rateLimited : en.game.submitFailed;
+}
 
 export function ErrorRetry({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
