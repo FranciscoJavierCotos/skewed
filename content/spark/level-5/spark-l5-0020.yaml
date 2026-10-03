@@ -1,0 +1,48 @@
+id: spark-l5-0020
+topic: spark
+level: 5
+title: MERGE a source that has a new column
+prompt: |
+  The upstream system added a `tier` column. The nightly upsert from `src` into
+  `target` must **add `tier` to the table** and fill it for every updated or
+  inserted row, without a separate `ALTER TABLE`.
+context: |
+  `target` is a `DeltaTable` with columns `id` and `v`. `src` has columns `id`,
+  `v` and `tier`.
+options:
+  - code: |
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll()
+         .execute())
+    correct: false
+    explanation: >-
+      Without schema evolution, `*` clauses only cover the target's existing
+      columns, so `tier` is silently ignored and never added.
+  - code: |
+      spark.conf.set("spark.sql.parquet.mergeSchema", "true")
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll().execute())
+    correct: false
+    explanation: >-
+      That setting only merges differing schemas when reading Parquet files. It
+      doesn't enable schema evolution in a Delta MERGE, so `tier` is ignored.
+  - code: |
+      spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdate(set={"v": "s.v"})
+         .whenNotMatchedInsert(values={"id": "s.id", "v": "s.v"}).execute())
+    correct: false
+    explanation: >-
+      Schema evolution only adds columns that the clauses write. These clauses
+      only assign `id` and `v`, so `tier` is still not added.
+  - code: |
+      spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
+      (target.alias("t").merge(src.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll().execute())
+    correct: true
+    explanation: >-
+      With automatic schema merging on, `updateAll` and `insertAll` add the
+      source's new `tier` column to the table and fill it for the affected rows.
+tags: [delta-merge, schema-evolution]
+docs_url: https://docs.delta.io/latest/delta-update.html#automatic-schema-evolution
+status: approved

@@ -1,0 +1,42 @@
+id: spark-l5-0004
+topic: spark
+level: 5
+title: Print the plan AQE actually executed
+prompt: |
+  With AQE on, a report's plan shows a sort-merge join, but the team suspects
+  AQE replaced it at runtime. `report` is a small aggregated DataFrame that the
+  job collects to the driver anyway. Print the plan that **actually ran**,
+  marked `isFinalPlan=true`.
+context: |
+  AQE is enabled. `report` is built from a join followed by a `groupBy`.
+options:
+  - code: |
+      report.explain()
+    correct: false
+    explanation: >-
+      No action has run yet, so the adaptive plan is still the initial one and
+      `explain` prints it with `isFinalPlan=false`.
+  - code: |
+      report.count()
+      report.explain()
+    correct: false
+    explanation: >-
+      `count` runs a different query, an extra aggregation on top of `report`,
+      so `report`'s own adaptive plan never executes and stays the initial one.
+  - code: |
+      rows = report.collect()
+      report.explain()
+    correct: true
+    explanation: >-
+      `collect` executes `report`'s own adaptive plan, so the later `explain`
+      prints the final plan, with `isFinalPlan=true` and the strategy AQE chose.
+  - code: |
+      report.explain()
+      rows = report.collect()
+    correct: false
+    explanation: >-
+      The plan is printed before the action runs, so it is still the initial
+      plan with `isFinalPlan=false`.
+tags: [aqe, explain, query-plans]
+docs_url: https://spark.apache.org/docs/latest/sql-performance-tuning.html#adaptive-query-execution
+status: approved

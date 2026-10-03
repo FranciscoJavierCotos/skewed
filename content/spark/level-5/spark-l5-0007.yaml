@@ -1,0 +1,45 @@
+id: spark-l5-0007
+topic: spark
+level: 5
+title: Add a per-customer total with a single shuffle
+prompt: |
+  Every order row needs a `total` column with the sum of `amount` for its
+  `customer_id`. The current version aggregates and joins back, and its plan has
+  two shuffles. Rewrite it so the plan has **a single shuffle** and every row
+  keeps its columns plus `total`.
+context: |
+  `df(customer_id, order_id, amount)`. There are tens of millions of customers,
+  so broadcasting is disabled. AQE is disabled.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      totals = df.groupBy("customer_id").agg(F.sum("amount").alias("total"))
+      df.join(totals, "customer_id")
+    correct: false
+    explanation: >-
+      The raw rows and the partial aggregate are each shuffled by
+      `customer_id`, so the plan has two exchanges.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy("order_id")
+      df.withColumn("total", F.sum("amount").over(w))
+    correct: false
+    explanation: >-
+      With `orderBy`, the default frame ends at the current row, so `total` is a
+      running sum instead of the customer total.
+  - code: |
+      totals = df.groupBy("customer_id").agg(F.sum("amount").alias("total"))
+      df.repartition("customer_id").join(totals, "customer_id")
+    correct: false
+    explanation: >-
+      Repartitioning `df` only moves its shuffle earlier. The aggregation still
+      needs its own exchange, so there are still two.
+  - code: |
+      w = Window.partitionBy("customer_id")
+      df.withColumn("total", F.sum("amount").over(w))
+    correct: true
+    explanation: >-
+      The window needs one hash exchange on `customer_id`, and with no ordering
+      its frame is the whole partition, so every row gets the customer total.
+tags: [query-plans, window-functions, shuffle]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Window.partitionBy.html
+status: approved

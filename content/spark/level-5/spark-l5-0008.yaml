@@ -1,0 +1,41 @@
+id: spark-l5-0008
+topic: spark
+level: 5
+title: Replace the sort in a join with a mid-sized table
+prompt: |
+  `events` (3 TB) is joined to `sessions` (40 GB) on `session_id`. `sessions`
+  is far too big to broadcast, but each of its shuffle partitions fits easily in
+  executor memory. Profiling shows the sort-merge join spends most of its time
+  sorting. Make Spark **build a hash table from `sessions` in each partition
+  instead of sorting**.
+context: |
+  `events(event_id, session_id)` and `sessions(session_id, user_id)`.
+  Automatic broadcasting and AQE are disabled.
+options:
+  - code: |
+      events.join(sessions.hint("broadcast"), "session_id")
+    correct: false
+    explanation: >-
+      The hint overrides the threshold and ships all 40 GB of `sessions` to
+      every executor, which is exactly what has to be avoided.
+  - code: |
+      events.join(sessions.hint("merge"), "session_id")
+    correct: false
+    explanation: >-
+      `merge` asks for the sort-merge join that is already the bottleneck.
+  - code: |
+      events.join(sessions.hint("shuffle_hash"), "session_id")
+    correct: true
+    explanation: >-
+      Both sides are still shuffled, but each task builds a hash table from its
+      `sessions` partition instead of sorting: a shuffled hash join with
+      `sessions` as the build side.
+  - code: |
+      events.join(sessions.hint("shuffle_replicate_nl"), "session_id")
+    correct: false
+    explanation: >-
+      This hint asks for a nested loop join over a cartesian product, which
+      compares every pair of rows and is far slower than sorting.
+tags: [join-strategies, query-plans, hints]
+docs_url: https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html#join-hints
+status: approved

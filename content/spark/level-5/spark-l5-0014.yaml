@@ -1,0 +1,49 @@
+id: spark-l5-0014
+topic: spark
+level: 5
+title: Early window counts with bounded state
+prompt: |
+  A live dashboard needs counts per 10-minute window of `ts` **while each window
+  is still open**, refreshed on every trigger. Events can be up to 10 minutes
+  late, and windows older than that must be **dropped from the state**.
+context: |
+  `events` is a streaming DataFrame with columns `user` and `ts` (timestamp).
+  Each option returns a `DataStreamWriter`; the job then sets the sink and the
+  checkpoint and calls `start()`. `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      counts = (events.withWatermark("ts", "10 minutes")
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("append")
+    correct: false
+    explanation: >-
+      Append mode waits until the watermark closes a window before emitting it,
+      so the dashboard gets no counts while windows are open.
+  - code: |
+      counts = (events.withWatermark("ts", "10 minutes")
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("update")
+    correct: true
+    explanation: >-
+      Update mode emits every window whose count changed in the trigger, so open
+      windows show up early, and the watermark lets Spark drop windows that are
+      more than 10 minutes behind.
+  - code: |
+      counts = (events
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("update")
+    correct: false
+    explanation: >-
+      The early counts are right, but without a watermark Spark never knows a
+      window is finished, so every window stays in the state forever.
+  - code: |
+      counts = (events.withWatermark("ts", "10 minutes")
+                .groupBy(F.window("ts", "10 minutes")).count())
+      counts.writeStream.outputMode("complete")
+    correct: false
+    explanation: >-
+      Complete mode outputs the whole result table on each trigger, so Spark has
+      to keep every window in the state and the watermark never drops any.
+tags: [structured-streaming, watermarks, output-modes]
+docs_url: https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html#output-modes
+status: approved

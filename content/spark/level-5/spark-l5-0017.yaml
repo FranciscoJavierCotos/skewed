@@ -1,0 +1,49 @@
+id: spark-l5-0017
+topic: spark
+level: 5
+title: Sync a Delta table to a full snapshot with one MERGE
+prompt: |
+  Every night a full snapshot `snap` of the source system arrives. In a single
+  MERGE, make the Delta table `target` **match the snapshot exactly**: update
+  changed rows, insert new ids and **delete ids that are no longer in the
+  snapshot**.
+context: |
+  `target` is a `DeltaTable` with columns `id` and `v`; `snap` has the same
+  columns.
+options:
+  - code: |
+      (target.alias("t").merge(snap.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll()
+         .whenNotMatchedBySourceDelete().execute())
+    correct: true
+    explanation: >-
+      `whenNotMatchedBySourceDelete` handles target rows with no match in the
+      snapshot, so stale ids are removed in the same MERGE that updates and
+      inserts the rest.
+  - code: |
+      (target.alias("t").merge(snap.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll()
+         .execute())
+    correct: false
+    explanation: >-
+      This only updates and inserts. Ids that disappeared from the snapshot have
+      no clause, so they stay in the table.
+  - code: |
+      (target.alias("t").merge(snap.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll()
+         .whenNotMatchedBySourceDelete().execute())
+    correct: false
+    explanation: >-
+      Without a `whenNotMatched` clause, ids that are new in the snapshot are
+      never inserted.
+  - code: |
+      (target.alias("t").merge(snap.alias("s"), "t.id = s.id")
+         .whenMatchedUpdateAll().whenNotMatchedInsertAll()
+         .whenNotMatchedBySourceUpdate(set={"v": "null"}).execute())
+    correct: false
+    explanation: >-
+      Stale ids are kept with a null `v` instead of being deleted, so the table
+      doesn't match the snapshot.
+tags: [delta-merge, data-sync]
+docs_url: https://docs.delta.io/latest/delta-update.html#modify-all-unmatched-rows-using-merge
+status: approved

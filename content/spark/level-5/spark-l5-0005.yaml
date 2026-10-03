@@ -1,0 +1,49 @@
+id: spark-l5-0005
+topic: spark
+level: 5
+title: Prune fact partitions through a dimension filter
+prompt: |
+  `sales` is partitioned by `dt` and holds years of data. A report needs the
+  sales made on holidays, which are listed in the small `calendar` table. Write
+  the join so that Spark applies **dynamic partition pruning**, reading only the
+  `dt` partitions of `sales` that match holiday dates.
+context: |
+  `sales(sale_id, amount, dt)` is a Parquet table partitioned by `dt`.
+  `calendar(dt, day_type)` is a small Parquet table where `day_type` is
+  `'holiday'` or `'workday'`. Default settings; AQE is disabled.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      is_holiday = F.udf(lambda t: t == "holiday", "boolean")
+      sales.join(calendar.filter(is_holiday("day_type")), "dt")
+    correct: false
+    explanation: >-
+      Spark only plans dynamic pruning when the dimension filter looks
+      selective. A Python UDF is opaque to the optimizer, so no pruning filter is
+      added and every partition is read.
+  - code: |
+      holidays = calendar.filter(F.col("day_type") == "holiday")
+      sales.join(holidays, "dt")
+    correct: true
+    explanation: >-
+      A selective filter on `calendar` and a join on the partition column let
+      Spark add a `dynamicpruningexpression` to the `sales` scan, reusing the
+      broadcast of the holiday dates.
+  - code: |
+      holidays = calendar.filter(F.col("day_type") == "holiday")
+      sales.join(holidays, "dt", "left")
+    correct: false
+    explanation: >-
+      A left join must keep every sale whether or not it matches a holiday, so
+      Spark can't skip any partition of `sales`.
+  - code: |
+      workdays = calendar.filter(F.col("day_type") == "workday")
+      sales.join(workdays, "dt", "left_anti")
+    correct: false
+    explanation: >-
+      The anti join returns the right rows, but dynamic pruning can only keep
+      partitions that match the dimension side, never exclude them, so every
+      partition is read.
+tags: [dynamic-partition-pruning, partition-pruning, joins]
+docs_url: https://spark.apache.org/docs/latest/configuration.html#runtime-sql-configuration
+status: approved

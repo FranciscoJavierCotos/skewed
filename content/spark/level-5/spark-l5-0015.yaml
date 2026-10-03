@@ -1,0 +1,52 @@
+id: spark-l5-0015
+topic: spark
+level: 5
+title: Upsert a stream of changes into a Delta table
+prompt: |
+  A stream of customer records must keep the Delta table at `out_path` up to
+  date: a record whose `id` already exists **replaces** that row, a new `id` is
+  **inserted**, and rows not mentioned in the stream are left alone.
+context: |
+  `updates` is a streaming DataFrame with columns `id` and `v`, with at most one
+  row per `id` in each micro-batch. `out_path` is an existing Delta table with
+  the same columns. `ckpt` is the checkpoint path.
+  `DeltaTable` is `delta.tables.DeltaTable`.
+options:
+  - code: |
+      (updates.writeStream.format("delta").outputMode("update")
+         .option("checkpointLocation", ckpt).start(out_path))
+    correct: false
+    explanation: >-
+      The Delta sink only supports append and complete modes. Update mode is
+      rejected; it wouldn't turn the writes into upserts anyway.
+  - code: |
+      def upsert(batch, batch_id):
+          (DeltaTable.forPath(spark, out_path).alias("t")
+             .merge(batch.alias("s"), "t.id = s.id")
+             .whenNotMatchedInsertAll().execute())
+      updates.writeStream.foreachBatch(upsert).option("checkpointLocation", ckpt).start()
+    correct: false
+    explanation: >-
+      The MERGE has no `whenMatched` clause, so records for existing ids are
+      ignored instead of replacing the stored row.
+  - code: |
+      def upsert(batch, batch_id):
+          (DeltaTable.forPath(spark, out_path).alias("t")
+             .merge(batch.alias("s"), "t.id = s.id")
+             .whenMatchedUpdateAll().whenNotMatchedInsertAll().execute())
+      updates.writeStream.foreachBatch(upsert).option("checkpointLocation", ckpt).start()
+    correct: true
+    explanation: >-
+      `foreachBatch` hands each micro-batch to a function as a static DataFrame,
+      and a Delta `MERGE` updates matching ids and inserts new ones.
+  - code: |
+      def upsert(batch, batch_id):
+          batch.write.format("delta").mode("overwrite").save(out_path)
+      updates.writeStream.foreachBatch(upsert).option("checkpointLocation", ckpt).start()
+    correct: false
+    explanation: >-
+      Each micro-batch overwrites the whole table, so every row that isn't in the
+      latest batch is lost.
+tags: [structured-streaming, delta-merge, foreach-batch]
+docs_url: https://docs.delta.io/latest/delta-update.html#upsert-from-streaming-queries-using-foreachbatch
+status: approved
