@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(24);
 
 insert into public.questions (id, topic, level, title, prompt, docs_url, content_hash) values
   ('sql-l1-9001', 'sql', 1, 'Q1', 'P1', 'https://docs.example/q1', 'h1'),
@@ -19,6 +19,41 @@ insert into public.question_options (id, question_id, position, code, is_correct
 update public.questions set active = false where id not in ('sql-l1-9001', 'sql-l1-9002');
 
 select hasnt_column('public', 'questions', 'dialect', 'questions has no dialect column');
+
+-- Catalog guards: the API roles reach only what a migration grants explicitly.
+select is((select count(*)::int from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace
+           where n.nspname = 'public' and pg_get_userbyid(d.defaclrole) = 'postgres'
+             and d.defaclacl::text ~ '(anon|authenticated)='), 0, 'no default grants from postgres to API roles');
+select is(
+  (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relkind in ('r', 'v', 'm', 'p', 'S')
+     and (has_table_privilege('anon', c.oid, 'select,insert,update,delete')
+          or has_table_privilege('authenticated', c.oid, 'select,insert,update,delete'))),
+  0, 'no public relation is granted to anon/authenticated');
+select is((select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity), 0, 'RLS on everywhere');
+select set_eq(
+  $$ select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') $$,
+  array['get_questions', 'submit_answer', 'report_question'], 'anon RPC allowlist');
+select set_eq(
+  $$ select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute') $$,
+  array['get_questions', 'submit_answer', 'report_question'], 'authenticated RPC allowlist');
+select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.prosecdef
+             and not coalesce(p.proconfig, '{}') @> array['search_path=""']), 0, 'definer funcs pin search_path');
+select throws_ok(
+  $$ insert into public.questions (id, topic, level, title, prompt, docs_url, content_hash)
+     values ('sql-l1-9003', 'sql', 1, 'Q3', 'P3', 'javascript:alert(1)', 'h3') $$,
+  '23514', null, 'docs_url must be https');
+
+-- A table a future migration forgets to revoke stays closed to anon.
+create table public.default_acl_probe (x int);
+set local role anon;
+select throws_ok($$ select * from public.default_acl_probe $$, '42501', null, 'new tables are not granted to anon');
+reset role;
+drop table public.default_acl_probe;
 
 set local role anon;
 
