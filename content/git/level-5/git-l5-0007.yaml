@@ -1,0 +1,40 @@
+id: git-l5-0007
+topic: git
+level: 5
+title: Clone a project together with its submodule
+prompt: |
+  `https://github.com/acme/etl.git` vendors a schema repository as a submodule
+  at `vendor/schemas`. Clone the project into `etl` so that `vendor/schemas` is
+  populated at the commit the project records, ready to run.
+options:
+  - code: |
+      git clone --shallow-submodules https://github.com/acme/etl.git etl
+    correct: false
+    explanation: >-
+      `--shallow-submodules` only makes submodules shallow **if** they get
+      cloned. Without recursion `vendor/schemas` stays empty.
+  - code: |
+      git clone https://github.com/acme/etl.git etl
+      cd etl
+      git submodule init
+    correct: false
+    explanation: >-
+      `submodule init` only registers the submodule's URL in the local config.
+      Nothing is cloned or checked out.
+  - code: |
+      git clone https://github.com/acme/etl.git etl
+      cd etl
+      git submodule update
+    correct: false
+    explanation: >-
+      `update` only acts on initialized submodules. Without `--init` it skips
+      `vendor/schemas`, which stays empty.
+  - code: |
+      git clone --recurse-submodules https://github.com/acme/etl.git etl
+    correct: true
+    explanation: >-
+      `--recurse-submodules` initializes and clones every submodule and checks
+      out the commit the superproject records.
+tags: [submodules, clone]
+docs_url: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---recurse-submodulespathspec
+status: approved

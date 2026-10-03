@@ -3154,11 +3154,11 @@ Expected: 4 passed.
 
 **Files:** `content/git/level-{1..5}/git-l{n}-00{01..20}.yaml`, `supabase/migrations/20261003000000_question_stats.sql`, `scripts/flagged-questions.ts`
 
-- [ ] **Content.** For each level n = 1…5, as a separate PR per level:
-  - draft 20 (topic `git`, options are command sequences);
-  - validate;
-  - replay each correct option in a throwaway repo (`git init /tmp/g && cd /tmp/g && ...`) to confirm the end state the prompt describes;
-  - review, approve, merge.
+- [x] **Content.** For each level n = 1…5, as a separate PR per level (L1–L5: PRs #62–#66):
+  - [x] draft 20 (topic `git`, options are command sequences);
+  - [x] validate;
+  - [x] replay each correct option in a throwaway repo (`git init /tmp/g && cd /tmp/g && ...`) to confirm the end state the prompt describes. *Every option, not just the correct one, was replayed with git 2.51 by a small harness: a per-question setup script builds the starting repo (with a bare `origin`, a teammate clone, submodule/subtree upstreams or fixed commit dates where needed), the option runs as typed, and a check script asserts the end state. Wrong options must fail the check for the reason their explanation gives. Interactive-rebase options show their todo list as comments, which is fed to `GIT_SEQUENCE_EDITOR`.*
+  - [x] review, approve, merge.
 - [x] **Stats view.** *Shipped as `20261003000000_question_stats.sql` (not `…000100`): `20261002230000` was already applied, and `supabase db push` rejects a version older than the latest remote one. Applied via the Supabase MCP; pgTAP ran via `execute_sql` in `begin … rollback`. The test now also deactivates the real bank inside its transaction so the `get_questions` counts see only fixtures.* Write the failing pgTAP test first: append to `supabase/tests/database/rpc.test.sql` (bump `plan(10)` → `plan(11)`), before the rate-limit block and while still `set local role anon`:
 
 ```sql
@@ -3199,7 +3199,7 @@ void main();
 ```
 
 Manual check: seed the fixtures, answer a fixture question wrong 20 times via practice e2e or SQL inserts, and run `pnpm content:flagged` → the question is listed. Document `pnpm content:flagged` in `docs/content-guide.md` under "Weekly triage".
-- [ ] Done when: ≥ 100 approved `git` questions (≥ 20 per level), the migration is applied, and the flag script works.
+- [x] Done when: ≥ 100 approved `git` questions (≥ 20 per level), the migration is applied, and the flag script works.
 
 ---
 

@@ -1,0 +1,40 @@
+id: git-l5-0015
+topic: git
+level: 5
+title: Recover from deleting a worktree folder by hand
+prompt: |
+  You deleted the `../hotfix` worktree folder with `rm -rf`. Now
+  `git switch hotfix/login` fails because Git still thinks the branch is
+  checked out there. Clean up the stale worktree record and switch to
+  `hotfix/login`.
+options:
+  - code: |
+      git switch --ignore-other-worktrees hotfix/login
+    correct: false
+    explanation: >-
+      The switch works, but the stale `../hotfix` entry is still registered as a
+      worktree.
+  - code: |
+      git worktree prune
+      git switch hotfix/login
+    correct: true
+    explanation: >-
+      `prune` deletes the records of worktrees whose folders no longer exist,
+      which frees `hotfix/login` to be checked out here.
+  - code: |
+      git gc --prune=now
+      git switch hotfix/login
+    correct: false
+    explanation: >-
+      `--prune=now` applies to unreachable objects. `gc` only prunes stale
+      worktrees after `gc.worktreePruneExpire` (3 months), so the record stays.
+  - code: |
+      git worktree lock ../hotfix
+      git switch hotfix/login
+    correct: false
+    explanation: >-
+      Locking **protects** the stale record from pruning, so the branch stays
+      blocked.
+tags: [worktrees]
+docs_url: https://git-scm.com/docs/git-worktree#Documentation/git-worktree.txt-prune
+status: approved

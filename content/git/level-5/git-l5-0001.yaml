@@ -1,0 +1,41 @@
+id: git-l5-0001
+topic: git
+level: 5
+title: Bisect automatically with a check that succeeds on the bug
+prompt: |
+  Release `v1.0` was fine, but on the current `HEAD` the file `config.ini`
+  contains `rate=0`, which breaks billing. Use `git bisect run` to find the
+  first commit that introduced it. Note that `grep -q rate=0 config.ini` exits
+  0 when the bug **is** present.
+options:
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run grep -q rate=0 config.ini
+    correct: false
+    explanation: >-
+      `bisect run` treats exit 0 as "good". This check exits 0 when the bug is
+      present, so every verdict is inverted and the wrong commit is reported.
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run sh -c '! grep -q rate=0 config.ini'
+    correct: true
+    explanation: >-
+      Negating `grep` makes the check exit 0 only when the bug is absent, which
+      matches "good", so bisect pins down the commit that added `rate=0`.
+  - code: |
+      git bisect start v1.0 HEAD
+      git bisect run sh -c '! grep -q rate=0 config.ini'
+    correct: false
+    explanation: >-
+      `bisect start` takes the **bad** commit first. Swapping them marks `v1.0`
+      bad and `HEAD` good, so the search can't work.
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run sh -c 'grep -q rate=0 config.ini || exit 125'
+    correct: false
+    explanation: >-
+      Exit 125 means "can't test, skip". This reports buggy commits as good and
+      skips the clean ones, so the culprit is never isolated.
+tags: [bisect, automation]
+docs_url: https://git-scm.com/docs/git-bisect#_bisect_run
+status: approved

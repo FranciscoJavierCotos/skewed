@@ -1,0 +1,46 @@
+id: git-l5-0009
+topic: git
+level: 5
+title: Bump a submodule to its latest upstream commit
+prompt: |
+  Update `vendor/schemas` to the newest commit on its upstream default branch,
+  and record that new pointer in the superproject as a commit named
+  "Bump schemas".
+context: |
+  The submodule was checked out by `git submodule update`, so it sits on a
+  detached HEAD at the recorded commit.
+options:
+  - code: |
+      git submodule update --remote vendor/schemas
+      git add vendor/schemas
+      git commit -m "Bump schemas"
+    correct: true
+    explanation: >-
+      `--remote` fetches and checks out the upstream tip, and staging the
+      submodule path records the new commit in the superproject.
+  - code: |
+      git submodule update --init vendor/schemas
+      git add vendor/schemas
+      git commit -m "Bump schemas"
+    correct: false
+    explanation: >-
+      Without `--remote`, `update` stays on the already-recorded commit, so
+      nothing changes and there's nothing to commit.
+  - code: |
+      git submodule update --remote --checkout vendor/schemas
+      git commit -m "Bump schemas"
+    correct: false
+    explanation: >-
+      The submodule moves, but the new pointer is never staged, so the commit
+      has nothing to record.
+  - code: |
+      git submodule foreach git pull --ff-only
+      git add vendor/schemas
+      git commit -m "Bump schemas"
+    correct: false
+    explanation: >-
+      Submodules are checked out on a detached HEAD, so `git pull` inside
+      them fails and the pointer never moves.
+tags: [submodules]
+docs_url: https://git-scm.com/docs/git-submodule#Documentation/git-submodule.txt---remote
+status: approved

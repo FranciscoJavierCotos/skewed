@@ -1,0 +1,47 @@
+id: git-l5-0020
+topic: git
+level: 5
+title: Start a docs branch with no shared history
+prompt: |
+  You want a `gh-pages` branch for a static docs site. It must share **no**
+  history with `main` and contain a single file, `index.html`. Create it and
+  make its first commit.
+options:
+  - code: |
+      git switch --orphan gh-pages
+      echo "<h1>Docs</h1>" > index.html
+      git add index.html
+      git commit -m "Publish docs"
+    correct: true
+    explanation: >-
+      `switch --orphan` starts an unborn branch and empties the tracked files,
+      so the first commit has only `index.html` and no parent.
+  - code: |
+      git checkout --orphan gh-pages
+      echo "<h1>Docs</h1>" > index.html
+      git add index.html
+      git commit -m "Publish docs"
+    correct: false
+    explanation: >-
+      `checkout --orphan` keeps the index and working tree, so all of `main`'s
+      files are committed alongside `index.html`.
+  - code: |
+      git switch -c gh-pages
+      echo "<h1>Docs</h1>" > index.html
+      git add index.html
+      git commit -m "Publish docs"
+    correct: false
+    explanation: >-
+      A normal branch starts from `main`'s commit, so it shares all of `main`'s
+      history and files.
+  - code: |
+      git switch --orphan gh-pages
+      echo "<h1>Docs</h1>" > index.html
+      git commit -am "Publish docs"
+    correct: false
+    explanation: >-
+      `-a` only stages files Git already tracks. The new `index.html` is
+      untracked, so there's nothing to commit and no branch is created.
+tags: [branch, orphan]
+docs_url: https://git-scm.com/docs/git-switch#Documentation/git-switch.txt---orphannew-branch
+status: approved

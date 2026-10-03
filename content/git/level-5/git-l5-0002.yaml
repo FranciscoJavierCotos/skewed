@@ -1,0 +1,41 @@
+id: git-l5-0002
+topic: git
+level: 5
+title: Bisect across commits that don't build
+prompt: |
+  You're bisecting between `v1.0` (good) and `HEAD` (bad). Some commits in the
+  range don't build (`./build.sh` fails), so they can't be tested and must
+  count as neither good nor bad. `./test.sh` fails when the bug is present.
+  Find the first bad commit.
+options:
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run sh -c './build.sh && ./test.sh'
+    correct: false
+    explanation: >-
+      A failed build makes the command exit non-zero, which `bisect run`
+      counts as bad, so a broken commit from before the bug gets blamed.
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run sh -c './build.sh || exit 0; ./test.sh'
+    correct: false
+    explanation: >-
+      Exit 0 marks an unbuildable commit as good, even one after the bug, so
+      bisect moves past the real culprit.
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run sh -c './build.sh || exit 255; ./test.sh'
+    correct: false
+    explanation: >-
+      Exit codes above 127 make `bisect run` abort at the first broken commit
+      instead of skipping it.
+  - code: |
+      git bisect start HEAD v1.0
+      git bisect run sh -c './build.sh || exit 125; ./test.sh'
+    correct: true
+    explanation: >-
+      Exit 125 tells `bisect run` to skip a commit it can't test, so only
+      buildable commits are judged and the real first bad commit is found.
+tags: [bisect, automation, skip]
+docs_url: https://git-scm.com/docs/git-bisect#_bisect_run
+status: approved

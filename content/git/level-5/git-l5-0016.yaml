@@ -1,0 +1,36 @@
+id: git-l5-0016
+topic: git
+level: 5
+title: Throw away a worktree with uncommitted changes
+prompt: |
+  The `../spike` worktree (branch `spike`) has uncommitted edits you don't
+  need. Remove the worktree, its folder and its changes, so that no stale
+  record is left. Keep the `spike` branch itself.
+options:
+  - code: |
+      git worktree remove ../spike
+    correct: false
+    explanation: >-
+      `remove` refuses to delete a worktree with modified or untracked files
+      unless you force it.
+  - code: |
+      git worktree prune --expire=now
+    correct: false
+    explanation: >-
+      `prune` only cleans up records of worktrees whose folders are missing.
+      `../spike` still exists, so nothing happens.
+  - code: |
+      git worktree repair ../spike
+    correct: false
+    explanation: >-
+      `repair` fixes broken links between a worktree and the repository. It
+      doesn't remove anything.
+  - code: |
+      git worktree remove -f ../spike
+    correct: true
+    explanation: >-
+      `-f` lets `remove` delete a dirty worktree, folder and record together,
+      while the `spike` branch stays.
+tags: [worktrees]
+docs_url: https://git-scm.com/docs/git-worktree#Documentation/git-worktree.txt-remove
+status: approved

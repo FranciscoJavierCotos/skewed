@@ -1,0 +1,35 @@
+id: git-l5-0014
+topic: git
+level: 5
+title: Open the checked-out branch in a second worktree
+prompt: |
+  You're on `feature/x`. You want its current tip in a second folder,
+  `../review`, to run slow tests while you keep working here. Don't create any
+  new branch.
+options:
+  - code: |
+      git worktree add ../review feature/x
+    correct: false
+    explanation: >-
+      A branch can be checked out in only one worktree at a time, and
+      `feature/x` is already checked out here, so Git refuses.
+  - code: |
+      git worktree add -b review ../review feature/x
+    correct: false
+    explanation: >-
+      This creates a new `review` branch, which the prompt rules out.
+  - code: |
+      git worktree add --detach ../review feature/x
+    correct: true
+    explanation: >-
+      `--detach` checks out the commit `feature/x` points at as a detached HEAD,
+      which needs no branch and isn't blocked by the existing checkout.
+  - code: |
+      git worktree add --checkout ../review
+    correct: false
+    explanation: >-
+      With no commit-ish, `worktree add` creates a **new branch** named after
+      the folder, `review`.
+tags: [worktrees, detached-head]
+docs_url: https://git-scm.com/docs/git-worktree#Documentation/git-worktree.txt---detach
+status: approved

@@ -1,0 +1,44 @@
+id: git-l5-0019
+topic: git
+level: 5
+title: Migrate a repository to a new host with every ref
+prompt: |
+  The repository moves from `https://old.example.com/acme/etl.git` to the empty
+  `https://github.com/acme/etl.git`. Every branch and every tag must exist on
+  the new server, pointing at the same objects. You're in an empty folder.
+options:
+  - code: |
+      git clone https://old.example.com/acme/etl.git etl
+      cd etl
+      git push --all https://github.com/acme/etl.git
+    correct: false
+    explanation: >-
+      A normal clone has only `main` as a local branch, and `--all` pushes local
+      branches but no tags, so `release` and the tags are missing.
+  - code: |
+      git clone https://old.example.com/acme/etl.git etl
+      cd etl
+      git push --mirror https://github.com/acme/etl.git
+    correct: false
+    explanation: >-
+      In a normal clone the other branches are remote-tracking refs, so
+      `--mirror` pushes them under `refs/remotes/`, not as branches.
+  - code: |
+      git clone --mirror https://old.example.com/acme/etl.git etl.git
+      cd etl.git
+      git push --all https://github.com/acme/etl.git
+    correct: false
+    explanation: >-
+      The mirror has every ref, but `--all` pushes only branches, so the tags
+      never reach the new server.
+  - code: |
+      git clone --mirror https://old.example.com/acme/etl.git etl.git
+      cd etl.git
+      git push --mirror https://github.com/acme/etl.git
+    correct: true
+    explanation: >-
+      A mirror clone copies every ref as is, and `push --mirror` makes the new
+      server's refs match it exactly, branches and tags included.
+tags: [remotes, mirror, migration]
+docs_url: https://git-scm.com/docs/git-push#Documentation/git-push.txt---mirror
+status: approved

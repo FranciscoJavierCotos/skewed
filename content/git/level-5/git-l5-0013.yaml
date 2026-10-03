@@ -1,0 +1,38 @@
+id: git-l5-0013
+topic: git
+level: 5
+title: Start a hotfix in a second working tree
+prompt: |
+  You're on `feature/x` with uncommitted work you don't want to stash. Start an
+  urgent fix in a separate folder `../hotfix`, on a **new** branch
+  `hotfix/login` based on `main`. Your current folder must stay on `feature/x`
+  with its edits.
+options:
+  - code: |
+      git worktree add -b hotfix/login ../hotfix main
+    correct: true
+    explanation: >-
+      `worktree add -b` creates `hotfix/login` from `main` and checks it out in
+      `../hotfix`, leaving this working tree untouched.
+  - code: |
+      git worktree add ../hotfix hotfix/login
+    correct: false
+    explanation: >-
+      Without `-b`, the last argument must be an existing commit-ish.
+      `hotfix/login` doesn't exist yet, so this fails.
+  - code: |
+      git stash
+      git switch -c hotfix/login main
+    correct: false
+    explanation: >-
+      This reuses your current folder: it stashes your work and switches away
+      from `feature/x` instead of opening a second working tree.
+  - code: |
+      git worktree add -b hotfix/login ../hotfix
+    correct: false
+    explanation: >-
+      With no start point, the new branch starts at `HEAD`, which is
+      `feature/x`, not `main`.
+tags: [worktrees]
+docs_url: https://git-scm.com/docs/git-worktree#Documentation/git-worktree.txt-addpathcommit-ish
+status: approved

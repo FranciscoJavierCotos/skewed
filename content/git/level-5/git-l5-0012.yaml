@@ -1,0 +1,37 @@
+id: git-l5-0012
+topic: git
+level: 5
+title: Split a directory's history onto its own branch
+prompt: |
+  Create a branch `billing-only` whose history has only the commits that
+  touched `services/billing/`, with that directory's files at the root, so it
+  can be pushed as a separate repository. `main` must not be rewritten or
+  moved.
+options:
+  - code: |
+      git filter-repo --subdirectory-filter services/billing
+    correct: false
+    explanation: >-
+      `filter-repo` rewrites the repository's own branches in place, so `main`
+      would be rewritten, and it refuses to run outside a fresh clone anyway.
+  - code: |
+      git subtree split --prefix=services/billing --rejoin
+    correct: false
+    explanation: >-
+      Without `-b`, `split` creates no branch, and `--rejoin` adds a merge
+      commit to `main`.
+  - code: |
+      git subtree split --prefix=services -b billing-only
+    correct: false
+    explanation: >-
+      The prefix is the parent directory, so the branch also contains
+      `services/web` and puts billing under `billing/`.
+  - code: |
+      git subtree split --prefix=services/billing -b billing-only
+    correct: true
+    explanation: >-
+      `subtree split` synthesizes a history of just that directory, with it as
+      the root, and `-b` stores it on a new branch without touching `main`.
+tags: [subtree, monorepo]
+docs_url: https://github.com/git/git/blob/master/contrib/subtree/git-subtree.adoc
+status: approved
