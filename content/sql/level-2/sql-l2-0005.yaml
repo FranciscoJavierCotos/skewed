@@ -1,0 +1,55 @@
+id: sql-l2-0005
+topic: sql
+level: 2
+title: Reconcile order ids between CRM and billing
+prompt: |
+  The CRM and the billing system should hold the same orders. Return every
+  order id that exists in **only one** of the two systems, with a column
+  `missing_from` set to `'billing'` or `'crm'` to say where it is missing.
+context: |
+  crm_orders(order_id)
+  billing_orders(order_id)
+options:
+  - code: |
+      SELECT COALESCE(c.order_id, b.order_id) AS order_id,
+             CASE WHEN b.order_id IS NULL THEN 'billing' ELSE 'crm' END AS missing_from
+      FROM crm_orders c
+      LEFT JOIN billing_orders b ON b.order_id = c.order_id
+      WHERE c.order_id IS NULL OR b.order_id IS NULL;
+    correct: false
+    explanation: >-
+      A LEFT JOIN from crm_orders only finds orders missing from billing, so
+      orders that exist only in billing are never reported.
+  - code: |
+      SELECT COALESCE(c.order_id, b.order_id) AS order_id,
+             CASE WHEN b.order_id IS NULL THEN 'billing' ELSE 'crm' END AS missing_from
+      FROM crm_orders c
+      FULL JOIN billing_orders b ON b.order_id = c.order_id
+      WHERE c.order_id IS NULL OR b.order_id IS NULL;
+    correct: true
+    explanation: >-
+      FULL JOIN keeps unmatched rows from both sides, the filter keeps only
+      those, and COALESCE takes the id from whichever side has it.
+  - code: |
+      SELECT COALESCE(c.order_id, b.order_id) AS order_id,
+             CASE WHEN b.order_id IS NULL THEN 'billing' ELSE 'crm' END AS missing_from
+      FROM crm_orders c
+      FULL JOIN billing_orders b ON b.order_id = c.order_id
+      WHERE c.order_id IS NULL AND b.order_id IS NULL;
+    correct: false
+    explanation: >-
+      Every joined row has an id on at least one side, so both ids can never be
+      NULL together and the query returns nothing.
+  - code: |
+      SELECT c.order_id,
+             CASE WHEN b.order_id IS NULL THEN 'billing' ELSE 'crm' END AS missing_from
+      FROM crm_orders c
+      FULL JOIN billing_orders b ON b.order_id = c.order_id
+      WHERE c.order_id IS NULL OR b.order_id IS NULL;
+    correct: false
+    explanation: >-
+      For orders that exist only in billing, c.order_id is NULL, so those rows
+      are reported without an order id.
+tags: [outer-joins, full-join, reconciliation]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

@@ -1,0 +1,56 @@
+id: sql-l2-0020
+topic: sql
+level: 2
+title: Total paid per customer across orders and payments
+prompt: |
+  Collections needs **every** customer with the total amount they have paid.
+  Customers without orders, and customers whose orders have no payment yet,
+  must appear with `0`.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id)
+  payments(payment_id, order_id, amount)
+options:
+  - code: |
+      SELECT c.customer_id, COALESCE(SUM(p.amount), 0) AS paid
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      JOIN payments p ON p.order_id = o.order_id
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The second join is an inner join, so rows without a payment, including
+      the NULL rows kept by the first LEFT JOIN, are dropped.
+  - code: |
+      SELECT c.customer_id, SUM(p.amount) AS paid
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      LEFT JOIN payments p ON p.order_id = o.order_id
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      Every customer is kept, but SUM of only NULLs is NULL, so customers with
+      nothing paid show NULL instead of 0.
+  - code: |
+      SELECT c.customer_id, COALESCE(SUM(p.amount), 0) AS paid
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      LEFT JOIN payments p ON p.order_id = o.order_id
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: true
+    explanation: >-
+      Both joins are LEFT JOINs, so the chain never drops a customer, and
+      COALESCE turns an all-NULL sum into 0.
+  - code: |
+      SELECT c.customer_id, COALESCE(SUM(p.amount), 0) AS paid
+      FROM payments p
+      LEFT JOIN orders o ON o.order_id = p.order_id
+      LEFT JOIN customers c ON c.customer_id = o.customer_id
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The chain starts from payments, so only customers who have paid something
+      can appear, and the others are missing.
+tags: [outer-joins, join-chains, coalesce]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

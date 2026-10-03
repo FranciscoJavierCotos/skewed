@@ -1,0 +1,50 @@
+id: sql-l2-0014
+topic: sql
+level: 2
+title: Daily active users from an event log
+prompt: |
+  Product tracks **daily active users**: for each calendar day, the number of
+  different users who triggered at least one event that day. A user can fire
+  many events per day. Return one row per day.
+context: |
+  events(event_id, user_id, event_ts timestamp)
+options:
+  - code: |
+      SELECT event_ts::date AS day, COUNT(user_id) AS dau
+      FROM events
+      GROUP BY event_ts::date
+      ORDER BY day;
+    correct: false
+    explanation: >-
+      COUNT(user_id) counts every event row, so a user who fired five events
+      counts five times.
+  - code: |
+      SELECT event_ts AS day, COUNT(DISTINCT user_id) AS dau
+      FROM events
+      GROUP BY event_ts
+      ORDER BY day;
+    correct: false
+    explanation: >-
+      Grouping by the full timestamp makes a group per instant instead of per
+      day, so each day is split into many rows.
+  - code: |
+      SELECT event_ts::date AS day, user_id, COUNT(*) AS dau
+      FROM events
+      GROUP BY event_ts::date, user_id
+      ORDER BY day;
+    correct: false
+    explanation: >-
+      Adding user_id to GROUP BY gives one row per user per day with that
+      user's event count, not one row per day.
+  - code: |
+      SELECT event_ts::date AS day, COUNT(DISTINCT user_id) AS dau
+      FROM events
+      GROUP BY event_ts::date
+      ORDER BY day;
+    correct: true
+    explanation: >-
+      Grouping by the date part gives one row per day, and COUNT(DISTINCT
+      user_id) counts each user once however many events they fired.
+tags: [count-distinct, group-by, dates]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-AGGREGATES
+status: approved

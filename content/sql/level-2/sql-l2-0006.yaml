@@ -1,0 +1,55 @@
+id: sql-l2-0006
+topic: sql
+level: 2
+title: Revenue per product, including products never sold
+prompt: |
+  Merchandising is reviewing the catalogue. List **every** product with its
+  total sales revenue. Products that have never sold must appear with a
+  revenue of `0`, not `NULL`.
+context: |
+  products(product_id, name)
+  sales(sale_id, product_id, amount)
+options:
+  - code: |
+      SELECT p.product_id, p.name, SUM(s.amount) AS revenue
+      FROM products p
+      LEFT JOIN sales s ON s.product_id = p.product_id
+      GROUP BY p.product_id, p.name
+      ORDER BY p.product_id;
+    correct: false
+    explanation: >-
+      SUM over a group that contains only NULLs returns NULL, so unsold products
+      show NULL instead of 0.
+  - code: |
+      SELECT p.product_id, p.name, COALESCE(SUM(s.amount), 0) AS revenue
+      FROM products p
+      JOIN sales s ON s.product_id = p.product_id
+      GROUP BY p.product_id, p.name
+      ORDER BY p.product_id;
+    correct: false
+    explanation: >-
+      The inner join removes products with no sales before grouping, so the
+      COALESCE never gets a chance to turn their total into 0.
+  - code: |
+      SELECT p.product_id, p.name, COALESCE(SUM(s.amount), 0) AS revenue
+      FROM sales s
+      LEFT JOIN products p ON p.product_id = s.product_id
+      GROUP BY p.product_id, p.name
+      ORDER BY p.product_id;
+    correct: false
+    explanation: >-
+      The LEFT JOIN keeps every sale, not every product, so products that never
+      sold are still missing from the result.
+  - code: |
+      SELECT p.product_id, p.name, COALESCE(SUM(s.amount), 0) AS revenue
+      FROM products p
+      LEFT JOIN sales s ON s.product_id = p.product_id
+      GROUP BY p.product_id, p.name
+      ORDER BY p.product_id;
+    correct: true
+    explanation: >-
+      Driving the LEFT JOIN from products keeps unsold items, and COALESCE turns
+      their NULL sum into 0.
+tags: [outer-joins, coalesce, aggregates]
+docs_url: https://www.postgresql.org/docs/17/functions-conditional.html#FUNCTIONS-COALESCE-NVL-IFNULL
+status: approved

@@ -1,0 +1,52 @@
+id: sql-l2-0013
+topic: sql
+level: 2
+title: Top three categories by total revenue
+prompt: |
+  The quarterly review highlights the three product categories with the
+  highest **total** revenue, highest first. Return `category` and `revenue`.
+context: |
+  sales(sale_id, category, amount)
+options:
+  - code: |
+      SELECT category, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY category
+      ORDER BY revenue DESC
+      LIMIT 3;
+    correct: true
+    explanation: >-
+      Grouping totals each category, and sorting by that total descending
+      before LIMIT 3 keeps the three largest.
+  - code: |
+      SELECT DISTINCT category, amount AS revenue
+      FROM sales
+      ORDER BY revenue DESC
+      LIMIT 3;
+    correct: false
+    explanation: >-
+      DISTINCT removes duplicate rows but doesn't add anything up, so this ranks
+      individual sale amounts instead of category totals.
+  - code: |
+      SELECT category, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY category
+      ORDER BY MAX(amount) DESC
+      LIMIT 3;
+    correct: false
+    explanation: >-
+      The ranking uses each category's single largest sale, so a category with
+      many medium sales and a high total can be pushed out.
+  - code: |
+      SELECT category, SUM(amount) AS revenue
+      FROM sales
+      GROUP BY category
+      ORDER BY revenue
+      LIMIT 3;
+    correct: false
+    explanation: >-
+      ORDER BY is ascending by default, so this returns the three categories
+      with the lowest revenue.
+tags: [group-by, order-by, top-n]
+docs_url: https://www.postgresql.org/docs/17/queries-order.html
+status: approved

@@ -1,0 +1,54 @@
+id: sql-l2-0017
+topic: sql
+level: 2
+title: Daily signups for a week, including empty days
+prompt: |
+  The growth chart for 1–7 September 2026 needs exactly **seven rows**, one
+  per day, with the number of signups that day. Days with no signups must
+  appear with `0`.
+context: |
+  signups(user_id, signed_up_at timestamp)
+options:
+  - code: |
+      SELECT signed_up_at::date AS day, COUNT(*) AS signups
+      FROM signups
+      WHERE signed_up_at >= '2026-09-01' AND signed_up_at < '2026-09-08'
+      GROUP BY signed_up_at::date
+      ORDER BY day;
+    correct: false
+    explanation: >-
+      Grouping the signups table can only produce days that have rows, so days
+      without signups are missing instead of showing 0.
+  - code: |
+      SELECT d::date AS day, COUNT(*) AS signups
+      FROM generate_series(DATE '2026-09-01', DATE '2026-09-07', INTERVAL '1 day') d
+      LEFT JOIN signups s ON s.signed_up_at::date = d::date
+      GROUP BY d
+      ORDER BY day;
+    correct: false
+    explanation: >-
+      The calendar keeps every day, but COUNT(*) also counts the NULL row an
+      empty day gets from the LEFT JOIN, so those days show 1.
+  - code: |
+      SELECT d::date AS day, COUNT(s.user_id) AS signups
+      FROM generate_series(DATE '2026-09-01', DATE '2026-09-07', INTERVAL '1 day') d
+      JOIN signups s ON s.signed_up_at::date = d::date
+      GROUP BY d
+      ORDER BY day;
+    correct: false
+    explanation: >-
+      An inner join to the calendar drops days with no matching signup, so the
+      empty days disappear again.
+  - code: |
+      SELECT d::date AS day, COUNT(s.user_id) AS signups
+      FROM generate_series(DATE '2026-09-01', DATE '2026-09-07', INTERVAL '1 day') d
+      LEFT JOIN signups s ON s.signed_up_at::date = d::date
+      GROUP BY d
+      ORDER BY day;
+    correct: true
+    explanation: >-
+      generate_series builds all seven days, the LEFT JOIN keeps days with no
+      signups, and COUNT(s.user_id) gives them 0.
+tags: [generate-series, outer-joins, dates]
+docs_url: https://www.postgresql.org/docs/17/functions-srf.html
+status: approved

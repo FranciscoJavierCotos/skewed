@@ -1,0 +1,55 @@
+id: sql-l2-0003
+topic: sql
+level: 2
+title: 2026 order count per customer, keeping inactive customers
+prompt: |
+  Account managers want each customer's number of orders placed in 2026.
+  **Every** customer must be listed, and customers with no 2026 orders must
+  show `0`. Orders go back to 2024, and none is dated after 2026.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, ordered_at date)
+options:
+  - code: |
+      SELECT c.customer_id, COUNT(o.order_id) AS orders_2026
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      WHERE o.ordered_at >= DATE '2026-01-01'
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The WHERE filter runs after the join and rejects the NULL rows of
+      customers without 2026 orders, turning the LEFT JOIN into an inner join.
+  - code: |
+      SELECT c.customer_id, COUNT(*) AS orders_2026
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+                        AND o.ordered_at >= DATE '2026-01-01'
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The date filter is in the right place, but COUNT(*) counts the NULL row
+      kept for customers without 2026 orders, so they show 1.
+  - code: |
+      SELECT c.customer_id, COUNT(o.order_id) AS orders_2026
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+                        AND o.ordered_at <= DATE '2026-12-31'
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The condition only sets an upper bound, and no order is dated after 2026,
+      so orders from 2024 and 2025 are counted as well.
+  - code: |
+      SELECT c.customer_id, COUNT(o.order_id) AS orders_2026
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+                        AND o.ordered_at >= DATE '2026-01-01'
+      GROUP BY c.customer_id ORDER BY c.customer_id;
+    correct: true
+    explanation: >-
+      Putting the date test in ON limits which orders match without removing
+      any customer, and COUNT(o.order_id) gives 0 when nothing matched.
+tags: [outer-joins, join-conditions, count]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

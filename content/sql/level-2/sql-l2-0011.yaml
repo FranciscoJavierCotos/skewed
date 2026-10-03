@@ -1,0 +1,53 @@
+id: sql-l2-0011
+topic: sql
+level: 2
+title: Customers who spend more than the average customer
+prompt: |
+  Marketing wants the customers whose **total spend** is above the average
+  total spend per customer. Return `customer_id` and the total as `spend`.
+context: |
+  orders(order_id, customer_id, amount)
+options:
+  - code: |
+      WITH totals AS (
+        SELECT customer_id, SUM(amount) AS spend
+        FROM orders GROUP BY customer_id)
+      SELECT customer_id, spend FROM totals
+      WHERE spend > (SELECT AVG(amount) FROM orders);
+    correct: false
+    explanation: >-
+      The benchmark is the average single order, not the average customer
+      total, so customers with ordinary spend clear it too easily.
+  - code: |
+      WITH totals AS (
+        SELECT customer_id, SUM(amount) AS spend, AVG(amount) AS avg_order
+        FROM orders GROUP BY customer_id)
+      SELECT customer_id, spend FROM totals
+      WHERE spend > avg_order;
+    correct: false
+    explanation: >-
+      avg_order is computed inside each customer's group, so this compares each
+      customer's total with their own average order, not with other customers.
+  - code: |
+      WITH totals AS (
+        SELECT customer_id, SUM(amount) AS spend
+        FROM orders GROUP BY customer_id)
+      SELECT customer_id, spend FROM totals
+      WHERE spend > (SELECT AVG(spend) FROM totals);
+    correct: true
+    explanation: >-
+      The CTE builds one total per customer, and the scalar subquery averages
+      those totals, which is the benchmark the prompt asks for.
+  - code: |
+      WITH totals AS (
+        SELECT customer_id, SUM(amount) AS spend
+        FROM orders GROUP BY customer_id)
+      SELECT customer_id, spend FROM totals
+      WHERE spend > AVG(spend);
+    correct: false
+    explanation: >-
+      An aggregate can't appear directly in WHERE, so PostgreSQL rejects the
+      query. The average must come from a subquery.
+tags: [cte, subqueries, aggregates]
+docs_url: https://www.postgresql.org/docs/17/queries-with.html
+status: approved
