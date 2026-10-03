@@ -17,7 +17,7 @@ export const QuestionFileSchema = z
     context: z.string().trim().min(1).nullish(),
     options: z.array(OptionSchema).length(4, "exactly 4 options required"),
     tags: z.array(z.string()).default([]),
-    docs_url: z.url().nullish(),
+    docs_url: z.url({ protocol: /^https$/, error: "docs_url must be an https URL" }).nullish(),
     status: z.enum(["draft", "approved", "retired"]),
   })
   .superRefine((q, ctx) => {
