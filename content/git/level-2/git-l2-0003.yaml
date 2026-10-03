@@ -1,0 +1,38 @@
+id: git-l2-0003
+topic: git
+level: 2
+title: Rebase a local feature branch onto the latest main
+prompt: |
+  You're on `main`. Your local, never-pushed `feature/x` has two commits, and
+  `main` has gained two commits since you branched. Replay `feature/x` on top of
+  the current `main` so its history is linear, without moving `main`, and finish
+  on `feature/x`.
+options:
+  - code: |
+      git rebase feature/x main
+    correct: false
+    explanation: >-
+      `rebase <upstream> <branch>` rebases the second argument, so this replays
+      `main`'s commits on top of `feature/x` and moves `main`.
+  - code: |
+      git merge main feature/x
+    correct: false
+    explanation: >-
+      `git merge` always merges into the **current** branch, so this merges
+      both names into `main` instead of updating `feature/x`.
+  - code: |
+      git switch feature/x
+      git rebase
+    correct: false
+    explanation: >-
+      With no argument, `rebase` uses the branch's upstream. A local-only
+      branch has none, so Git refuses to rebase.
+  - code: |
+      git rebase main feature/x
+    correct: true
+    explanation: >-
+      `rebase <upstream> <branch>` switches to `feature/x` and replays its two
+      commits on top of `main`, leaving `main` where it is.
+tags: [rebase]
+docs_url: https://git-scm.com/docs/git-rebase
+status: approved

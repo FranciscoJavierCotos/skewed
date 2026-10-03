@@ -1,0 +1,40 @@
+id: git-l2-0019
+topic: git
+level: 2
+title: Publish only the release tag
+prompt: |
+  You're releasing version 1.2.0 from the current commit on `main`, which is
+  already pushed. Create an **annotated** tag `v1.2.0` with a message and
+  publish only that tag. A few local experimental tags (`exp-*`) must stay
+  unpublished.
+options:
+  - code: |
+      git tag -a v1.2.0 -m "Release 1.2.0"
+      git push origin main
+    correct: false
+    explanation: >-
+      Pushing a branch doesn't push tags, so `v1.2.0` never reaches `origin`.
+  - code: |
+      git tag -a v1.2.0 -m "Release 1.2.0"
+      git push origin v1.2.0
+    correct: true
+    explanation: >-
+      `-a` with `-m` creates an annotated tag object, and naming it in the push
+      publishes just that tag.
+  - code: |
+      git tag -a v1.2.0 -m "Release 1.2.0"
+      git push origin --tags
+    correct: false
+    explanation: >-
+      `--tags` pushes every local tag, so the experimental `exp-*` tags are
+      published too.
+  - code: |
+      git tag v1.2.0 main
+      git push origin refs/tags/v1.2.0
+    correct: false
+    explanation: >-
+      Without `-a`, `-m` or `-s`, `git tag` creates a lightweight tag: a plain
+      pointer with no tag object or message.
+tags: [tags, remotes, release]
+docs_url: https://git-scm.com/docs/git-tag
+status: approved

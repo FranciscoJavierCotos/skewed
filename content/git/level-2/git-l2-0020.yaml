@@ -1,0 +1,43 @@
+id: git-l2-0020
+topic: git
+level: 2
+title: Land a feature on main with linear history
+prompt: |
+  You're on your local `feature/x` (two commits, never pushed). `main` has one
+  new pushed commit since you branched. Land the feature on `main` so that
+  `main`'s history stays linear (no merge commits), contains both feature
+  commits individually, and doesn't rewrite `main`'s published commits. Finish on
+  `main`.
+options:
+  - code: |
+      git switch main
+      git merge --no-edit feature/x
+    correct: false
+    explanation: >-
+      The branches have diverged, so the merge can't fast-forward and creates a
+      merge commit.
+  - code: |
+      git switch main
+      git merge --squash feature/x
+    correct: false
+    explanation: >-
+      `--squash` stages the changes without committing them, and would collapse
+      the two feature commits into one anyway.
+  - code: |
+      git switch main
+      git rebase feature/x main
+    correct: false
+    explanation: >-
+      This rebases `main` onto the feature, which rewrites `main`'s published
+      commit instead of moving the feature commits.
+  - code: |
+      git rebase main
+      git switch main
+      git merge feature/x
+    correct: true
+    explanation: >-
+      Rebasing the feature onto `main` first makes it a direct descendant of
+      `main`, so the merge is a fast-forward with no merge commit.
+tags: [rebase, merge, fast-forward]
+docs_url: https://git-scm.com/docs/git-rebase
+status: approved

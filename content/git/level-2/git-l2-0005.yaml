@@ -1,0 +1,40 @@
+id: git-l2-0005
+topic: git
+level: 2
+title: Check out a teammate's new remote branch
+prompt: |
+  A teammate just pushed a branch `review/fix` to `origin` and asked you to test
+  it. You haven't fetched since. Get a local `review/fix` that has their commits
+  and tracks `origin/review/fix`, and be on it.
+options:
+  - code: |
+      git fetch origin
+      git switch review/fix
+    correct: true
+    explanation: >-
+      After the fetch, `origin/review/fix` exists, and `git switch` with a name
+      that matches exactly one remote branch creates a local tracking branch.
+  - code: |
+      git branch review/fix
+      git switch review/fix
+    correct: false
+    explanation: >-
+      Nothing was fetched, so `git branch` creates `review/fix` from your
+      current commit, without the teammate's work.
+  - code: |
+      git fetch origin
+      git switch -c review/fix
+    correct: false
+    explanation: >-
+      `-c` creates a brand-new branch from your current commit, so it neither
+      has the teammate's commits nor tracks `origin/review/fix`.
+  - code: |
+      git fetch origin
+      git switch origin/review/fix
+    correct: false
+    explanation: >-
+      A remote-tracking branch can't be checked out as a branch. `git switch`
+      refuses it unless you ask for a detached HEAD.
+tags: [remotes, fetch, switch, tracking]
+docs_url: https://git-scm.com/docs/git-switch#Documentation/git-switch.txt-emltbranchgtem
+status: approved

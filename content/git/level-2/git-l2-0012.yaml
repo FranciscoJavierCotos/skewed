@@ -1,0 +1,36 @@
+id: git-l2-0012
+topic: git
+level: 2
+title: Clean up remote-tracking branches deleted on the server
+prompt: |
+  Teammates deleted `old-a` and `old-b` on `origin`, but `git branch -r` still
+  lists `origin/old-a` and `origin/old-b`. Remove those stale refs. Nothing on
+  the server or among your local branches may change.
+options:
+  - code: |
+      git pull --ff-only origin
+    correct: false
+    explanation: >-
+      `pull` fetches and merges, but it doesn't prune by default, so the stale
+      remote-tracking refs stay.
+  - code: |
+      git remote update origin
+    correct: false
+    explanation: >-
+      `remote update` fetches without pruning unless you add `--prune`, so the
+      stale refs stay.
+  - code: |
+      git remote prune -n origin
+    correct: false
+    explanation: >-
+      `-n` is `--dry-run`: it only lists the stale refs that would be pruned
+      and deletes none of them.
+  - code: |
+      git fetch --prune origin
+    correct: true
+    explanation: >-
+      `--prune` deletes the remote-tracking refs whose branches no longer exist
+      on `origin`, and touches nothing else.
+tags: [remotes, fetch, prune]
+docs_url: https://git-scm.com/docs/git-fetch#Documentation/git-fetch.txt---prune
+status: approved

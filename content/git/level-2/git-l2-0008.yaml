@@ -1,0 +1,40 @@
+id: git-l2-0008
+topic: git
+level: 2
+title: Back out of a conflicted merge
+prompt: |
+  You ran `git merge feature/x` on `main` and got conflicts that you can't
+  resolve right now. Put `main` back exactly as it was before the merge, with no
+  merge in progress and a clean working tree.
+options:
+  - code: |
+      git rebase --abort
+      git status
+    correct: false
+    explanation: >-
+      There's no rebase in progress, only a merge, so `rebase --abort` fails and
+      the conflicted merge stays.
+  - code: |
+      git checkout --ours -- .
+      git status
+    correct: false
+    explanation: >-
+      This puts your side's content back into the working files, but the merge
+      is still in progress with unmerged paths.
+  - code: |
+      git stash push -m "later"
+      git status
+    correct: false
+    explanation: >-
+      Git can't stash an index with unmerged paths, so the stash fails and the
+      merge stays in progress.
+  - code: |
+      git merge --abort
+      git status
+    correct: true
+    explanation: >-
+      `merge --abort` ends the merge and restores the pre-merge state of the
+      branch, the index and the working tree.
+tags: [merge, conflicts, abort]
+docs_url: https://git-scm.com/docs/git-merge#Documentation/git-merge.txt---abort
+status: approved

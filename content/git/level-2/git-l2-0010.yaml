@@ -1,0 +1,43 @@
+id: git-l2-0010
+topic: git
+level: 2
+title: Sync a fork with the original repository
+prompt: |
+  You cloned your fork, so `origin` points at it. The original project,
+  `https://github.com/acme/etl.git`, has new commits on `main`. Add the original
+  as a remote named `upstream`, then fast-forward your local `main` to
+  `upstream/main`. `origin` must keep pointing at your fork.
+context: |
+  You're on `main` with a clean working tree. `main` has no commits of its own.
+options:
+  - code: |
+      git remote add upstream https://github.com/acme/etl.git
+      git pull --ff-only origin main
+    correct: false
+    explanation: >-
+      This pulls from `origin`, your fork, which doesn't have the new commits,
+      so `main` doesn't move.
+  - code: |
+      git remote set-url origin https://github.com/acme/etl.git
+      git pull --ff-only origin main
+    correct: false
+    explanation: >-
+      `main` does catch up, but `origin` now points at the original project
+      instead of your fork, and no `upstream` remote is created.
+  - code: |
+      git remote add -f upstream https://github.com/acme/etl.git
+      git merge --ff-only upstream/main
+    correct: true
+    explanation: >-
+      `-f` fetches the new remote right after adding it, so `upstream/main`
+      exists and `main` can fast-forward to it.
+  - code: |
+      git remote add upstream https://github.com/acme/etl.git
+      git merge --ff-only upstream/main
+    correct: false
+    explanation: >-
+      Adding a remote doesn't fetch it, so `upstream/main` doesn't exist yet and
+      the merge fails.
+tags: [remotes, fork, upstream]
+docs_url: https://git-scm.com/docs/git-remote#Documentation/git-remote.txt-add
+status: approved

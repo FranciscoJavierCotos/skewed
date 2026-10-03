@@ -1,0 +1,40 @@
+id: git-l2-0007
+topic: git
+level: 2
+title: Push after a teammate pushed first
+prompt: |
+  Your local `main` has one commit you haven't pushed, and a teammate has
+  since pushed a different commit to `origin/main`. Put your commit on top of
+  theirs, with no merge commit, and push. `pull.rebase` isn't configured.
+options:
+  - code: |
+      git pull origin main
+      git push
+    correct: false
+    explanation: >-
+      With divergent branches and no `pull.rebase` setting, `git pull` stops
+      and asks how to reconcile them, so the push is still rejected.
+  - code: |
+      git pull --rebase
+      git push
+    correct: true
+    explanation: >-
+      `--rebase` fetches and replays your unpushed commit on top of the
+      teammate's, giving a linear history that pushes as a fast-forward.
+  - code: |
+      git fetch
+      git push --force
+    correct: false
+    explanation: >-
+      A force push replaces `origin/main` with your branch, which deletes the
+      teammate's commit from the remote.
+  - code: |
+      git fetch origin
+      git push
+    correct: false
+    explanation: >-
+      Fetching only updates `origin/main`. Your `main` still lacks the teammate's
+      commit, so the push is rejected as non-fast-forward.
+tags: [remotes, pull, rebase]
+docs_url: https://git-scm.com/docs/git-pull#Documentation/git-pull.txt---rebasetruemergesfalseinteractive
+status: approved

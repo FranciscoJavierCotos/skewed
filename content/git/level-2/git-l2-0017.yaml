@@ -1,0 +1,36 @@
+id: git-l2-0017
+topic: git
+level: 2
+title: Clone a repository straight onto a release branch
+prompt: |
+  You need to patch the 2.0 release. Clone `https://github.com/acme/etl.git`
+  into a folder named `etl` and start on its `release/2.0` branch, tracking
+  `origin/release/2.0`.
+options:
+  - code: |
+      git clone -b release/2.0 https://github.com/acme/etl.git etl
+    correct: true
+    explanation: >-
+      `-b` makes the new clone check out `release/2.0` instead of the default
+      branch, set up to track `origin/release/2.0`.
+  - code: |
+      git clone --single-branch https://github.com/acme/etl.git etl
+    correct: false
+    explanation: >-
+      Without `-b`, `--single-branch` fetches only the default branch, so you're
+      on `main` and `release/2.0` isn't fetched at all.
+  - code: |
+      git clone https://github.com/acme/etl.git release/2.0
+    correct: false
+    explanation: >-
+      The last argument is the target **directory**, so this clones into
+      `release/2.0/` and checks out the default branch.
+  - code: |
+      git clone --mirror https://github.com/acme/etl.git etl
+    correct: false
+    explanation: >-
+      `--mirror` makes a bare copy with no working tree, so there's no branch to
+      work on.
+tags: [clone, remotes, branch]
+docs_url: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bname
+status: approved
