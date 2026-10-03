@@ -1,0 +1,51 @@
+id: sql-l3-0015
+topic: sql
+level: 3
+title: Sort tickets by business priority
+prompt: |
+  The support queue shows tickets by priority, `high` first, then `medium`,
+  then `low`. Within the same priority the **oldest** ticket comes first.
+context: |
+  tickets(ticket_id, priority, created_at timestamp)
+
+  `priority` is always `high`, `medium` or `low`.
+options:
+  - code: |
+      SELECT ticket_id, priority, created_at
+      FROM tickets
+      ORDER BY CASE priority WHEN 'high' THEN 1 ELSE 2 END,
+               priority, created_at;
+    correct: false
+    explanation: >-
+      Only high is ranked explicitly. The rest falls back to alphabetical order
+      of the text, which puts low ahead of medium.
+  - code: |
+      SELECT ticket_id, priority, created_at
+      FROM tickets
+      ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2
+                             ELSE 3 END DESC, created_at;
+    correct: false
+    explanation: >-
+      DESC on the CASE puts rank 3 first, so the queue starts with low-priority
+      tickets.
+  - code: |
+      SELECT ticket_id, priority, created_at
+      FROM tickets
+      ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2
+                             ELSE 3 END, created_at DESC;
+    correct: false
+    explanation: >-
+      The priorities are in the right order, but created_at DESC puts the
+      newest ticket first within each priority.
+  - code: |
+      SELECT ticket_id, priority, created_at
+      FROM tickets
+      ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2
+                             ELSE 3 END, created_at;
+    correct: true
+    explanation: >-
+      The CASE maps each priority to its business rank for sorting, and
+      created_at ascending breaks ties oldest first.
+tags: [case, order-by, custom-sort]
+docs_url: https://www.postgresql.org/docs/17/queries-order.html
+status: approved

@@ -1,0 +1,50 @@
+id: sql-l3-0016
+topic: sql
+level: 3
+title: Orders above the customer's own average
+prompt: |
+  Fraud screening flags orders whose amount is above **that customer's**
+  average order amount, computed over all of the customer's orders. Return the
+  flagged `order_id`, `customer_id` and `amount`.
+context: |
+  orders(order_id, customer_id, ordered_at timestamp, amount)
+options:
+  - code: |
+      SELECT order_id, customer_id, amount FROM (
+        SELECT o.*, AVG(amount) OVER (PARTITION BY ordered_at::date) AS cust_avg
+        FROM orders o) t
+      WHERE amount > cust_avg;
+    correct: false
+    explanation: >-
+      Partitioning by order date averages the orders of all customers on the
+      same day, not each customer's own orders.
+  - code: |
+      SELECT order_id, customer_id, amount FROM (
+        SELECT o.*, AVG(amount) OVER (PARTITION BY customer_id) AS cust_avg
+        FROM orders o) t
+      WHERE amount > cust_avg;
+    correct: true
+    explanation: >-
+      The partitioned window puts the customer's full average on every row, and
+      the outer query can then filter on it.
+  - code: |
+      SELECT order_id, customer_id, amount FROM (
+        SELECT o.*, AVG(amount) OVER (PARTITION BY order_id) AS cust_avg
+        FROM orders o) t
+      WHERE amount > cust_avg;
+    correct: false
+    explanation: >-
+      Partitioning by order_id puts each order in a window of its own, so the
+      average is the order's own amount and nothing is ever above it.
+  - code: |
+      SELECT order_id, customer_id, amount FROM (
+        SELECT o.*, AVG(amount) OVER (PARTITION BY customer_id ORDER BY ordered_at) AS cust_avg
+        FROM orders o) t
+      WHERE amount > cust_avg;
+    correct: false
+    explanation: >-
+      Adding ORDER BY shrinks the default frame to the orders so far, so each
+      order is compared with a running average rather than the full one.
+tags: [window-functions, subqueries, window-frames]
+docs_url: https://www.postgresql.org/docs/17/tutorial-window.html
+status: approved

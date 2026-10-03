@@ -1,0 +1,58 @@
+id: sql-l3-0013
+topic: sql
+level: 3
+title: Flag the events that start a new session
+prompt: |
+  Analytics splits a user's clickstream into sessions. An event starts a new
+  session (`new_session = 1`) when it is the user's **first** event, or when
+  more than 30 minutes have passed since that user's previous event.
+  Otherwise `new_session = 0`.
+context: |
+  events(event_id, user_id, event_ts timestamp)
+options:
+  - code: |
+      SELECT event_id, user_id, event_ts,
+             CASE WHEN event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'
+                  THEN 1 ELSE 0 END AS new_session
+      FROM events
+      WINDOW w AS (PARTITION BY user_id ORDER BY event_ts);
+    correct: false
+    explanation: >-
+      On a user's first event LAG is NULL, so the comparison is NULL and the
+      CASE falls to ELSE, flagging that event 0.
+  - code: |
+      SELECT event_id, user_id, event_ts,
+             CASE WHEN LAG(event_ts) OVER w IS NULL
+                    OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'
+                  THEN 1 ELSE 0 END AS new_session
+      FROM events
+      WINDOW w AS (ORDER BY event_ts);
+    correct: false
+    explanation: >-
+      The window isn't partitioned by user, so LAG returns the previous event of
+      any user and gaps are measured across people.
+  - code: |
+      SELECT event_id, user_id, event_ts,
+             CASE WHEN LAG(event_ts) OVER w IS NULL
+                    OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'
+                  THEN 1 ELSE 0 END AS new_session
+      FROM events
+      WINDOW w AS (PARTITION BY user_id ORDER BY event_ts);
+    correct: true
+    explanation: >-
+      The explicit IS NULL check flags each user's first event, and the gap test
+      flags events more than 30 minutes after the same user's previous one.
+  - code: |
+      SELECT event_id, user_id, event_ts,
+             CASE WHEN LEAD(event_ts) OVER w IS NULL
+                    OR LEAD(event_ts) OVER w - event_ts > INTERVAL '30 minutes'
+                  THEN 1 ELSE 0 END AS new_session
+      FROM events
+      WINDOW w AS (PARTITION BY user_id ORDER BY event_ts);
+    correct: false
+    explanation: >-
+      LEAD looks at the next event, so this flags the last event before a gap,
+      which is where a session ends, not where one starts.
+tags: [window-functions, sessionization, case]
+docs_url: https://www.postgresql.org/docs/17/sql-select.html#SQL-WINDOW
+status: approved

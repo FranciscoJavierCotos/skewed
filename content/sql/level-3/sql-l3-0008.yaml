@@ -1,0 +1,52 @@
+id: sql-l3-0008
+topic: sql
+level: 3
+title: Three-day moving average of daily revenue
+prompt: |
+  The ops dashboard smooths daily revenue with a **3-day moving average**:
+  the average of the current day and the two days before it. The first two
+  days average over whatever days exist so far.
+context: |
+  daily_revenue(day date, revenue numeric)
+
+  There is exactly one row per day, with no gaps.
+options:
+  - code: |
+      SELECT day,
+             AVG(revenue) OVER (ORDER BY day
+                                ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS ma3
+      FROM daily_revenue;
+    correct: false
+    explanation: >-
+      3 PRECEDING plus the current row spans four days, so this is a 4-day
+      moving average.
+  - code: |
+      SELECT day,
+             AVG(revenue) OVER (ORDER BY day
+                                ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS ma3
+      FROM daily_revenue;
+    correct: true
+    explanation: >-
+      The frame holds the current row and the two before it, and on the first
+      days it simply holds fewer rows.
+  - code: |
+      SELECT day,
+             AVG(revenue) OVER (ORDER BY day
+                                ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS ma3
+      FROM daily_revenue;
+    correct: false
+    explanation: >-
+      The frame is centred on the current day and includes tomorrow, so it
+      isn't a trailing average of the current and previous two days.
+  - code: |
+      SELECT day,
+             AVG(revenue) OVER (ORDER BY day
+                                RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS ma3
+      FROM daily_revenue;
+    correct: false
+    explanation: >-
+      The frame starts at the first day, so this is a cumulative average of
+      every day so far, not a 3-day window.
+tags: [window-functions, window-frames, moving-average]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-WINDOW-FUNCTIONS
+status: approved

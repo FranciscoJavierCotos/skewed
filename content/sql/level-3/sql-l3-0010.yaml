@@ -1,0 +1,53 @@
+id: sql-l3-0010
+topic: sql
+level: 3
+title: Label account status codes, including missing ones
+prompt: |
+  A legacy table stores account status as a one-letter code. The report must
+  show `active` for `A`, `unknown` when the code is missing (`NULL`), and
+  `inactive` for any other code.
+context: |
+  accounts(account_id, status_code)
+options:
+  - code: |
+      SELECT account_id,
+             CASE status_code WHEN 'A'  THEN 'active'
+                              WHEN NULL THEN 'unknown'
+                              ELSE 'inactive' END AS label
+      FROM accounts;
+    correct: false
+    explanation: >-
+      A simple CASE compares with =, and status_code = NULL is never true, so
+      missing codes fall through to 'inactive'.
+  - code: |
+      SELECT account_id,
+             COALESCE(CASE WHEN status_code = 'A' THEN 'active'
+                           ELSE 'inactive' END, 'unknown') AS label
+      FROM accounts;
+    correct: false
+    explanation: >-
+      For a NULL code the test is not true, so the CASE returns 'inactive',
+      never NULL, and COALESCE has nothing to replace.
+  - code: |
+      SELECT account_id,
+             CASE WHEN status_code = 'A'   THEN 'active'
+                  WHEN status_code IS NULL THEN 'unknown'
+                  ELSE 'inactive' END AS label
+      FROM accounts;
+    correct: true
+    explanation: >-
+      A searched CASE can test IS NULL explicitly, so missing codes get
+      'unknown' before the ELSE catches every other code.
+  - code: |
+      SELECT account_id,
+             CASE WHEN status_code IS NULL THEN 'unknown'
+                  WHEN status_code = 'A'   THEN 'active'
+             END AS label
+      FROM accounts;
+    correct: false
+    explanation: >-
+      There is no ELSE, so every code other than A gets NULL instead of
+      'inactive'.
+tags: [case, null-semantics, conditional-logic]
+docs_url: https://www.postgresql.org/docs/17/functions-conditional.html#FUNCTIONS-CASE
+status: approved

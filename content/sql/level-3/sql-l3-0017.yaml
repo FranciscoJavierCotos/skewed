@@ -1,0 +1,53 @@
+id: sql-l3-0017
+topic: sql
+level: 3
+title: Customers who ordered in both January and February
+prompt: |
+  Retention counts a customer as "retained" when they placed at least one
+  order in January 2026 **and** at least one order in February 2026. Return
+  the `customer_id` of retained customers, once each.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, ordered_at date)
+options:
+  - code: |
+      SELECT DISTINCT c.customer_id
+      FROM customers c JOIN orders o ON o.customer_id = c.customer_id
+      WHERE date_trunc('month', o.ordered_at) = DATE '2026-01-01'
+        AND date_trunc('month', o.ordered_at) = DATE '2026-02-01';
+    correct: false
+    explanation: >-
+      Both tests apply to the same order row, and one order can't fall in two
+      months, so no row passes and nothing is returned.
+  - code: |
+      SELECT DISTINCT c.customer_id
+      FROM customers c JOIN orders o ON o.customer_id = c.customer_id
+      WHERE date_trunc('month', o.ordered_at) = DATE '2026-01-01'
+         OR date_trunc('month', o.ordered_at) = DATE '2026-02-01';
+    correct: false
+    explanation: >-
+      OR keeps customers with an order in either month, so a customer who only
+      ordered in January is counted as retained.
+  - code: |
+      SELECT o.customer_id
+      FROM orders o
+      WHERE o.ordered_at >= DATE '2026-01-01' AND o.ordered_at < DATE '2026-04-01'
+      GROUP BY o.customer_id
+      HAVING COUNT(DISTINCT date_trunc('month', o.ordered_at)) = 2;
+    correct: false
+    explanation: >-
+      This finds customers who ordered in two different months of Q1, but never
+      checks that those two months are January and February.
+  - code: |
+      SELECT customer_id FROM orders
+      WHERE date_trunc('month', ordered_at) = DATE '2026-01-01'
+      INTERSECT
+      SELECT customer_id FROM orders
+      WHERE date_trunc('month', ordered_at) = DATE '2026-02-01';
+    correct: true
+    explanation: >-
+      Each half lists the customers of one month, and INTERSECT keeps only the
+      ids present in both lists, without duplicates.
+tags: [set-operations, intersect, boolean-logic]
+docs_url: https://www.postgresql.org/docs/17/queries-union.html
+status: approved

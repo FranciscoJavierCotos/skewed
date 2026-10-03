@@ -1,0 +1,51 @@
+id: sql-l3-0003
+topic: sql
+level: 3
+title: Customers who have never ordered, with guest orders present
+prompt: |
+  Marketing wants to email registered customers who have **never** placed an
+  order. The shop also accepts guest checkout, and guest orders are stored
+  with `customer_id = NULL`. Return `customer_id` and `email`.
+context: |
+  customers(customer_id, email)
+  orders(order_id, customer_id)   -- customer_id is NULL for guest orders
+options:
+  - code: |
+      SELECT c.customer_id, c.email
+      FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o
+                        WHERE o.customer_id = c.customer_id);
+    correct: true
+    explanation: >-
+      NOT EXISTS checks for a matching order per customer, and guest rows with a
+      NULL customer_id simply never match, so they don't affect the result.
+  - code: |
+      SELECT c.customer_id, c.email
+      FROM customers c
+      WHERE c.customer_id NOT IN (SELECT o.customer_id
+                                  FROM orders o);
+    correct: false
+    explanation: >-
+      The subquery contains a NULL from the guest orders, so for any customer
+      NOT IN yields NULL rather than true and nothing is returned.
+  - code: |
+      SELECT DISTINCT c.customer_id, c.email
+      FROM customers c
+      JOIN orders o ON o.customer_id <> c.customer_id
+      WHERE o.customer_id IS NOT NULL;
+    correct: false
+    explanation: >-
+      Skipping guest rows doesn't help: a <> join matches every order placed by
+      someone else, so customers who have ordered still qualify.
+  - code: |
+      SELECT c.customer_id, c.email
+      FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o
+                        WHERE o.customer_id = customer_id);
+    correct: false
+    explanation: >-
+      The unqualified customer_id resolves to o.customer_id, the nearest scope,
+      so the subquery isn't correlated and finds an order for every customer.
+tags: [anti-join, not-exists, null-semantics]
+docs_url: https://www.postgresql.org/docs/17/functions-subquery.html#FUNCTIONS-SUBQUERY-NOTIN
+status: approved

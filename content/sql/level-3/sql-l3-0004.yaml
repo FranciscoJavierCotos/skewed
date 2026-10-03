@@ -1,0 +1,55 @@
+id: sql-l3-0004
+topic: sql
+level: 3
+title: Customers with at least one large order, listed once
+prompt: |
+  The VIP programme invites every customer who has placed **at least one
+  single order** worth more than 100. Each customer must appear **once**,
+  however many large orders they have.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, amount)
+options:
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      JOIN orders o ON o.customer_id = c.customer_id
+      WHERE o.amount > 100
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The join returns one row per matching order, so a customer with several
+      large orders is listed several times.
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE EXISTS (SELECT 1 FROM orders o
+                    WHERE o.amount > 100)
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      The subquery isn't correlated to the customer, so as soon as anyone has a
+      large order every customer qualifies.
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE EXISTS (SELECT 1 FROM orders o
+                    WHERE o.customer_id = c.customer_id AND o.amount > 100)
+      ORDER BY c.customer_id;
+    correct: true
+    explanation: >-
+      A correlated EXISTS is a semi-join: it checks each customer for at least
+      one matching order and returns the customer once.
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE (SELECT SUM(o.amount) FROM orders o
+             WHERE o.customer_id = c.customer_id) > 100
+      ORDER BY c.customer_id;
+    correct: false
+    explanation: >-
+      This tests the customer's total spend, so someone with many small orders
+      adding up to more than 100 is invited too.
+tags: [semi-join, exists, joins]
+docs_url: https://www.postgresql.org/docs/17/functions-subquery.html#FUNCTIONS-SUBQUERY-EXISTS
+status: approved

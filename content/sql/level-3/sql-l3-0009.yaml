@@ -1,0 +1,55 @@
+id: sql-l3-0009
+topic: sql
+level: 3
+title: Keep the first signup per email address
+prompt: |
+  A bug created duplicate accounts. For each `email`, keep only the
+  **earliest** account by `created_at`. If two accounts share the earliest
+  `created_at`, keep the one with the lower `user_id`. Exactly one row per
+  email must remain.
+context: |
+  users(user_id, email, created_at timestamp)
+options:
+  - code: |
+      SELECT user_id, email, created_at FROM (
+        SELECT u.*, RANK() OVER (PARTITION BY email
+                                 ORDER BY created_at) AS rn
+        FROM users u) t
+      WHERE rn = 1;
+    correct: false
+    explanation: >-
+      RANK gives both accounts that share the earliest created_at rank 1, and
+      there is no user_id tiebreaker, so that email keeps two rows.
+  - code: |
+      SELECT user_id, email, created_at FROM (
+        SELECT u.*, ROW_NUMBER() OVER (PARTITION BY email
+                                       ORDER BY created_at, user_id) AS rn
+        FROM users u) t
+      WHERE rn = 1;
+    correct: true
+    explanation: >-
+      ROW_NUMBER numbers each email's accounts uniquely, and ordering by
+      created_at then user_id makes row 1 the earliest, lowest-id account.
+  - code: |
+      SELECT user_id, email, created_at FROM (
+        SELECT u.*, ROW_NUMBER() OVER (PARTITION BY email
+                                       ORDER BY created_at DESC, user_id) AS rn
+        FROM users u) t
+      WHERE rn = 1;
+    correct: false
+    explanation: >-
+      created_at DESC puts the newest account first, so this keeps the latest
+      duplicate instead of the earliest.
+  - code: |
+      SELECT user_id, email, created_at FROM (
+        SELECT u.*, ROW_NUMBER() OVER (PARTITION BY user_id
+                                       ORDER BY created_at, user_id) AS rn
+        FROM users u) t
+      WHERE rn = 1;
+    correct: false
+    explanation: >-
+      user_id is unique, so each partition holds a single row and every
+      account, duplicates included, gets rn = 1.
+tags: [window-functions, dedup, row-number]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

@@ -1,0 +1,52 @@
+id: sql-l3-0011
+topic: sql
+level: 3
+title: Products with no sales since 1 September
+prompt: |
+  Merchandising wants to discount stale stock: every product that has had
+  **no sales on or after 1 September 2026**. Products that sold before that
+  date but not since must be included, as must products that never sold.
+context: |
+  products(product_id, name)
+  sales(sale_id, product_id, sold_at date)
+options:
+  - code: |
+      SELECT p.product_id, p.name
+      FROM products p
+      LEFT JOIN sales s ON s.product_id = p.product_id
+      WHERE s.sold_at >= DATE '2026-09-01' AND s.sale_id IS NULL;
+    correct: false
+    explanation: >-
+      A row with a NULL sale_id also has a NULL sold_at, which fails the date
+      test, so the two conditions can never hold together and nothing returns.
+  - code: |
+      SELECT DISTINCT p.product_id, p.name
+      FROM products p
+      LEFT JOIN sales s ON s.product_id = p.product_id
+      WHERE s.sale_id IS NULL OR s.sold_at < DATE '2026-09-01';
+    correct: false
+    explanation: >-
+      The filter is checked per sale row, so a product with one old sale and a
+      recent one still qualifies through its old sale.
+  - code: |
+      SELECT p.product_id, p.name
+      FROM products p
+      WHERE NOT EXISTS (SELECT 1 FROM sales s
+                        WHERE s.product_id = p.product_id);
+    correct: false
+    explanation: >-
+      The subquery ignores the date, so any product that ever sold is
+      excluded, including stock whose last sale was before September.
+  - code: |
+      SELECT p.product_id, p.name
+      FROM products p
+      LEFT JOIN sales s ON s.product_id = p.product_id
+                       AND s.sold_at >= DATE '2026-09-01'
+      WHERE s.sale_id IS NULL;
+    correct: true
+    explanation: >-
+      The date test in ON matches only recent sales, and IS NULL then keeps the
+      products that found no recent sale: an anti-join.
+tags: [anti-join, outer-joins, join-conditions]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

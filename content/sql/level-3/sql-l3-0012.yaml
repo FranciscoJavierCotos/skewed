@@ -1,0 +1,50 @@
+id: sql-l3-0012
+topic: sql
+level: 3
+title: Attach each customer's latest order amount to every order
+prompt: |
+  For a basket-trend chart, every order row must also carry the amount of
+  that customer's **most recent** order, as `latest_amount`. A customer never
+  has two orders at the same `ordered_at`.
+context: |
+  orders(order_id, customer_id, ordered_at timestamp, amount)
+options:
+  - code: |
+      SELECT order_id, customer_id, amount,
+             FIRST_VALUE(amount) OVER (PARTITION BY customer_id
+                                       ORDER BY ordered_at DESC) AS latest_amount
+      FROM orders;
+    correct: true
+    explanation: >-
+      Sorting the partition newest first makes the most recent order the first
+      row of every frame, so FIRST_VALUE returns its amount on every row.
+  - code: |
+      SELECT order_id, customer_id, amount,
+             LAST_VALUE(amount) OVER (PARTITION BY customer_id
+                                      ORDER BY ordered_at) AS latest_amount
+      FROM orders;
+    correct: false
+    explanation: >-
+      The default frame ends at the current row, so LAST_VALUE returns the
+      current order's own amount, not the latest one.
+  - code: |
+      SELECT order_id, customer_id, amount,
+             FIRST_VALUE(amount) OVER (PARTITION BY customer_id
+                                       ORDER BY ordered_at) AS latest_amount
+      FROM orders;
+    correct: false
+    explanation: >-
+      Ascending order makes the oldest order the first row, so this attaches
+      the customer's first order amount.
+  - code: |
+      SELECT order_id, customer_id, amount,
+             MAX(amount) OVER (PARTITION BY customer_id
+                               ORDER BY ordered_at DESC) AS latest_amount
+      FROM orders;
+    correct: false
+    explanation: >-
+      The frame runs from the newest order to the current one, and MAX picks
+      the largest amount in it, which isn't necessarily the latest amount.
+tags: [window-functions, first-value, window-frames]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

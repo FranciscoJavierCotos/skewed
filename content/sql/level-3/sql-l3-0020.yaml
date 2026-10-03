@@ -1,0 +1,60 @@
+id: sql-l3-0020
+topic: sql
+level: 3
+title: Customers who have never bought a book
+prompt: |
+  A new books newsletter targets customers who have **never** bought anything
+  in the `books` category. Customers who bought books **and** other things
+  must be excluded. Customers with no orders at all are included.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, product_id)
+  products(product_id, category)
+options:
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c JOIN orders o ON o.customer_id = c.customer_id
+      EXCEPT
+      SELECT c.customer_id, c.name
+      FROM customers c JOIN orders o ON o.customer_id = c.customer_id
+      JOIN products p ON p.product_id = o.product_id WHERE p.category = 'books';
+    correct: false
+    explanation: >-
+      The first query lists only customers who have orders, so customers with
+      no orders at all are lost before EXCEPT removes the book buyers.
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o
+                        JOIN products p ON p.product_id = o.product_id
+                        WHERE o.customer_id = c.customer_id
+                          AND p.category = 'books');
+    correct: true
+    explanation: >-
+      NOT EXISTS rejects a customer as soon as any one of their orders is a book,
+      and keeps customers with no orders at all.
+  - code: |
+      SELECT DISTINCT c.customer_id, c.name
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      LEFT JOIN products p ON p.product_id = o.product_id
+                          AND p.category = 'books'
+      WHERE p.product_id IS NULL;
+    correct: false
+    explanation: >-
+      The anti-join is applied per order row, so any non-book order of a
+      book buyer survives the filter and lets that customer in.
+  - code: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o
+                        JOIN products p ON p.product_id = o.product_id
+                        WHERE o.customer_id = c.customer_id
+                          AND p.category <> 'books');
+    correct: false
+    explanation: >-
+      Moving the negation inside the subquery finds customers with no non-book
+      orders, so customers who bought only books are included.
+tags: [anti-join, not-exists, outer-joins]
+docs_url: https://www.postgresql.org/docs/17/functions-subquery.html#FUNCTIONS-SUBQUERY-EXISTS
+status: approved

@@ -1,0 +1,54 @@
+id: sql-l3-0002
+topic: sql
+level: 3
+title: Top earners per department, keeping ties
+prompt: |
+  HR wants the highest-paid employee of each department for a retention
+  review. If several employees in a department share the top salary, **all**
+  of them must be listed.
+context: |
+  employees(emp_id, name, department, salary)
+options:
+  - code: |
+      SELECT emp_id, name, department, salary FROM (
+        SELECT e.*, ROW_NUMBER() OVER (PARTITION BY department
+                                       ORDER BY salary DESC) AS rk
+        FROM employees e) t
+      WHERE rk = 1;
+    correct: false
+    explanation: >-
+      ROW_NUMBER gives tied rows different numbers, so only one of the
+      employees sharing the top salary is kept, chosen arbitrarily.
+  - code: |
+      SELECT emp_id, name, department, salary FROM (
+        SELECT e.*, RANK() OVER (PARTITION BY department
+                                 ORDER BY salary DESC) AS rk
+        FROM employees e) t
+      WHERE rk = 1;
+    correct: true
+    explanation: >-
+      RANK gives every employee who shares the top salary rank 1 within their
+      department, so all of them pass the filter.
+  - code: |
+      SELECT emp_id, name, department, salary FROM (
+        SELECT e.*, RANK() OVER (ORDER BY department,
+                                 salary DESC) AS rk
+        FROM employees e) t
+      WHERE rk = 1;
+    correct: false
+    explanation: >-
+      Ordering by department doesn't partition the ranking, so ranks continue
+      across departments and only the first department gets a rank 1.
+  - code: |
+      SELECT emp_id, name, department, salary FROM (
+        SELECT e.*, RANK() OVER (PARTITION BY department
+                                 ORDER BY salary) AS rk
+        FROM employees e) t
+      WHERE rk = 1;
+    correct: false
+    explanation: >-
+      The window sorts salaries ascending, so rank 1 is the lowest-paid
+      employee of each department.
+tags: [window-functions, ranking, ties]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

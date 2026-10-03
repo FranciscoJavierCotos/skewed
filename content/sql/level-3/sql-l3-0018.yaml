@@ -1,0 +1,50 @@
+id: sql-l3-0018
+topic: sql
+level: 3
+title: Median order value per country
+prompt: |
+  Order values are skewed by a few huge B2B orders, so the country report
+  uses the **median** order amount. When a country has an even number of
+  orders, the median is the average of the two middle amounts.
+context: |
+  orders(order_id, country, amount numeric)
+options:
+  - code: |
+      SELECT country,
+             mode() WITHIN GROUP (ORDER BY amount) AS median_amount
+      FROM orders
+      GROUP BY country;
+    correct: false
+    explanation: >-
+      mode() returns the most frequent amount (the smallest one when all are
+      unique), not the middle value.
+  - code: |
+      SELECT country,
+             percentile_disc(0.5) WITHIN GROUP (ORDER BY amount) AS median_amount
+      FROM orders
+      GROUP BY country;
+    correct: false
+    explanation: >-
+      percentile_disc returns an actual value from the data, so with an even
+      count it gives the lower middle amount instead of averaging the two.
+  - code: |
+      SELECT country,
+             percentile_cont(0.5) WITHIN GROUP (ORDER BY amount) AS median_amount
+      FROM orders
+      GROUP BY country;
+    correct: true
+    explanation: >-
+      percentile_cont interpolates between the two middle values when the count
+      is even, which matches the median definition in the prompt.
+  - code: |
+      SELECT country,
+             percentile_cont(0.5) WITHIN GROUP (ORDER BY order_id) AS median_amount
+      FROM orders
+      GROUP BY country;
+    correct: false
+    explanation: >-
+      The ordered-set aggregate computes the percentile of the column in its
+      ORDER BY, so this is the median order_id, not the median amount.
+tags: [aggregates, percentile, ordered-set-aggregates]
+docs_url: https://www.postgresql.org/docs/17/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE
+status: approved

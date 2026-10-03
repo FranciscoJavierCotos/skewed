@@ -1,0 +1,53 @@
+id: sql-l3-0001
+topic: sql
+level: 3
+title: Running spend per customer when orders share a timestamp
+prompt: |
+  Finance wants every order row to carry the customer's cumulative spend up to
+  and including that order. Bulk imports mean two orders from the same
+  customer can share an `ordered_at`; such ties are broken by `order_id`, so
+  each order must get its own running total.
+context: |
+  orders(order_id, customer_id, ordered_at timestamp, amount)
+
+  `order_id` is unique.
+options:
+  - code: |
+      SELECT order_id, customer_id,
+             SUM(amount) OVER (PARTITION BY customer_id
+                               ORDER BY ordered_at) AS running_total
+      FROM orders;
+    correct: false
+    explanation: >-
+      The default frame is RANGE up to the current row, which includes peers
+      with the same ordered_at, so tied orders get the same combined total.
+  - code: |
+      SELECT order_id, customer_id,
+             SUM(amount) OVER (PARTITION BY customer_id, ordered_at
+                               ORDER BY order_id) AS running_total
+      FROM orders;
+    correct: false
+    explanation: >-
+      Partitioning by ordered_at as well restarts the sum at every new
+      timestamp, so each total covers only the orders sharing that timestamp.
+  - code: |
+      SELECT order_id, customer_id,
+             SUM(amount) OVER (ORDER BY customer_id, ordered_at, order_id
+                               ROWS UNBOUNDED PRECEDING) AS running_total
+      FROM orders;
+    correct: false
+    explanation: >-
+      Sorting by customer_id doesn't partition the window, so the total keeps
+      accumulating into the next customer instead of restarting at 0.
+  - code: |
+      SELECT order_id, customer_id,
+             SUM(amount) OVER (PARTITION BY customer_id
+                               ORDER BY ordered_at, order_id) AS running_total
+      FROM orders;
+    correct: true
+    explanation: >-
+      Adding the unique order_id to ORDER BY means no two rows are peers, so the
+      frame ends exactly at the current order and each order gets its own total.
+tags: [window-functions, running-total, window-frames]
+docs_url: https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-WINDOW-FUNCTIONS
+status: approved
