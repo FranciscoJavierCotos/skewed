@@ -246,6 +246,26 @@ Copy this list into every content PR (the PR template already includes it) and t
 6. The owner reviews each question, edits it where needed and flips accepted questions from `draft` to `approved`. Delete rejected drafts before merge. Their ids were never published, so they can be reused.
 7. Merge. The seed upserts every question, and only `approved` ones go live.
 
+## Weekly triage
+
+Once a week, list the questions that need a look:
+
+```bash
+set -a; . ./.env.local; set +a   # SUPABASE_URL and SUPABASE_SECRET_KEY
+pnpm content:flagged
+```
+
+The script reads the `question_stats` view (one row per active question: `attempts`, `accuracy_pct`, `open_reports`). The view is service-role only; anon and signed-in users can't read it. A question is flagged when:
+
+- it has at least one open (unresolved) report, or
+- it has at least 20 attempts and accuracy below 25% (likely wrong, ambiguous or mislevelled) or above 95% (too easy for its level).
+
+Flagged questions are sorted by open reports, then by how far accuracy is outside the 25–95% band. For each one, read the reports, fix it in place (or retire it, see below), and mark its reports resolved:
+
+```sql
+update public.question_reports set resolved = true where question_id = 'git-l3-0007';
+```
+
 ## Id allocation
 
 - Ids are `{topic}-l{level}-{nnnn}`. Numbers count separately for each topic and level, starting at `0001`.

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 insert into public.questions (id, topic, level, title, prompt, docs_url, content_hash) values
   ('sql-l1-9001', 'sql', 1, 'Q1', 'P1', 'https://docs.example/q1', 'h1'),
@@ -14,6 +14,9 @@ insert into public.question_options (id, question_id, position, code, is_correct
   ('00000000-0000-0000-0000-000000000022', 'sql-l1-9002', 1, 'SELECT 22', false, 'SECRET_EXPLANATION_22'),
   ('00000000-0000-0000-0000-000000000023', 'sql-l1-9002', 2, 'SELECT 23', false, 'SECRET_EXPLANATION_23'),
   ('00000000-0000-0000-0000-000000000024', 'sql-l1-9002', 3, 'SELECT 24', false, 'SECRET_EXPLANATION_24');
+
+-- Prod holds the real bank: hide it for this rolled-back transaction so pool counts see only the fixtures.
+update public.questions set active = false where id not in ('sql-l1-9001', 'sql-l1-9002');
 
 select hasnt_column('public', 'questions', 'dialect', 'questions has no dialect column');
 
@@ -58,6 +61,8 @@ reset role;
 select is((select count(*)::int from public.answer_events
            where client_event_id = '10000000-0000-0000-0000-000000000002'), 1, 'retries are idempotent');
 set local role anon;
+
+select throws_ok($$ select * from public.question_stats $$, '42501', null, 'anon cannot read question_stats');
 
 select public.report_question('20000000-0000-0000-0000-000000000001', 'sql-l1-9001', 'typo', 'n')
   from generate_series(1, 10);
