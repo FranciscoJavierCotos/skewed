@@ -1,0 +1,44 @@
+id: spark-l3-0001
+topic: spark
+level: 3
+title: Latest order per customer with a deterministic tiebreak
+prompt: |
+  The CRM needs each customer's most recent order, with all of that order's
+  columns: **exactly one row per customer**. Two orders from the same customer
+  can share an `order_ts`; in that case keep the one with the highest `order_id`.
+context: |
+  `df` has columns `customer_id`, `order_id`, `order_ts` and `amount`.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy(F.desc("order_ts"))
+      df.withColumn("rk", F.rank().over(w)).filter("rk = 1").drop("rk")
+    correct: false
+    explanation: >-
+      `rank` gives tied rows the same rank, so a customer with two orders at the
+      latest timestamp keeps both rows.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy(F.desc("order_ts"), F.desc("order_id"))
+      df.withColumn("rn", F.row_number().over(w)).filter("rn = 1").drop("rn")
+    correct: true
+    explanation: >-
+      `row_number` numbers rows uniquely, and the `order_id` tiebreaker makes the
+      first row the latest order with the highest id when timestamps tie.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy("order_ts", "order_id")
+      df.withColumn("rn", F.row_number().over(w)).filter("rn = 1").drop("rn")
+    correct: false
+    explanation: >-
+      The window is sorted ascending, so row 1 is each customer's oldest order,
+      not the latest.
+  - code: |
+      df.groupBy("customer_id").agg(F.max("order_ts").alias("order_ts"),
+                                    F.max("order_id").alias("order_id"),
+                                    F.max("amount").alias("amount"))
+    correct: false
+    explanation: >-
+      Each `max` is computed independently, so `order_id` and `amount` can come
+      from different orders than the latest `order_ts`.
+tags: [window-functions, dedup, row-number]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.row_number.html
+status: approved

@@ -1,0 +1,39 @@
+id: spark-l3-0012
+topic: spark
+level: 3
+title: One row per order item, keeping orders without items
+prompt: |
+  Flatten orders to one row per item in `item`. Orders whose `items` array is
+  empty or null (cancelled baskets) must still appear **once**, with a null
+  `item`.
+context: |
+  `df` has columns `order_id` and `items` (array of strings, may be empty or null).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.select("order_id", F.explode("items").alias("item"))
+    correct: false
+    explanation: >-
+      `explode` produces no rows for an empty or null array, so the cancelled
+      baskets disappear.
+  - code: |
+      df.select("order_id", F.explode(F.coalesce("items", F.array())).alias("item"))
+    correct: false
+    explanation: >-
+      The null array becomes an empty one, but `explode` still produces no rows
+      for an empty array, so those orders are dropped anyway.
+  - code: |
+      df.select("order_id", F.explode_outer("items").alias("item"))
+    correct: true
+    explanation: >-
+      `explode_outer` returns one row with a null item when the array is empty
+      or null, and one row per element otherwise.
+  - code: |
+      df.select("order_id", F.posexplode("items").alias("pos", "item"))
+    correct: false
+    explanation: >-
+      `posexplode` adds the position but, like `explode`, emits nothing for empty
+      or null arrays, so those orders are lost.
+tags: [explode, arrays]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.explode_outer.html
+status: approved

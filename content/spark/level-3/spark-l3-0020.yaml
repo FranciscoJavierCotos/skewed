@@ -1,0 +1,38 @@
+id: spark-l3-0020
+topic: spark
+level: 3
+title: Flatten an array of line-item structs
+prompt: |
+  Orders store their line items as an array of structs. The warehouse needs one
+  row per line item with flat columns `order_id`, `sku` and `qty`.
+context: |
+  `df` has columns `order_id` and `items: array<struct<sku: string, qty: int>>`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.select("order_id", F.explode("items"))
+    correct: false
+    explanation: >-
+      One row per item is right, but each item stays a single struct column
+      named `col` instead of flat `sku` and `qty` columns.
+  - code: |
+      df.select("order_id", "items.sku", "items.qty")
+    correct: false
+    explanation: >-
+      A field path on an array of structs returns an array of that field per
+      order, so there's still one row per order holding arrays.
+  - code: |
+      df.select("order_id", F.inline("items"))
+    correct: true
+    explanation: >-
+      `inline` explodes an array of structs into one row per element, and each
+      struct field becomes its own column.
+  - code: |
+      df.select("order_id", F.explode("items.sku").alias("sku"), F.explode("items.qty").alias("qty"))
+    correct: false
+    explanation: >-
+      The two `explode` calls run independently, so every SKU of an order is
+      paired with every quantity (a cross product) instead of its own one.
+tags: [explode, arrays, structs]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.inline.html
+status: approved

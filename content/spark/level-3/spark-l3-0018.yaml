@@ -1,0 +1,42 @@
+id: spark-l3-0018
+topic: spark
+level: 3
+title: Latest status per order without a window
+prompt: |
+  The status log has one row per status change. Return each `order_id` with its
+  **latest** `status` (the one with the greatest `ts`), using a single
+  `groupBy` and no window functions.
+context: |
+  `df` has columns `order_id`, `ts` (unique per order) and `status`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      (df.groupBy("order_id").agg(F.max("status").alias("status")))
+    correct: false
+    explanation: >-
+      `max` on the status string returns the alphabetically largest status,
+      ignoring when each change happened.
+  - code: |
+      (df.groupBy("order_id").agg(F.max(F.struct("status", "ts")).alias("m"))
+         .select("order_id", "m.status"))
+    correct: false
+    explanation: >-
+      Structs compare field by field from the left, so putting `status` first
+      makes the max alphabetical again.
+  - code: |
+      (df.groupBy("order_id").agg(F.min(F.struct("ts", "status")).alias("m"))
+         .select("order_id", "m.status"))
+    correct: false
+    explanation: >-
+      `min` over a struct that starts with `ts` picks the earliest change, which
+      gives the first status instead of the latest.
+  - code: |
+      (df.groupBy("order_id").agg(F.max(F.struct("ts", "status")).alias("m"))
+         .select("order_id", "m.status"))
+    correct: true
+    explanation: >-
+      Structs compare by their first field, so the max struct is the row with
+      the greatest `ts`, and its `status` field is the latest status.
+tags: [structs, aggregate-functions, arg-max]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.struct.html
+status: approved

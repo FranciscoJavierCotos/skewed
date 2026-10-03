@@ -1,0 +1,43 @@
+id: spark-l3-0004
+topic: spark
+level: 3
+title: Seven-day moving average of daily sales
+prompt: |
+  Each store has exactly one row per day with no gaps. Add `ma7`: the average of
+  `sales` over the current day and the **six previous days** of the same store.
+  The first days of a store's history average over the days available.
+context: |
+  `df` has columns `store_id`, `day` (date) and `sales`.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      w = Window.partitionBy("store_id").orderBy("day").rowsBetween(-7, Window.currentRow)
+      df.withColumn("ma7", F.avg("sales").over(w))
+    correct: false
+    explanation: >-
+      `-7` to the current row spans eight rows, so each average covers eight
+      days instead of seven.
+  - code: |
+      w = Window.partitionBy("store_id").orderBy("day")
+      df.withColumn("ma7", F.avg("sales").over(w))
+    correct: false
+    explanation: >-
+      With only `orderBy`, the default frame runs from the start of the partition,
+      giving a cumulative average instead of a seven-day one.
+  - code: |
+      w = Window.partitionBy("store_id").orderBy("day").rowsBetween(-6, Window.currentRow)
+      df.withColumn("ma7", F.avg("sales").over(w))
+    correct: true
+    explanation: >-
+      The row frame from 6 rows back to the current row covers exactly seven
+      daily rows, and the partition keeps each store separate.
+  - code: |
+      w = Window.orderBy("day").rowsBetween(-6, Window.currentRow)
+      df.withColumn("ma7", F.avg("sales").over(w))
+    correct: false
+    explanation: >-
+      Without `partitionBy`, the frame spans rows of different stores that
+      interleave by day, mixing their sales.
+tags: [window-functions, window-frames, moving-average]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.WindowSpec.rowsBetween.html
+status: approved

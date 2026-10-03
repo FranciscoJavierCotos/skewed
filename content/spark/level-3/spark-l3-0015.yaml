@@ -1,0 +1,39 @@
+id: spark-l3-0015
+topic: spark
+level: 3
+title: Serialise an address as a JSON object
+prompt: |
+  An outbound API expects an `address` column holding a JSON **object** string
+  such as `{"street":"Main St","city":"Madrid"}`, built from the `street` and
+  `city` columns.
+context: |
+  `df` has columns `customer_id`, `street` and `city`.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.withColumn("address", F.to_json(F.array("street", "city")))
+    correct: false
+    explanation: >-
+      An array serialises to a JSON array, such as `["Main St","Madrid"]`, so the
+      field names are lost.
+  - code: |
+      df.withColumn("address", F.to_json(F.struct("street", "city")))
+    correct: true
+    explanation: >-
+      A struct serialises to a JSON object, and its field names come from the
+      column names `street` and `city`.
+  - code: |
+      df.withColumn("address", F.struct("street", "city").cast("string"))
+    correct: false
+    explanation: >-
+      Casting a struct to string gives Spark's display form, such as
+      `{Main St, Madrid}`, which isn't valid JSON.
+  - code: |
+      df.withColumn("address", F.concat_ws(",", "street", "city"))
+    correct: false
+    explanation: >-
+      This joins the values into the plain text `Main St,Madrid`, not a JSON
+      object.
+tags: [structs, json]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_json.html
+status: approved

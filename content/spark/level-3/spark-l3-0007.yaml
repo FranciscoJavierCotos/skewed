@@ -1,0 +1,42 @@
+id: spark-l3-0007
+topic: spark
+level: 3
+title: Split customers into spend quartiles
+prompt: |
+  Marketing wants every customer assigned to one of **four** spend buckets in
+  `quartile`, where `1` holds the **top** spenders and `4` the lowest.
+context: |
+  `df` has one row per customer with columns `customer_id` and `spend`.
+  `F` is `pyspark.sql.functions` and `Window` is `pyspark.sql.Window`.
+options:
+  - code: |
+      w = Window.orderBy("spend")
+      df.withColumn("quartile", F.ntile(4).over(w))
+    correct: false
+    explanation: >-
+      The window is sorted ascending, so bucket 1 holds the lowest spenders
+      instead of the top ones.
+  - code: |
+      w = Window.partitionBy("customer_id").orderBy(F.desc("spend"))
+      df.withColumn("quartile", F.ntile(4).over(w))
+    correct: false
+    explanation: >-
+      Partitioning by customer makes every partition a single row, so every
+      customer lands in bucket 1.
+  - code: |
+      w = Window.orderBy(F.desc("spend"))
+      df.withColumn("quartile", (F.percent_rank().over(w) * 4).cast("int") + 1)
+    correct: false
+    explanation: >-
+      `percent_rank` reaches 1.0 for the last row, which maps to 5, so the
+      lowest spender ends up in a fifth bucket.
+  - code: |
+      w = Window.orderBy(F.desc("spend"))
+      df.withColumn("quartile", F.ntile(4).over(w))
+    correct: true
+    explanation: >-
+      `ntile(4)` over a descending spend order splits customers into four
+      near-equal buckets, with the top spenders in bucket 1.
+tags: [window-functions, ntile]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.ntile.html
+status: approved

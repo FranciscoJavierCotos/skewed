@@ -1,0 +1,40 @@
+id: spark-l3-0014
+topic: spark
+level: 3
+title: Orders that include a gift card
+prompt: |
+  Finance needs every order whose `skus` array contains the gift-card SKU `GC`
+  anywhere in the array. Return each matching order once, with its original
+  columns.
+context: |
+  `df` has columns `order_id` and `skus` (array of strings). A SKU can appear
+  more than once in an order.
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.filter(F.col("skus")[0] == "GC")
+    correct: false
+    explanation: >-
+      This only checks the first element, so orders with the gift card in any
+      later position are missed.
+  - code: |
+      df.filter(F.array_position("skus", "GC") > 1)
+    correct: false
+    explanation: >-
+      `array_position` is 1-based and returns 0 when the value is missing, so
+      `> 1` misses orders where `GC` is the first SKU.
+  - code: |
+      df.filter(F.array_contains("skus", "GC"))
+    correct: true
+    explanation: >-
+      `array_contains` is true when `GC` appears anywhere in the array, and the
+      filter keeps each order once with its columns unchanged.
+  - code: |
+      df.withColumn("sku", F.explode("skus")).filter(F.col("sku") == "GC")
+    correct: false
+    explanation: >-
+      Exploding returns an order once for every `GC` it contains and adds a
+      `sku` column, so the original order rows aren't preserved.
+tags: [arrays, array-functions]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.array_contains.html
+status: approved

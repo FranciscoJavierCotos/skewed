@@ -1,0 +1,39 @@
+id: spark-l3-0010
+topic: spark
+level: 3
+title: Cheapest first, unpriced products last
+prompt: |
+  The price list shows products from **cheapest to most expensive**. Products
+  that have no price yet (`price` is null) must still be listed, at the very
+  end.
+context: |
+  `df` has columns `product_id` and `price` (nullable).
+  `F` is `pyspark.sql.functions`.
+options:
+  - code: |
+      df.orderBy("price")
+    correct: false
+    explanation: >-
+      In Spark an ascending sort puts nulls first, so the unpriced products
+      appear at the top.
+  - code: |
+      df.orderBy(F.col("price").asc_nulls_last())
+    correct: true
+    explanation: >-
+      `asc_nulls_last` sorts prices from low to high and places the null prices
+      after every priced product.
+  - code: |
+      df.orderBy(F.col("price").desc_nulls_last())
+    correct: false
+    explanation: >-
+      The nulls are at the end, but the sort is descending, so the most expensive
+      product comes first.
+  - code: |
+      df.na.drop(subset=["price"]).orderBy("price")
+    correct: false
+    explanation: >-
+      The order is right, but the unpriced products are removed instead of
+      listed at the end.
+tags: [null-semantics, sorting]
+docs_url: https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Column.asc_nulls_last.html
+status: approved
