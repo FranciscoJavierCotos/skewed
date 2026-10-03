@@ -1,0 +1,38 @@
+id: git-l5-0008
+topic: git
+level: 5
+title: Sync a submodule after a teammate moved its pointer
+prompt: |
+  After `git pull`, `git status` shows `vendor/schemas (new commits)`: the pull
+  moved the commit the project records for the submodule, but your submodule
+  checkout is still on the old one. Make the submodule match the recorded
+  commit, without committing anything.
+options:
+  - code: |
+      git submodule update --remote vendor/schemas
+    correct: false
+    explanation: >-
+      `--remote` moves the submodule to the **latest** commit of its upstream
+      branch, not to the commit the project records.
+  - code: |
+      git add vendor/schemas
+      git commit -m "Sync"
+    correct: false
+    explanation: >-
+      This records your old submodule commit, which silently undoes your
+      teammate's pointer bump.
+  - code: |
+      git submodule update --init vendor/schemas
+    correct: true
+    explanation: >-
+      `submodule update` checks the submodule out at exactly the commit recorded
+      in the superproject's `HEAD`.
+  - code: |
+      git submodule sync --recursive vendor/schemas
+    correct: false
+    explanation: >-
+      `sync` only copies submodule URLs from `.gitmodules` into your config. It
+      never changes the checked-out commit.
+tags: [submodules]
+docs_url: https://git-scm.com/docs/git-submodule#Documentation/git-submodule.txt-update
+status: approved

@@ -1,0 +1,36 @@
+id: git-l5-0017
+topic: git
+level: 5
+title: Check out only one service of a monorepo
+prompt: |
+  You work only on `services/api` in a large monorepo. Make your working tree
+  contain just `services/api` plus the top-level files, without changing any
+  commit, and with `git status` still clean.
+options:
+  - code: |
+      git sparse-checkout add services/api
+    correct: false
+    explanation: >-
+      `add` extends an existing sparse-checkout. None is set up yet, so Git
+      refuses.
+  - code: |
+      git sparse-checkout set services/api
+    correct: true
+    explanation: >-
+      `set` enables cone-mode sparse checkout with that directory (plus the
+      top-level files) and removes everything else from the working tree.
+  - code: |
+      git config core.sparseCheckout true
+    correct: false
+    explanation: >-
+      This only flips the setting. With no patterns written and no re-checkout,
+      the working tree is unchanged.
+  - code: |
+      git rm -r --cached services/web
+    correct: false
+    explanation: >-
+      This stages the **deletion** of `services/web` from the repository and
+      leaves the files on disk.
+tags: [sparse-checkout, monorepo]
+docs_url: https://git-scm.com/docs/git-sparse-checkout
+status: approved

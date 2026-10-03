@@ -1,0 +1,38 @@
+id: git-l5-0004
+topic: git
+level: 5
+title: Purge a large file from all history
+prompt: |
+  Years ago someone committed `data/dump.csv`, and it still bloats every clone.
+  In a fresh clone, remove that file from **every commit on every branch**,
+  keeping everything else, including `seeds/countries.csv`. `git-filter-repo`
+  is installed.
+options:
+  - code: |
+      git filter-repo --path-glob 'data/dump.csv'
+    correct: false
+    explanation: >-
+      Path filters **keep** only the matching paths by default, so this throws
+      away everything except the dump.
+  - code: |
+      git rm data/dump.csv
+      git commit -m "Drop dump"
+    correct: false
+    explanation: >-
+      A new commit only removes the file from now on. Every earlier commit still
+      contains it, so clones stay just as large.
+  - code: |
+      git filter-repo --invert-paths --path data/dump.csv
+    correct: true
+    explanation: >-
+      `--invert-paths` removes the matched path from every commit of every
+      branch and keeps everything else.
+  - code: |
+      git filter-repo --invert-paths --path-glob '*.csv'
+    correct: false
+    explanation: >-
+      The glob matches every CSV file, so `seeds/countries.csv` is purged as
+      well.
+tags: [filter-repo, history-rewrite]
+docs_url: https://github.com/newren/git-filter-repo/blob/main/Documentation/git-filter-repo.txt
+status: approved

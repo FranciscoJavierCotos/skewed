@@ -1,0 +1,43 @@
+id: git-l5-0005
+topic: git
+level: 5
+title: Rewrite an old author email across all branches
+prompt: |
+  A colleague's commits on `main` and `release` use her old address,
+  `jane@old-corp.example`. `../mailmap.txt` maps it to the new one. In a fresh
+  clone, rewrite history so that **no commit on any branch** keeps the old
+  address. `git-filter-repo` is installed.
+context: |
+  `../mailmap.txt`:
+
+  ```
+  Jane Doe <jane@acme.example> <jane@old-corp.example>
+  ```
+options:
+  - code: |
+      git filter-repo --mailmap ../mailmap.txt --force
+    correct: true
+    explanation: >-
+      `--mailmap` rewrites author and committer identities in every commit on
+      every ref (`--force` only skips the fresh-clone safety check).
+  - code: |
+      git commit --amend --reset-author --no-edit
+    correct: false
+    explanation: >-
+      This rewrites only the latest commit, and with your own identity. Her
+      older commits keep the old address.
+  - code: |
+      git log --use-mailmap --format='%an <%ae>'
+    correct: false
+    explanation: >-
+      `--use-mailmap` changes only how `log` **displays** identities. The
+      commits themselves are unchanged.
+  - code: |
+      git filter-repo --mailmap ../mailmap.txt --refs main
+    correct: false
+    explanation: >-
+      `--refs main` limits the rewrite to `main`, so her commit on `release`
+      keeps the old address.
+tags: [filter-repo, mailmap, history-rewrite]
+docs_url: https://github.com/newren/git-filter-repo/blob/main/Documentation/git-filter-repo.txt
+status: approved

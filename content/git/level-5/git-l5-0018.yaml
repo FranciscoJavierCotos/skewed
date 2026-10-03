@@ -1,0 +1,36 @@
+id: git-l5-0018
+topic: git
+level: 5
+title: Clone a huge repository with full history but lazy file contents
+prompt: |
+  `https://github.com/acme/big.git` has gigabytes of binary history. You need
+  every commit (for `git log` and blame), but you want file contents to download
+  only when a checkout actually needs them. Clone it into `big`.
+options:
+  - code: |
+      git clone --depth 1 https://github.com/acme/big.git
+    correct: false
+    explanation: >-
+      A shallow clone truncates history to the newest commit, so `git log` sees
+      almost nothing.
+  - code: |
+      git clone --single-branch https://github.com/acme/big.git
+    correct: false
+    explanation: >-
+      This limits which branches are fetched but still downloads every file
+      version in their history.
+  - code: |
+      git clone --filter=blob:none https://github.com/acme/big.git
+    correct: true
+    explanation: >-
+      A blobless partial clone fetches all commits and trees, and downloads file
+      contents (blobs) on demand when a checkout needs them.
+  - code: |
+      git clone --no-checkout https://github.com/acme/big.git
+    correct: false
+    explanation: >-
+      This skips the initial checkout, but every blob in history is still
+      downloaded.
+tags: [partial-clone, clone, performance]
+docs_url: https://git-scm.com/docs/partial-clone
+status: approved

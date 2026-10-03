@@ -1,0 +1,40 @@
+id: git-l5-0010
+topic: git
+level: 5
+title: Remove a submodule completely
+prompt: |
+  The `vendor/legacy` submodule is no longer used. Remove it in one commit so
+  that no gitlink is left in the tree, no entry is left in `.gitmodules`, and
+  the directory is gone, with a clean working tree at the end.
+options:
+  - code: |
+      git submodule deinit vendor/legacy
+      git commit -am "Remove legacy"
+    correct: false
+    explanation: >-
+      `deinit` only empties the submodule's working directory and unregisters
+      it locally. The gitlink and the `.gitmodules` entry stay in the project.
+  - code: |
+      git rm vendor/legacy
+      git commit -m "Remove legacy"
+    correct: true
+    explanation: >-
+      `git rm` on a submodule removes the gitlink and the directory, and also
+      deletes its section from `.gitmodules`, staging all of it.
+  - code: |
+      git rm --cached vendor/legacy
+      git commit -m "Remove legacy"
+    correct: false
+    explanation: >-
+      `--cached` drops only the gitlink. The `.gitmodules` entry and the
+      directory stay behind.
+  - code: |
+      rm -rf vendor/legacy
+      git commit -am "Remove legacy"
+    correct: false
+    explanation: >-
+      `commit -a` stages the removed gitlink, but `.gitmodules` still lists the
+      submodule.
+tags: [submodules]
+docs_url: https://git-scm.com/docs/gitsubmodules#_forms
+status: approved

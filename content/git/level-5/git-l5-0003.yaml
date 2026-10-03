@@ -1,0 +1,41 @@
+id: git-l5-0003
+topic: git
+level: 5
+title: End a bisect session cleanly
+prompt: |
+  You started bisecting while on `feature/x`, and you've identified the culprit.
+  Git still has you on a detached commit in the middle of the history. End the
+  session so the bisect state is removed and you're back on `feature/x` where
+  you started.
+options:
+  - code: |
+      git bisect reset
+      git log --oneline -1
+    correct: true
+    explanation: >-
+      `bisect reset` clears the bisect refs and state and checks out the branch
+      you were on when you ran `bisect start`.
+  - code: |
+      git bisect reset HEAD
+      git log --oneline -1
+    correct: false
+    explanation: >-
+      Giving `reset` a commit ends the session **on that commit**, so you stay
+      detached in the middle of the history.
+  - code: |
+      git switch feature/x
+      git log --oneline -1
+    correct: false
+    explanation: >-
+      This moves you back to the branch, but the bisect session (`BISECT_START`
+      and its refs) is still in progress.
+  - code: |
+      git bisect skip
+      git log --oneline -1
+    correct: false
+    explanation: >-
+      `skip` just moves the session on to another candidate. You're still
+      bisecting and still detached.
+tags: [bisect]
+docs_url: https://git-scm.com/docs/git-bisect#_bisect_reset
+status: approved

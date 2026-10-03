@@ -1,0 +1,37 @@
+id: git-l5-0011
+topic: git
+level: 5
+title: Vendor a library as a squashed subtree
+prompt: |
+  Vendor `main` of `https://github.com/acme/lib.git` into `vendor/lib` as plain
+  files in this repository (no submodule). The library's upstream history must
+  be squashed, so its individual commits don't enter your history.
+options:
+  - code: |
+      git submodule add https://github.com/acme/lib.git vendor/lib
+      git commit -m "Add lib"
+    correct: false
+    explanation: >-
+      A submodule stores only a pointer to the other repository, not the
+      library's files, which the prompt rules out.
+  - code: |
+      git subtree add --prefix=vendor/lib https://github.com/acme/lib.git main
+    correct: false
+    explanation: >-
+      Without `--squash`, the subtree merge brings in every upstream commit of
+      the library.
+  - code: |
+      git subtree add --prefix=vendor/lib --squash https://github.com/acme/lib.git main
+    correct: true
+    explanation: >-
+      `subtree add --squash` adds the library under `vendor/lib` as one squashed
+      commit, merged in so later `subtree pull`s work.
+  - code: |
+      git pull --allow-unrelated-histories https://github.com/acme/lib.git main
+    correct: false
+    explanation: >-
+      A plain merge of the unrelated history puts the library's files at the
+      repository root and imports all its commits.
+tags: [subtree, vendoring]
+docs_url: https://github.com/git/git/blob/master/contrib/subtree/git-subtree.adoc
+status: approved

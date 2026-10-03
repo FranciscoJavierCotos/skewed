@@ -1,0 +1,37 @@
+id: git-l5-0006
+topic: git
+level: 5
+title: Extract a monorepo service into its own repository
+prompt: |
+  In a fresh clone of the monorepo, turn the repository into the standalone
+  billing repo. The contents of `services/billing/` must sit at the **root**,
+  and history must keep only the commits that touched it. `git-filter-repo` is
+  installed.
+options:
+  - code: |
+      git filter-repo --path services/billing --prune-empty always
+    correct: false
+    explanation: >-
+      `--path` keeps the billing commits but leaves the files under
+      `services/billing/` instead of moving them to the root.
+  - code: |
+      git filter-repo --subdirectory-filter services/billing
+    correct: true
+    explanation: >-
+      `--subdirectory-filter` keeps only that directory, makes it the new root
+      and drops the commits that no longer change anything.
+  - code: |
+      git filter-repo --to-subdirectory-filter services/billing
+    correct: false
+    explanation: >-
+      This does the opposite: it moves the **whole** repository into
+      `services/billing/`.
+  - code: |
+      git subtree split --prefix=services/billing -b billing
+    correct: false
+    explanation: >-
+      This builds the right history, but only on a new `billing` branch. The
+      repository's `main` is left as the full monorepo.
+tags: [filter-repo, monorepo, history-rewrite]
+docs_url: https://github.com/newren/git-filter-repo/blob/main/Documentation/git-filter-repo.txt
+status: approved
