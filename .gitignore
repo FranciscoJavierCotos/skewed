@@ -48,3 +48,6 @@ supabase/.temp
 /test-results/
 /playwright-report/
 /blob-report/
+
+# security audit (local only: repo is public)
+/SECURITY_AUDIT_REPORT.md
