@@ -1,0 +1,52 @@
+name: Deploy DB & content
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "content/**"
+      - "src/content/**"
+      - "scripts/seed-content.ts"
+      - "scripts/ci-pooler-url.sh"
+      - ".github/workflows/deploy.yml"
+  # PRs get a dry run: the migrations that would be applied are printed, nothing is written.
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "content/**"
+      - "src/content/**"
+      - "scripts/seed-content.ts"
+      - "scripts/ci-pooler-url.sh"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('deploy-dry-{0}', github.ref) || 'deploy-prod' }}
+  cancel-in-progress: false
+jobs:
+  db-and-content:
+    runs-on: ubuntu-latest
+    env:
+      # Session-pooler (or direct) connection string for the production project.
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: pnpm install --frozen-lockfile
+      # Validate first so a broken bank never reaches production.
+      - run: pnpm content:validate
+      - name: Use the session pooler
+        run: bash scripts/ci-pooler-url.sh
+      # --db-url skips `supabase link`, so no access token or project ref is needed. Migrations already
+      # recorded in supabase_migrations.schema_migrations are skipped, so this is a no-op when up to date.
+      - name: Apply migrations
+        run: supabase db push --db-url "$SUPABASE_DB_URL" ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
+      - name: Seed content
+        if: github.event_name != 'pull_request'
+        run: pnpm seed content
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
