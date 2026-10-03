@@ -1,0 +1,45 @@
+id: sql-l4-0010
+topic: sql
+level: 4
+title: Delete duplicate contacts, keeping the oldest row
+prompt: |
+  An import created duplicate contacts. For each `email`, keep only the row
+  with the **lowest** `id` and delete the others in place.
+context: |
+  contacts(id, email)   -- id is unique, email is never NULL
+options:
+  - code: |
+      DELETE FROM contacts a
+      USING contacts b
+      WHERE a.email = b.email AND a.id <> b.id;
+    correct: false
+    explanation: >-
+      Every row of a duplicated email has another row with a different id, so
+      all copies are deleted, including the one to keep.
+  - code: |
+      DELETE FROM contacts a
+      USING contacts b
+      WHERE a.email = b.email AND a.id > b.id;
+    correct: true
+    explanation: >-
+      A row is deleted only if a row with the same email and a lower id exists,
+      which is true for every copy except the lowest id.
+  - code: |
+      DELETE FROM contacts a
+      USING contacts b
+      WHERE a.email = b.email AND a.id < b.id;
+    correct: false
+    explanation: >-
+      The comparison is reversed, so rows with a higher-id twin are deleted and
+      the highest id survives instead of the lowest.
+  - code: |
+      DELETE FROM contacts
+      WHERE id NOT IN (SELECT MIN(id) FROM contacts
+                       GROUP BY id);
+    correct: false
+    explanation: >-
+      Grouping by id makes every row its own group and its own minimum, so the
+      subquery returns every id and nothing is deleted.
+tags: [dedup, delete-using, dml]
+docs_url: https://www.postgresql.org/docs/17/sql-delete.html
+status: approved

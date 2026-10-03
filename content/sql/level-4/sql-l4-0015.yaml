@@ -1,0 +1,55 @@
+id: sql-l4-0015
+topic: sql
+level: 4
+title: Three most recent orders per customer with LATERAL
+prompt: |
+  The account page shows each customer's **three most recent** orders.
+  Return `customer_id`, `order_id` and `ordered_at`. Customers without orders
+  must not appear.
+context: |
+  customers(customer_id, name)
+  orders(order_id, customer_id, ordered_at timestamp)
+options:
+  - code: |
+      SELECT c.customer_id, o.order_id, o.ordered_at
+      FROM customers c
+      JOIN (SELECT customer_id, order_id, ordered_at FROM orders
+            ORDER BY ordered_at DESC LIMIT 3) o ON o.customer_id = c.customer_id;
+    correct: false
+    explanation: >-
+      The subquery isn't lateral, so LIMIT 3 picks the three newest orders
+      overall before the join, not three per customer.
+  - code: |
+      SELECT c.customer_id, o.order_id, o.ordered_at
+      FROM customers c
+      CROSS JOIN LATERAL (SELECT order_id, ordered_at FROM orders
+                          WHERE customer_id = c.customer_id
+                          ORDER BY ordered_at LIMIT 3) o;
+    correct: false
+    explanation: >-
+      The lateral subquery sorts ascending, so it returns each customer's three
+      oldest orders.
+  - code: |
+      SELECT c.customer_id, o.order_id, o.ordered_at
+      FROM customers c
+      CROSS JOIN LATERAL (SELECT order_id, ordered_at FROM orders
+                          WHERE customer_id = c.customer_id
+                          ORDER BY ordered_at DESC LIMIT 3) o;
+    correct: true
+    explanation: >-
+      LATERAL runs the subquery once per customer, so ORDER BY ... DESC LIMIT 3
+      keeps that customer's three newest orders, and CROSS JOIN drops customers
+      with none.
+  - code: |
+      SELECT c.customer_id, o.order_id, o.ordered_at
+      FROM customers c
+      LEFT JOIN LATERAL (SELECT order_id, ordered_at FROM orders
+                         WHERE customer_id = c.customer_id
+                         ORDER BY ordered_at DESC LIMIT 3) o ON true;
+    correct: false
+    explanation: >-
+      LEFT JOIN keeps customers whose lateral subquery returns nothing, so
+      customers without orders appear with NULL order columns.
+tags: [lateral, top-n-per-group, joins]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-LATERAL
+status: approved

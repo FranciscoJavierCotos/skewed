@@ -1,0 +1,61 @@
+id: sql-l4-0017
+topic: sql
+level: 4
+title: Revenue by the city a customer lived in at sale time
+prompt: |
+  Regional managers are credited with revenue from customers who lived in
+  their city **when the sale happened**, even if the customer has moved
+  since. Return revenue per city using the SCD2 customer dimension.
+context: |
+  sales(sale_id, customer_id, sold_at date, amount)
+  dim_customer(customer_id, city, valid_from date, valid_to date)
+
+  `valid_to` is exclusive and is `NULL` for a customer's current row.
+  Versions of a customer never overlap.
+options:
+  - code: |
+      SELECT d.city, SUM(s.amount) AS revenue
+      FROM sales s
+      JOIN dim_customer d ON d.customer_id = s.customer_id
+       AND s.sold_at >= d.valid_from
+       AND s.sold_at < COALESCE(d.valid_to, 'infinity')
+      GROUP BY d.city ORDER BY d.city;
+    correct: true
+    explanation: >-
+      Each sale joins the one version whose half-open range contains the sale
+      date, and the open-ended current version is capped at 'infinity'.
+  - code: |
+      SELECT d.city, SUM(s.amount) AS revenue
+      FROM sales s
+      JOIN dim_customer d ON d.customer_id = s.customer_id
+       AND CURRENT_DATE >= d.valid_from
+       AND CURRENT_DATE < COALESCE(d.valid_to, 'infinity')
+      GROUP BY d.city ORDER BY d.city;
+    correct: false
+    explanation: >-
+      The range is tested against today's date instead of the sale date, so
+      every sale is credited to the customer's current city.
+  - code: |
+      SELECT d.city, SUM(s.amount) AS revenue
+      FROM sales s
+      JOIN dim_customer d ON d.customer_id = s.customer_id
+       AND s.sold_at BETWEEN d.valid_from AND d.valid_to
+      GROUP BY d.city ORDER BY d.city;
+    correct: false
+    explanation: >-
+      Current versions have a NULL valid_to, and BETWEEN with NULL is never
+      true, so sales made in a customer's current city are dropped.
+  - code: |
+      SELECT d.city, SUM(s.amount) AS revenue
+      FROM sales s
+      JOIN dim_customer d ON d.customer_id = s.customer_id
+       AND s.sold_at >= d.valid_from
+       AND s.sold_at <= COALESCE(d.valid_to, 'infinity')
+      GROUP BY d.city ORDER BY d.city;
+    correct: false
+    explanation: >-
+      valid_to is exclusive, but <= includes it, so a sale on the day a customer
+      moved matches both versions and is counted twice.
+tags: [scd2, point-in-time-join, joins]
+docs_url: https://www.postgresql.org/docs/17/queries-table-expressions.html#QUERIES-JOIN
+status: approved

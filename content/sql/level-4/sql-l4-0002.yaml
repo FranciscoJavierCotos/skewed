@@ -1,0 +1,54 @@
+id: sql-l4-0002
+topic: sql
+level: 4
+title: Current price per product, most expensive first
+prompt: |
+  The price history table gets a new row whenever a product's price changes.
+  The pricing team wants each product's **current** price (the row with the
+  latest `valid_from`), with the result sorted by that price, highest first.
+context: |
+  prices(product_id, price, valid_from date)
+
+  A product never has two rows with the same `valid_from`.
+options:
+  - code: |
+      SELECT DISTINCT ON (product_id) product_id, price, valid_from
+      FROM prices
+      ORDER BY price DESC, product_id, valid_from DESC;
+    correct: false
+    explanation: >-
+      DISTINCT ON requires the ORDER BY to start with its own expressions, so
+      leading with price DESC makes PostgreSQL reject the query.
+  - code: |
+      SELECT * FROM (
+        SELECT DISTINCT ON (product_id) product_id, price
+        FROM prices
+        ORDER BY product_id, valid_from) cur
+      ORDER BY price DESC;
+    correct: false
+    explanation: >-
+      The inner sort on valid_from is ascending, so DISTINCT ON keeps each
+      product's first price instead of its current one.
+  - code: |
+      SELECT * FROM (
+        SELECT DISTINCT ON (product_id) product_id, price
+        FROM prices
+        ORDER BY product_id, valid_from DESC) cur
+      ORDER BY price DESC;
+    correct: true
+    explanation: >-
+      The inner DISTINCT ON keeps each product's latest row, and the outer
+      query is free to sort those rows by price.
+  - code: |
+      SELECT * FROM (
+        SELECT DISTINCT ON (product_id) product_id, price
+        FROM prices
+        ORDER BY product_id, price DESC) cur
+      ORDER BY price DESC;
+    correct: false
+    explanation: >-
+      The inner ORDER BY ranks each product's rows by price, so DISTINCT ON
+      keeps the highest price ever charged, not the current one.
+tags: [distinct-on, order-by, dedup]
+docs_url: https://www.postgresql.org/docs/17/sql-select.html#SQL-DISTINCT
+status: approved

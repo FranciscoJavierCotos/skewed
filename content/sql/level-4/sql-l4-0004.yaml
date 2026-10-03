@@ -1,0 +1,63 @@
+id: sql-l4-0004
+topic: sql
+level: 4
+title: Collapse device status pings into status periods
+prompt: |
+  Devices report their status every few minutes. Ops wants the history
+  compressed: each run of **consecutive** pings with the same status becomes
+  one row with `device_id`, `status`, the first ping time and the last ping
+  time. A device can return to an earlier status later, which is a new period.
+context: |
+  status_log(device_id, ts timestamp, status)
+
+  Pings from many devices are interleaved in time.
+options:
+  - code: |
+      WITH t AS (
+        SELECT device_id, ts, status,
+               DENSE_RANK() OVER (PARTITION BY device_id ORDER BY status) AS grp
+        FROM status_log)
+      SELECT device_id, status, MIN(ts) AS started, MAX(ts) AS last_seen
+      FROM t GROUP BY device_id, status, grp ORDER BY device_id, started;
+    correct: false
+    explanation: >-
+      DENSE_RANK over status gives every row with the same status the same
+      label, so a device that goes up, down and up again shows one up period.
+  - code: |
+      WITH t AS (
+        SELECT device_id, ts, status,
+               ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY ts) AS grp
+        FROM status_log)
+      SELECT device_id, status, MIN(ts) AS started, MAX(ts) AS last_seen
+      FROM t GROUP BY device_id, status, grp ORDER BY device_id, started;
+    correct: false
+    explanation: >-
+      A plain row number is different on every row, so each ping becomes its
+      own period and nothing is collapsed.
+  - code: |
+      WITH t AS (
+        SELECT device_id, ts, status,
+               ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY ts)
+             - ROW_NUMBER() OVER (PARTITION BY status ORDER BY ts) AS grp
+        FROM status_log)
+      SELECT device_id, status, MIN(ts) AS started, MAX(ts) AS last_seen
+      FROM t GROUP BY device_id, status, grp ORDER BY device_id, started;
+    correct: false
+    explanation: >-
+      The second row number isn't partitioned by device, so other devices'
+      pings with the same status shift it and split periods apart.
+  - code: |
+      WITH t AS (
+        SELECT device_id, ts, status,
+               ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY ts)
+             - ROW_NUMBER() OVER (PARTITION BY device_id, status ORDER BY ts) AS grp
+        FROM status_log)
+      SELECT device_id, status, MIN(ts) AS started, MAX(ts) AS last_seen
+      FROM t GROUP BY device_id, status, grp ORDER BY device_id, started;
+    correct: true
+    explanation: >-
+      Within a run of the same status, both row numbers rise together, so their
+      difference stays constant and labels the run.
+tags: [gaps-and-islands, window-functions, row-number]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

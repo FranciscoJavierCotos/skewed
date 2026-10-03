@@ -1,0 +1,57 @@
+id: sql-l4-0008
+topic: sql
+level: 4
+title: MERGE a staging batch that repeats keys
+prompt: |
+  The nightly batch in `staging_updates` can contain **several rows for the
+  same account**. Only the latest row per account (by `updated_at`) must be
+  applied: update existing accounts and insert new ones.
+context: |
+  accounts(account_id, balance, updated_at timestamp)
+  staging_updates(account_id, balance, updated_at timestamp)
+
+  An account never has two staging rows with the same `updated_at`.
+options:
+  - code: |
+      MERGE INTO accounts t
+      USING (SELECT DISTINCT account_id, balance, updated_at FROM staging_updates) s
+        ON t.account_id = s.account_id
+      WHEN MATCHED THEN UPDATE SET balance = s.balance, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN INSERT VALUES (s.account_id, s.balance, s.updated_at);
+    correct: false
+    explanation: >-
+      DISTINCT only removes identical rows, and the repeated account rows differ,
+      so two source rows still match one target row and MERGE fails.
+  - code: |
+      MERGE INTO accounts t
+      USING (SELECT DISTINCT ON (account_id) * FROM staging_updates
+             ORDER BY account_id, updated_at) s ON t.account_id = s.account_id
+      WHEN MATCHED THEN UPDATE SET balance = s.balance, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN INSERT VALUES (s.account_id, s.balance, s.updated_at);
+    correct: false
+    explanation: >-
+      The ascending sort makes DISTINCT ON keep each account's oldest staging
+      row, so the earliest balance is applied.
+  - code: |
+      MERGE INTO accounts t
+      USING (SELECT account_id, MAX(balance) AS balance, MAX(updated_at) AS updated_at
+             FROM staging_updates GROUP BY account_id) s ON t.account_id = s.account_id
+      WHEN MATCHED THEN UPDATE SET balance = s.balance, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN INSERT VALUES (s.account_id, s.balance, s.updated_at);
+    correct: false
+    explanation: >-
+      Each MAX is computed on its own, so the balance is the largest one in the
+      batch, not the one from the latest row.
+  - code: |
+      MERGE INTO accounts t
+      USING (SELECT DISTINCT ON (account_id) * FROM staging_updates
+             ORDER BY account_id, updated_at DESC) s ON t.account_id = s.account_id
+      WHEN MATCHED THEN UPDATE SET balance = s.balance, updated_at = s.updated_at
+      WHEN NOT MATCHED THEN INSERT VALUES (s.account_id, s.balance, s.updated_at);
+    correct: true
+    explanation: >-
+      DISTINCT ON with updated_at DESC reduces the source to each account's
+      latest row, so every target row is matched at most once.
+tags: [merge, dedup, distinct-on]
+docs_url: https://www.postgresql.org/docs/17/sql-merge.html
+status: approved

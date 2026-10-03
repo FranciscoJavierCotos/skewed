@@ -1,0 +1,43 @@
+id: sql-l4-0011
+topic: sql
+level: 4
+title: Unique subscriptions when the tenant can be NULL
+prompt: |
+  An email can subscribe once per tenant, and the same email may subscribe in
+  several tenants. Personal subscriptions have `tenant_id = NULL`, and an
+  email may hold **at most one** personal subscription. Add the index or
+  constraint that enforces exactly these rules.
+context: |
+  subscriptions(email, tenant_id)   -- tenant_id is any integer, including 0
+options:
+  - code: |
+      ALTER TABLE subscriptions
+      ADD CONSTRAINT subs_email_tenant UNIQUE (email, tenant_id);
+    correct: false
+    explanation: >-
+      A unique constraint treats NULLs as distinct by default, so the same email
+      can hold any number of personal (NULL tenant) subscriptions.
+  - code: |
+      CREATE UNIQUE INDEX subs_email_tenant
+      ON subscriptions (email, COALESCE(tenant_id, 0));
+    correct: false
+    explanation: >-
+      Mapping NULL to 0 makes a personal subscription collide with a real
+      subscription in tenant 0, which the rules allow.
+  - code: |
+      CREATE UNIQUE INDEX subs_email_tenant
+      ON subscriptions (email, tenant_id) NULLS NOT DISTINCT;
+    correct: true
+    explanation: >-
+      NULLS NOT DISTINCT makes the index treat two NULL tenants as equal, so a
+      second personal subscription for the same email is rejected.
+  - code: |
+      CREATE UNIQUE INDEX subs_email_tenant
+      ON subscriptions (email, tenant_id) WHERE tenant_id IS NOT NULL;
+    correct: false
+    explanation: >-
+      The partial index skips rows with a NULL tenant, so personal
+      subscriptions aren't constrained at all.
+tags: [dedup, unique-index, null-semantics]
+docs_url: https://www.postgresql.org/docs/17/sql-createindex.html
+status: approved

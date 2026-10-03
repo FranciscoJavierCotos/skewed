@@ -1,0 +1,56 @@
+id: sql-l4-0013
+topic: sql
+level: 4
+title: Forward-fill missing sensor readings
+prompt: |
+  A temperature sensor sometimes fails to report, leaving `temp = NULL`. The
+  chart must show the **last known** temperature for those timestamps, even
+  when several readings in a row are missing.
+context: |
+  readings(ts timestamp, temp numeric)   -- one sensor, ts is unique
+
+  The first reading is never NULL.
+options:
+  - code: |
+      SELECT ts, MAX(temp) OVER (PARTITION BY grp) AS temp_filled
+      FROM (SELECT ts, temp,
+                   COUNT(temp) OVER (ORDER BY ts) AS grp
+            FROM readings) t
+      ORDER BY ts;
+    correct: true
+    explanation: >-
+      COUNT(temp) only grows on non-NULL rows, so each known value and the NULLs
+      after it share a grp, and MAX over that group returns the known value.
+  - code: |
+      SELECT ts, COALESCE(temp, prev) AS temp_filled
+      FROM (SELECT ts, temp,
+                   LAG(temp) OVER (ORDER BY ts) AS prev
+            FROM readings) t
+      ORDER BY ts;
+    correct: false
+    explanation: >-
+      LAG looks back only one row, so the second of two consecutive missing
+      readings still gets NULL.
+  - code: |
+      SELECT ts, LAST_VALUE(temp) OVER (PARTITION BY grp ORDER BY ts) AS temp_filled
+      FROM (SELECT ts, temp,
+                   COUNT(temp) OVER (ORDER BY ts) AS grp
+            FROM readings) t
+      ORDER BY ts;
+    correct: false
+    explanation: >-
+      The default frame ends at the current row, so LAST_VALUE returns the
+      current reading itself, and NULL readings stay NULL.
+  - code: |
+      SELECT ts, MAX(temp) OVER (PARTITION BY grp) AS temp_filled
+      FROM (SELECT ts, temp,
+                   COUNT(*) OVER (ORDER BY ts) AS grp
+            FROM readings) t
+      ORDER BY ts;
+    correct: false
+    explanation: >-
+      COUNT(*) grows on every row, NULLs included, so each reading is its own
+      group and missing readings stay NULL.
+tags: [gaps-and-islands, forward-fill, window-functions]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

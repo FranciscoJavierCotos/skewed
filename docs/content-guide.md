@@ -134,7 +134,8 @@ context: |
   customer_changes(customer_id, email, plan, updated_at)
 options:
   - code: |
-      SELECT DISTINCT ON (customer_id) *
+      SELECT DISTINCT ON (customer_id)
+             customer_id, email, plan, updated_at
       FROM customer_changes
       ORDER BY customer_id, updated_at DESC;
     correct: true
@@ -142,7 +143,8 @@ options:
       DISTINCT ON keeps the first row of each customer_id group in ORDER BY order,
       and updated_at DESC makes that first row the latest change.
   - code: |
-      SELECT DISTINCT ON (customer_id) *
+      SELECT DISTINCT ON (customer_id)
+             customer_id, email, plan, updated_at
       FROM customer_changes
       ORDER BY customer_id, updated_at;
     correct: false

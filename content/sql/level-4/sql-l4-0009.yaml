@@ -1,0 +1,52 @@
+id: sql-l4-0009
+topic: sql
+level: 4
+title: Sync EU stores from a regional snapshot
+prompt: |
+  The EU team sends `eu_snapshot`, the complete list of EU stores that still
+  exist. Sync `stores` with it: update names of existing stores, insert new EU
+  stores, and delete EU stores missing from the snapshot. Stores in other
+  regions must not be touched.
+context: |
+  stores(store_id, region, name)
+  eu_snapshot(store_id, name)   -- every EU store that still exists
+options:
+  - code: |
+      MERGE INTO stores t USING eu_snapshot s ON t.store_id = s.store_id
+      WHEN MATCHED THEN UPDATE SET name = s.name
+      WHEN NOT MATCHED THEN INSERT (store_id, region, name) VALUES (s.store_id, 'EU', s.name)
+      WHEN NOT MATCHED BY SOURCE AND t.region = 'EU' THEN DELETE;
+    correct: true
+    explanation: >-
+      WHEN NOT MATCHED BY SOURCE (PostgreSQL 17) visits target rows missing from
+      the snapshot, and the region condition limits the delete to EU stores.
+  - code: |
+      MERGE INTO stores t USING eu_snapshot s ON t.store_id = s.store_id
+      WHEN MATCHED THEN UPDATE SET name = s.name
+      WHEN NOT MATCHED THEN INSERT (store_id, region, name) VALUES (s.store_id, 'EU', s.name)
+      WHEN NOT MATCHED BY SOURCE THEN DELETE;
+    correct: false
+    explanation: >-
+      Every store outside the snapshot is unmatched by source, including all
+      non-EU stores, so they are deleted too.
+  - code: |
+      MERGE INTO stores t USING eu_snapshot s ON t.store_id = s.store_id
+      WHEN MATCHED THEN UPDATE SET name = s.name
+      WHEN NOT MATCHED THEN INSERT (store_id, region, name) VALUES (s.store_id, 'EU', s.name);
+    correct: false
+    explanation: >-
+      Without a NOT MATCHED BY SOURCE clause, EU stores that disappeared from
+      the snapshot are never deleted.
+  - code: |
+      MERGE INTO stores t
+      USING eu_snapshot s ON t.store_id = s.store_id AND t.region = 'EU'
+      WHEN MATCHED THEN UPDATE SET name = s.name
+      WHEN NOT MATCHED THEN INSERT (store_id, region, name) VALUES (s.store_id, 'EU', s.name)
+      WHEN NOT MATCHED BY SOURCE THEN DELETE;
+    correct: false
+    explanation: >-
+      The ON condition decides matching, not which target rows are considered,
+      so non-EU stores fail it, count as unmatched by source and are deleted.
+tags: [merge, not-matched-by-source, dml]
+docs_url: https://www.postgresql.org/docs/17/sql-merge.html
+status: approved

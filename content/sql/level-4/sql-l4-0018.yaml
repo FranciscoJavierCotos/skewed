@@ -1,0 +1,54 @@
+id: sql-l4-0018
+topic: sql
+level: 4
+title: Drop double-clicks from a click log
+prompt: |
+  The UI sometimes logs double-clicks. A click is a duplicate when the **same
+  user** clicked the **same button** no more than 2 seconds after their
+  previous click on that button. Return only the clicks that are not
+  duplicates.
+context: |
+  clicks(click_id, user_id, button, clicked_at timestamp)
+options:
+  - code: |
+      SELECT click_id, user_id, button, clicked_at
+      FROM (SELECT c.*, LAG(clicked_at) OVER (PARTITION BY user_id, button
+                                              ORDER BY clicked_at) AS prev
+            FROM clicks c) t
+      WHERE clicked_at - prev > INTERVAL '2 seconds';
+    correct: false
+    explanation: >-
+      For a user's first click on a button prev is NULL, so the comparison is
+      NULL and that first, genuine click is dropped.
+  - code: |
+      SELECT click_id, user_id, button, clicked_at
+      FROM (SELECT c.*, LAG(clicked_at) OVER (PARTITION BY user_id, button
+                                              ORDER BY clicked_at) AS prev
+            FROM clicks c) t
+      WHERE prev IS NULL OR clicked_at - prev > INTERVAL '2 seconds';
+    correct: true
+    explanation: >-
+      Each click is compared with the previous click by the same user on the
+      same button, and first clicks are kept explicitly.
+  - code: |
+      SELECT click_id, user_id, button, clicked_at
+      FROM (SELECT c.*, LAG(clicked_at) OVER (PARTITION BY user_id
+                                              ORDER BY clicked_at) AS prev
+            FROM clicks c) t
+      WHERE prev IS NULL OR clicked_at - prev > INTERVAL '2 seconds';
+    correct: false
+    explanation: >-
+      The window isn't partitioned by button, so a quick click on a different
+      button is wrongly treated as a duplicate.
+  - code: |
+      SELECT click_id, user_id, button, clicked_at
+      FROM (SELECT DISTINCT ON (user_id, button, date_trunc('second', clicked_at)) *
+            FROM clicks
+            ORDER BY user_id, button, date_trunc('second', clicked_at), clicked_at) t;
+    correct: false
+    explanation: >-
+      Fixed one-second buckets don't measure the gap between clicks, so a
+      double-click that crosses a second boundary keeps both clicks.
+tags: [dedup, lag-lead, event-data]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved

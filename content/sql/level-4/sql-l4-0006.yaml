@@ -1,0 +1,72 @@
+id: sql-l4-0006
+topic: sql
+level: 4
+title: Apply a day of changes to an SCD2 customer dimension
+prompt: |
+  `dim_customer` is a type 2 slowly changing dimension: when a customer's city
+  changes, the current row is closed (`valid_to` = change date,
+  `is_current = false`) and a new current row is added. Load today's
+  `staging` batch: close and version customers whose city changed, add new
+  customers, and leave customers whose city didn't change **untouched**.
+context: |
+  dim_customer(customer_id, city, valid_from date, valid_to date, is_current boolean)
+  staging(customer_id, city, change_date date)   -- one row per customer
+
+  Columns of `dim_customer` are in the order shown.
+options:
+  - code: |
+      MERGE INTO dim_customer d
+      USING staging s ON d.customer_id = s.customer_id AND d.is_current
+      WHEN MATCHED AND d.city IS DISTINCT FROM s.city THEN
+        UPDATE SET city = s.city, valid_from = s.change_date
+      WHEN NOT MATCHED THEN
+        INSERT (customer_id, city, valid_from, valid_to, is_current)
+        VALUES (s.customer_id, s.city, s.change_date, NULL, true);
+    correct: false
+    explanation: >-
+      Updating the current row in place is a type 1 change: the old city is
+      overwritten and no history row is kept.
+  - code: |
+      UPDATE dim_customer d SET valid_to = s.change_date, is_current = false
+      FROM staging s
+      WHERE d.customer_id = s.customer_id AND d.is_current;
+      INSERT INTO dim_customer
+      SELECT s.customer_id, s.city, s.change_date, NULL, true
+      FROM staging s
+      LEFT JOIN dim_customer d ON d.customer_id = s.customer_id AND d.is_current
+      WHERE d.customer_id IS NULL;
+    correct: false
+    explanation: >-
+      The UPDATE doesn't check whether the city changed, so unchanged customers
+      are closed too and get a duplicate new version.
+  - code: |
+      UPDATE dim_customer d SET valid_to = s.change_date, is_current = false
+      FROM staging s
+      WHERE d.customer_id = s.customer_id AND d.is_current
+        AND d.city IS DISTINCT FROM s.city;
+      INSERT INTO dim_customer
+      SELECT s.customer_id, s.city, s.change_date, NULL, true
+      FROM staging s
+      LEFT JOIN dim_customer d ON d.customer_id = s.customer_id AND d.is_current
+      WHERE d.customer_id IS NULL;
+    correct: true
+    explanation: >-
+      The UPDATE closes only changed rows, so afterwards exactly the changed and
+      the new customers lack a current row, and the INSERT adds those.
+  - code: |
+      UPDATE dim_customer d SET valid_to = s.change_date, is_current = false
+      FROM staging s
+      WHERE d.customer_id = s.customer_id AND d.is_current
+        AND d.city IS DISTINCT FROM s.city;
+      INSERT INTO dim_customer
+      SELECT s.customer_id, s.city, s.change_date, NULL, true
+      FROM staging s
+      LEFT JOIN dim_customer d ON d.customer_id = s.customer_id
+      WHERE d.customer_id IS NULL;
+    correct: false
+    explanation: >-
+      The anti-join ignores is_current, so a changed customer still matches its
+      just-closed row and never gets the new version.
+tags: [scd2, merge, dml]
+docs_url: https://www.postgresql.org/docs/17/sql-update.html
+status: approved

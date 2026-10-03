@@ -1,0 +1,64 @@
+id: sql-l4-0012
+topic: sql
+level: 4
+title: Number each user's sessions from a click stream
+prompt: |
+  A new session starts at a user's first event, and whenever more than
+  30 minutes pass since that user's previous event. Give every event a
+  `session_no`: 1 for the user's first session, 2 for the second, and so on.
+context: |
+  events(event_id, user_id, event_ts timestamp)
+
+  In every option, the `flagged` CTE marks session starts with `is_new = 1`.
+options:
+  - code: |
+      WITH flagged AS (
+        SELECT e.*, CASE WHEN event_ts - LAG(event_ts) OVER w <= INTERVAL '30 minutes'
+                         THEN 0 ELSE 1 END AS is_new
+        FROM events e WINDOW w AS (PARTITION BY user_id ORDER BY event_ts))
+      SELECT event_id, user_id,
+             COUNT(is_new) OVER (PARTITION BY user_id ORDER BY event_ts) AS session_no
+      FROM flagged;
+    correct: false
+    explanation: >-
+      COUNT counts every non-NULL flag, zeros included, so this numbers the
+      events rather than the sessions.
+  - code: |
+      WITH flagged AS (
+        SELECT e.*, CASE WHEN event_ts - LAG(event_ts) OVER w <= INTERVAL '30 minutes'
+                         THEN 0 ELSE 1 END AS is_new
+        FROM events e WINDOW w AS (PARTITION BY user_id ORDER BY event_ts))
+      SELECT event_id, user_id,
+             SUM(is_new) OVER (PARTITION BY user_id) AS session_no
+      FROM flagged;
+    correct: false
+    explanation: >-
+      Without ORDER BY the window covers the whole partition, so every event
+      gets the user's total number of sessions.
+  - code: |
+      WITH flagged AS (
+        SELECT e.*, CASE WHEN event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'
+                         THEN 1 ELSE 0 END AS is_new
+        FROM events e WINDOW w AS (PARTITION BY user_id ORDER BY event_ts))
+      SELECT event_id, user_id,
+             SUM(is_new) OVER (PARTITION BY user_id ORDER BY event_ts) AS session_no
+      FROM flagged;
+    correct: false
+    explanation: >-
+      For the first event LAG is NULL, so the > test isn't true and the flag is
+      0, which numbers the first session 0 instead of 1.
+  - code: |
+      WITH flagged AS (
+        SELECT e.*, CASE WHEN event_ts - LAG(event_ts) OVER w <= INTERVAL '30 minutes'
+                         THEN 0 ELSE 1 END AS is_new
+        FROM events e WINDOW w AS (PARTITION BY user_id ORDER BY event_ts))
+      SELECT event_id, user_id,
+             SUM(is_new) OVER (PARTITION BY user_id ORDER BY event_ts) AS session_no
+      FROM flagged;
+    correct: true
+    explanation: >-
+      A running SUM of the start flags goes up by one at each session start, so
+      it numbers each user's sessions 1, 2, 3 and so on.
+tags: [gaps-and-islands, sessionization, window-functions]
+docs_url: https://www.postgresql.org/docs/17/functions-window.html
+status: approved
